@@ -10,6 +10,7 @@ from core.risk_engine import (
     detect_external_identities_with_sensitive_access,
     detect_privileged_accounts_without_mfa,
     detect_service_accounts_with_sensitive_access,
+    detect_toxic_permission_combinations,
     run_all_detections,
 )
 
@@ -102,6 +103,42 @@ def test_detect_service_accounts_with_sensitive_access_escalates_privileged_acce
     assert "Service account has privileged admin, manage, or administer capability." in finding.evidence
 
 
+def test_detect_toxic_permission_combinations_generates_findings() -> None:
+    iam_data, graph = load_sample_context()
+
+    findings = detect_toxic_permission_combinations(iam_data, graph)
+
+    assert [finding.id for finding in findings] == [
+        "finding-toxic-combo-user-003",
+        "finding-toxic-combo-user-005",
+    ]
+    assert all(finding.finding_type == "toxic_permission_combination" for finding in findings)
+    assert "Toxic permission combinations found: read + manage" in findings[0].evidence[0]
+
+
+def test_detect_toxic_permission_combinations_escalates_to_critical() -> None:
+    iam_data, graph = load_sample_context()
+
+    findings = detect_toxic_permission_combinations(iam_data, graph)
+    finding = findings[0]
+
+    assert finding.identity_id == "user-003"
+    assert finding.severity == Severity.CRITICAL
+    assert finding.score == 100
+    assert "Identity has privileged admin, manage, or administer capability." in finding.evidence
+
+
+def test_detect_toxic_permission_combinations_includes_attack_paths() -> None:
+    iam_data, graph = load_sample_context()
+
+    findings = detect_toxic_permission_combinations(iam_data, graph)
+    finding = findings[0]
+
+    assert finding.attack_paths
+    assert any("Priya Nair" in path for path in finding.attack_paths)
+    assert any("Customer Database" in path for path in finding.attack_paths)
+
+
 def test_run_all_detections_returns_deterministic_scores() -> None:
     iam_data, graph = load_sample_context()
 
@@ -121,8 +158,10 @@ def test_run_all_detections_returns_deterministic_scores() -> None:
         "finding-dormant-user-005",
         "finding-external-sensitive-user-004",
         "finding-service-sensitive-user-006",
+        "finding-toxic-combo-user-003",
+        "finding-toxic-combo-user-005",
     ]
-    assert [finding.score for finding in first_findings] == [85, 85, 90, 85]
+    assert [finding.score for finding in first_findings] == [85, 85, 90, 85, 100, 100]
     assert second_findings == first_findings
 
 
