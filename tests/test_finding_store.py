@@ -1,12 +1,15 @@
 import sqlite3
 
 from core.finding_store import (
+    add_finding_note,
+    assign_finding_owner,
     finding_exists,
     initialize_database,
     load_findings,
     save_findings,
+    update_finding_status,
 )
-from core.models import Finding, Severity
+from core.models import Finding, FindingStatus, Severity
 
 
 def test_initialize_database_creates_findings_table(tmp_path) -> None:
@@ -32,6 +35,15 @@ def test_save_and_load_findings_persists_finding_objects(tmp_path) -> None:
     assert loaded_findings == [finding]
     assert finding_exists(db_path, "finding-001") is True
     assert finding_exists(db_path, "finding-missing") is False
+
+
+def test_new_findings_use_default_workflow_fields() -> None:
+    finding = make_finding("finding-001", Severity.HIGH, 85, "user-001")
+
+    assert finding.status == FindingStatus.OPEN
+    assert finding.owner is None
+    assert finding.analyst_notes == []
+    assert finding.updated_at == finding.created_at
 
 
 def test_save_findings_prevents_duplicate_ids(tmp_path) -> None:
@@ -62,6 +74,66 @@ def test_load_findings_uses_deterministic_sort_order(tmp_path) -> None:
         "finding-high-b",
         "finding-low",
     ]
+
+
+def test_update_finding_status_persists_status_and_updated_at(tmp_path) -> None:
+    db_path = tmp_path / "findings.db"
+    finding = make_finding("finding-001", Severity.HIGH, 85, "user-001")
+
+    save_findings(db_path, [finding])
+    update_finding_status(
+        db_path,
+        "finding-001",
+        FindingStatus.IN_PROGRESS,
+        updated_at="2026-05-19T00:00:00Z",
+    )
+
+    loaded_finding = load_findings(db_path)[0]
+    assert loaded_finding.status == FindingStatus.IN_PROGRESS
+    assert loaded_finding.updated_at == "2026-05-19T00:00:00Z"
+
+
+def test_assign_finding_owner_persists_owner_and_updated_at(tmp_path) -> None:
+    db_path = tmp_path / "findings.db"
+    finding = make_finding("finding-001", Severity.HIGH, 85, "user-001")
+
+    save_findings(db_path, [finding])
+    assign_finding_owner(
+        db_path,
+        "finding-001",
+        "analyst@example.local",
+        updated_at="2026-05-20T00:00:00Z",
+    )
+
+    loaded_finding = load_findings(db_path)[0]
+    assert loaded_finding.owner == "analyst@example.local"
+    assert loaded_finding.updated_at == "2026-05-20T00:00:00Z"
+
+
+def test_add_finding_note_persists_notes_and_updated_at(tmp_path) -> None:
+    db_path = tmp_path / "findings.db"
+    finding = make_finding("finding-001", Severity.HIGH, 85, "user-001")
+
+    save_findings(db_path, [finding])
+    add_finding_note(
+        db_path,
+        "finding-001",
+        "Confirmed with identity owner.",
+        updated_at="2026-05-21T00:00:00Z",
+    )
+    add_finding_note(
+        db_path,
+        "finding-001",
+        "Access removal requested.",
+        updated_at="2026-05-22T00:00:00Z",
+    )
+
+    loaded_finding = load_findings(db_path)[0]
+    assert loaded_finding.analyst_notes == [
+        "Confirmed with identity owner.",
+        "Access removal requested.",
+    ]
+    assert loaded_finding.updated_at == "2026-05-22T00:00:00Z"
 
 
 def make_finding(

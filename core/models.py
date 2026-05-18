@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 
@@ -8,6 +8,13 @@ class Severity(Enum):
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
     CRITICAL = "CRITICAL"
+
+
+class FindingStatus(Enum):
+    OPEN = "OPEN"
+    IN_PROGRESS = "IN_PROGRESS"
+    RESOLVED = "RESOLVED"
+    SUPPRESSED = "SUPPRESSED"
 
 
 @dataclass(frozen=True)
@@ -67,6 +74,14 @@ class Finding:
     recommendation: str
     attack_paths: list[str]
     created_at: str
+    status: FindingStatus = FindingStatus.OPEN
+    owner: Optional[str] = None
+    analyst_notes: list[str] = field(default_factory=list)
+    updated_at: Optional[str] = None
+
+    def __post_init__(self) -> None:
+        if self.updated_at is None:
+            object.__setattr__(self, "updated_at", self.created_at)
 
 
 @dataclass(frozen=True)
