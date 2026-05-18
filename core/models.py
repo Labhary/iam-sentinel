@@ -1,4 +1,13 @@
 from dataclasses import dataclass
+from enum import Enum
+from typing import Optional
+
+
+class Severity(Enum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
 
 
 @dataclass(frozen=True)
@@ -42,6 +51,22 @@ class Resource:
     name: str
     type: str
     sensitive: bool
+
+
+@dataclass(frozen=True)
+class Finding:
+    id: str
+    title: str
+    severity: Severity
+    score: int
+    identity_id: str
+    resource_id: Optional[str]
+    finding_type: str
+    description: str
+    evidence: list[str]
+    recommendation: str
+    attack_paths: list[str]
+    created_at: str
 
 
 @dataclass(frozen=True)
