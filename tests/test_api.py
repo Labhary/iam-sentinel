@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from app import app
@@ -48,6 +50,27 @@ def test_get_findings_summary_returns_summary_metrics(client) -> None:
         "highest_score": 95,
         "affected_identities_count": 2,
     }
+
+
+def test_post_analysis_run_executes_and_persists_findings(tmp_path) -> None:
+    db_path = tmp_path / "analysis_api_findings.db"
+    app.config["TESTING"] = True
+    app.config["FINDINGS_DB_PATH"] = db_path
+    app.config["IAM_DATA_PATH"] = (
+        Path(__file__).resolve().parents[1] / "data" / "sample_iam.json"
+    )
+
+    with app.test_client() as test_client:
+        response = test_client.post("/api/analysis/run")
+        findings_response = test_client.get("/api/findings")
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["total_findings"] == 7
+    assert body["execution_timestamp"]
+    assert len(body["findings"]) == 7
+    assert findings_response.status_code == 200
+    assert len(findings_response.get_json()) == 7
 
 
 def test_patch_finding_status_updates_status(client) -> None:

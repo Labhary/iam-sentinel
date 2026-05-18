@@ -2,6 +2,7 @@ from pathlib import Path
 
 from flask import Flask, jsonify, request
 
+from core.analysis_runner import run_analysis
 from core.finding_store import (
     add_finding_note,
     assign_finding_owner,
@@ -15,6 +16,7 @@ from core.models import Finding, FindingStatus
 
 app = Flask(__name__)
 app.config["FINDINGS_DB_PATH"] = Path("data") / "findings.db"
+app.config["IAM_DATA_PATH"] = Path("data") / "sample_iam.json"
 
 
 @app.get("/")
@@ -32,6 +34,15 @@ def get_findings():
 def get_findings_summary():
     summary = summarize_findings(load_findings(get_db_path()))
     return jsonify(summary_to_dict(summary))
+
+
+@app.post("/api/analysis/run")
+def post_run_analysis():
+    result = run_analysis(
+        iam_data_path=get_iam_data_path(),
+        db_path=get_db_path(),
+    )
+    return jsonify(analysis_result_to_dict(result))
 
 
 @app.patch("/api/findings/<finding_id>/status")
@@ -84,6 +95,10 @@ def get_db_path() -> Path:
     return Path(app.config["FINDINGS_DB_PATH"])
 
 
+def get_iam_data_path() -> Path:
+    return Path(app.config["IAM_DATA_PATH"])
+
+
 def get_finding_or_none(finding_id: str) -> Finding:
     findings_by_id = {
         finding.id: finding
@@ -122,6 +137,17 @@ def summary_to_dict(summary: dict) -> dict:
         },
         "highest_score": summary["highest_score"],
         "affected_identities_count": summary["affected_identities_count"],
+    }
+
+
+def analysis_result_to_dict(result: dict) -> dict:
+    return {
+        "total_findings": result["total_findings"],
+        "execution_timestamp": result["execution_timestamp"],
+        "findings": [
+            finding_to_dict(finding)
+            for finding in result["findings"]
+        ],
     }
 
 
