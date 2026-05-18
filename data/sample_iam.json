@@ -18,7 +18,7 @@
       "email": "omar.haddad@company.local",
       "type": "developer",
       "groups": ["grp-engineering"],
-      "roles": ["role-dev-deployer"],
+      "roles": ["role-dev-deployer", "role-production-breakglass"],
       "mfa_enabled": true,
       "last_login": "2026-05-16",
       "external_user": false,
@@ -115,6 +115,11 @@
       "id": "role-payroll-processor",
       "name": "Payroll Processor",
       "permissions": ["perm-read-payroll", "perm-write-payroll"]
+    },
+    {
+      "id": "role-production-breakglass",
+      "name": "Production Breakglass Operator",
+      "permissions": ["perm-admin-all-production"]
     }
   ],
   "permissions": [
@@ -157,6 +162,11 @@
       "id": "perm-write-payroll",
       "action": "write",
       "resource": "res-payroll-system"
+    },
+    {
+      "id": "perm-admin-all-production",
+      "action": "*",
+      "resource": "res-production-app"
     }
   ],
   "resources": [
@@ -219,6 +229,10 @@
     {
       "id": "scenario-004",
       "description": "Admin role combines user administration, role management, and sensitive data read access."
+    },
+    {
+      "id": "scenario-005",
+      "description": "Developer has a break-glass production role with wildcard access to a sensitive production application."
     }
   ]
 }

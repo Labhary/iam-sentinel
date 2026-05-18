@@ -11,6 +11,7 @@ from core.risk_engine import (
     detect_privileged_accounts_without_mfa,
     detect_service_accounts_with_sensitive_access,
     detect_toxic_permission_combinations,
+    detect_wildcard_or_admin_permissions,
     run_all_detections,
 )
 
@@ -139,6 +140,40 @@ def test_detect_toxic_permission_combinations_includes_attack_paths() -> None:
     assert any("Customer Database" in path for path in finding.attack_paths)
 
 
+def test_detect_wildcard_or_admin_permissions_generates_findings() -> None:
+    iam_data, graph = load_sample_context()
+
+    findings = detect_wildcard_or_admin_permissions(iam_data, graph)
+
+    assert [finding.id for finding in findings] == ["finding-wildcard-admin-user-002"]
+    assert findings[0].finding_type == "wildcard_or_admin_permission"
+    assert "perm-admin-all-production action=* resource=Production Application" in findings[0].evidence[0]
+
+
+def test_detect_wildcard_or_admin_permissions_escalates_sensitive_access() -> None:
+    iam_data, graph = load_sample_context()
+
+    findings = detect_wildcard_or_admin_permissions(iam_data, graph)
+    finding = findings[0]
+
+    assert finding.identity_id == "user-002"
+    assert finding.severity == Severity.CRITICAL
+    assert finding.score == 100
+    assert "Reachable sensitive resources:" in finding.evidence[1]
+
+
+def test_detect_wildcard_or_admin_permissions_includes_readable_attack_paths() -> None:
+    iam_data, graph = load_sample_context()
+
+    findings = detect_wildcard_or_admin_permissions(iam_data, graph)
+    finding = findings[0]
+
+    assert finding.attack_paths
+    assert any("Omar Haddad" in path for path in finding.attack_paths)
+    assert any("Production Breakglass Operator" in path for path in finding.attack_paths)
+    assert any("Production Application" in path for path in finding.attack_paths)
+
+
 def test_run_all_detections_returns_deterministic_scores() -> None:
     iam_data, graph = load_sample_context()
 
@@ -160,8 +195,17 @@ def test_run_all_detections_returns_deterministic_scores() -> None:
         "finding-service-sensitive-user-006",
         "finding-toxic-combo-user-003",
         "finding-toxic-combo-user-005",
+        "finding-wildcard-admin-user-002",
     ]
-    assert [finding.score for finding in first_findings] == [85, 85, 90, 85, 100, 100]
+    assert [finding.score for finding in first_findings] == [
+        85,
+        85,
+        90,
+        85,
+        100,
+        100,
+        100,
+    ]
     assert second_findings == first_findings
 
 

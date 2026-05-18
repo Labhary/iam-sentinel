@@ -262,6 +262,54 @@ def detect_toxic_permission_combinations(
     return findings
 
 
+def detect_wildcard_or_admin_permissions(
+    iam_data: IAMData,
+    graph: nx.DiGraph,
+) -> list[Finding]:
+    findings = []
+
+    for user in iam_data.users:
+        risky_permissions = get_reachable_wildcard_or_admin_permissions(iam_data, graph, user.id)
+        if not risky_permissions:
+            continue
+
+        sensitive_resources = get_reachable_sensitive_resources(iam_data, graph, user.id)
+        severity = Severity.CRITICAL if sensitive_resources else Severity.HIGH
+        score = calculate_risk_score(
+            severity,
+            sensitive_resource=bool(sensitive_resources),
+            external_identity=user.external_user,
+            missing_mfa=not user.mfa_enabled,
+        )
+
+        findings.append(
+            Finding(
+                id=f"finding-wildcard-admin-{user.id}",
+                title="Wildcard or admin-like permission",
+                severity=severity,
+                score=score,
+                identity_id=user.id,
+                resource_id=first_resource_id(sensitive_resources),
+                finding_type="wildcard_or_admin_permission",
+                description=f"{user.name} can reach wildcard or admin-like permissions.",
+                evidence=[
+                    format_risky_permission_evidence(iam_data, risky_permissions),
+                    format_sensitive_resource_evidence(iam_data, sensitive_resources),
+                ],
+                recommendation="Replace broad permissions with scoped least-privilege access.",
+                attack_paths=get_formatted_attack_paths_for_wildcard_permissions(
+                    graph,
+                    user.id,
+                    sensitive_resources,
+                    risky_permissions,
+                ),
+                created_at=CREATED_AT,
+            )
+        )
+
+    return findings
+
+
 def run_all_detections(
     iam_data: IAMData,
     graph: nx.DiGraph,
@@ -273,6 +321,7 @@ def run_all_detections(
         + detect_external_identities_with_sensitive_access(iam_data, graph)
         + detect_service_accounts_with_sensitive_access(iam_data, graph)
         + detect_toxic_permission_combinations(iam_data, graph)
+        + detect_wildcard_or_admin_permissions(iam_data, graph)
     )
 
 
@@ -352,6 +401,56 @@ def get_toxic_combinations(capabilities: set[str]) -> list[tuple[str, str]]:
         for combination in TOXIC_PERMISSION_COMBINATIONS
         if combination[0] in capabilities and combination[1] in capabilities
     ]
+
+
+def get_reachable_wildcard_or_admin_permissions(
+    iam_data: IAMData,
+    graph: nx.DiGraph,
+    user_id: str,
+) -> list[str]:
+    return [
+        permission_id
+        for permission_id in get_reachable_permissions(iam_data, graph, user_id)
+        if is_wildcard_or_admin_permission(iam_data.permissions_by_id[permission_id].action)
+    ]
+
+
+def is_wildcard_or_admin_permission(action: str) -> bool:
+    normalized_action = action.lower()
+    return (
+        normalized_action == "*"
+        or normalized_action.startswith("admin:")
+        or normalized_action == "manage_all"
+    )
+
+
+def format_risky_permission_evidence(iam_data: IAMData, permission_ids: list[str]) -> str:
+    permission_summaries = []
+
+    for permission_id in permission_ids:
+        permission = iam_data.permissions_by_id[permission_id]
+        resource = iam_data.resources_by_id[permission.resource]
+        permission_summaries.append(
+            f"{permission.id} action={permission.action} resource={resource.name}"
+        )
+
+    return f"Risky permissions found: {', '.join(permission_summaries)}."
+
+
+def get_formatted_attack_paths_for_wildcard_permissions(
+    graph: nx.DiGraph,
+    user_id: str,
+    sensitive_resource_ids: list[str],
+    permission_ids: list[str],
+) -> list[str]:
+    target_ids = sensitive_resource_ids if sensitive_resource_ids else permission_ids
+    formatted_paths = []
+
+    for target_id in target_ids:
+        for path in get_attack_paths(graph, user_id, target_id):
+            formatted_paths.append(format_attack_path(graph, path))
+
+    return sorted(formatted_paths)
 
 
 def format_toxic_combination_evidence(combinations: list[tuple[str, str]]) -> str:
