@@ -1,0 +1,224 @@
+{
+  "users": [
+    {
+      "id": "user-001",
+      "name": "Maya Chen",
+      "email": "maya.chen@company.local",
+      "type": "normal_user",
+      "groups": ["grp-finance-readers"],
+      "roles": ["role-finance-viewer"],
+      "mfa_enabled": true,
+      "last_login": "2026-05-10",
+      "external_user": false,
+      "service_account": false
+    },
+    {
+      "id": "user-002",
+      "name": "Omar Haddad",
+      "email": "omar.haddad@company.local",
+      "type": "developer",
+      "groups": ["grp-engineering"],
+      "roles": ["role-dev-deployer"],
+      "mfa_enabled": true,
+      "last_login": "2026-05-16",
+      "external_user": false,
+      "service_account": false
+    },
+    {
+      "id": "user-003",
+      "name": "Priya Nair",
+      "email": "priya.nair@company.local",
+      "type": "admin",
+      "groups": ["grp-admins"],
+      "roles": ["role-platform-admin"],
+      "mfa_enabled": true,
+      "last_login": "2026-05-17",
+      "external_user": false,
+      "service_account": false
+    },
+    {
+      "id": "user-004",
+      "name": "Leo Martin",
+      "email": "leo.martin@contractor.example",
+      "type": "external_contractor",
+      "groups": ["grp-engineering"],
+      "roles": ["role-dev-deployer"],
+      "mfa_enabled": false,
+      "last_login": "2026-05-15",
+      "external_user": true,
+      "service_account": false
+    },
+    {
+      "id": "user-005",
+      "name": "Nadia Flores",
+      "email": "nadia.flores@company.local",
+      "type": "dormant_user",
+      "groups": ["grp-admins"],
+      "roles": ["role-platform-admin"],
+      "mfa_enabled": false,
+      "last_login": "2025-09-02",
+      "external_user": false,
+      "service_account": false
+    },
+    {
+      "id": "user-006",
+      "name": "Payroll Automation",
+      "email": "svc-payroll@company.local",
+      "type": "service_account",
+      "groups": ["grp-payroll-automation"],
+      "roles": ["role-payroll-processor"],
+      "mfa_enabled": false,
+      "last_login": "2026-05-18",
+      "external_user": false,
+      "service_account": true
+    }
+  ],
+  "groups": [
+    {
+      "id": "grp-finance-readers",
+      "name": "Finance Readers",
+      "roles": ["role-finance-viewer"]
+    },
+    {
+      "id": "grp-engineering",
+      "name": "Engineering",
+      "roles": ["role-dev-deployer"]
+    },
+    {
+      "id": "grp-admins",
+      "name": "Platform Administrators",
+      "roles": ["role-platform-admin"]
+    },
+    {
+      "id": "grp-payroll-automation",
+      "name": "Payroll Automation",
+      "roles": ["role-payroll-processor"]
+    }
+  ],
+  "roles": [
+    {
+      "id": "role-finance-viewer",
+      "name": "Finance Viewer",
+      "permissions": ["perm-read-finance"]
+    },
+    {
+      "id": "role-dev-deployer",
+      "name": "Developer Deployer",
+      "permissions": ["perm-read-source", "perm-deploy-app", "perm-read-customer-db"]
+    },
+    {
+      "id": "role-platform-admin",
+      "name": "Platform Admin",
+      "permissions": ["perm-admin-users", "perm-manage-roles", "perm-read-customer-db", "perm-read-payroll"]
+    },
+    {
+      "id": "role-payroll-processor",
+      "name": "Payroll Processor",
+      "permissions": ["perm-read-payroll", "perm-write-payroll"]
+    }
+  ],
+  "permissions": [
+    {
+      "id": "perm-read-finance",
+      "action": "read",
+      "resource": "res-finance-reports"
+    },
+    {
+      "id": "perm-read-source",
+      "action": "read",
+      "resource": "res-source-repositories"
+    },
+    {
+      "id": "perm-deploy-app",
+      "action": "deploy",
+      "resource": "res-production-app"
+    },
+    {
+      "id": "perm-read-customer-db",
+      "action": "read",
+      "resource": "res-customer-database"
+    },
+    {
+      "id": "perm-admin-users",
+      "action": "administer",
+      "resource": "res-identity-directory"
+    },
+    {
+      "id": "perm-manage-roles",
+      "action": "manage",
+      "resource": "res-role-catalog"
+    },
+    {
+      "id": "perm-read-payroll",
+      "action": "read",
+      "resource": "res-payroll-system"
+    },
+    {
+      "id": "perm-write-payroll",
+      "action": "write",
+      "resource": "res-payroll-system"
+    }
+  ],
+  "resources": [
+    {
+      "id": "res-finance-reports",
+      "name": "Finance Reports",
+      "type": "document_store",
+      "sensitive": true
+    },
+    {
+      "id": "res-source-repositories",
+      "name": "Source Repositories",
+      "type": "code_repository",
+      "sensitive": false
+    },
+    {
+      "id": "res-production-app",
+      "name": "Production Application",
+      "type": "application",
+      "sensitive": true
+    },
+    {
+      "id": "res-customer-database",
+      "name": "Customer Database",
+      "type": "database",
+      "sensitive": true
+    },
+    {
+      "id": "res-identity-directory",
+      "name": "Identity Directory",
+      "type": "identity_store",
+      "sensitive": true
+    },
+    {
+      "id": "res-role-catalog",
+      "name": "Role Catalog",
+      "type": "iam_configuration",
+      "sensitive": true
+    },
+    {
+      "id": "res-payroll-system",
+      "name": "Payroll System",
+      "type": "business_application",
+      "sensitive": true
+    }
+  ],
+  "risk_scenarios": [
+    {
+      "id": "scenario-001",
+      "description": "External contractor has deployment access and customer database read access without MFA."
+    },
+    {
+      "id": "scenario-002",
+      "description": "Dormant user retains platform administrator privileges without MFA."
+    },
+    {
+      "id": "scenario-003",
+      "description": "Service account can read and write payroll data while MFA is disabled."
+    },
+    {
+      "id": "scenario-004",
+      "description": "Admin role combines user administration, role management, and sensitive data read access."
+    }
+  ]
+}
