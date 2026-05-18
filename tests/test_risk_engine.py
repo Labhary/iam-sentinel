@@ -1,13 +1,15 @@
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
 
 from core.graph_builder import build_identity_graph
 from core.loader import load_iam_data
-from core.models import Severity
+from core.models import IAMData, Severity, User
 from core.risk_engine import (
     detect_dormant_privileged_accounts,
     detect_external_identities_with_sensitive_access,
     detect_privileged_accounts_without_mfa,
+    detect_service_accounts_with_sensitive_access,
     run_all_detections,
 )
 
@@ -70,6 +72,36 @@ def test_detect_external_identities_with_sensitive_access_generates_finding() ->
     assert any("Leo Martin" in path for path in finding.attack_paths)
 
 
+def test_detect_service_accounts_with_sensitive_access_generates_finding() -> None:
+    iam_data, graph = load_sample_context()
+
+    findings = detect_service_accounts_with_sensitive_access(iam_data, graph)
+
+    assert len(findings) == 1
+    finding = findings[0]
+    assert finding.id == "finding-service-sensitive-user-006"
+    assert finding.identity_id == "user-006"
+    assert finding.resource_id == "res-payroll-system"
+    assert finding.severity == Severity.HIGH
+    assert finding.score == 85
+    assert "Identity is marked as a service account." in finding.evidence
+    assert any("Payroll Automation" in path for path in finding.attack_paths)
+    assert any("Payroll System" in path for path in finding.attack_paths)
+
+
+def test_detect_service_accounts_with_sensitive_access_escalates_privileged_access() -> None:
+    iam_data = load_sample_with_service_account_admin_role()
+    graph = build_identity_graph(iam_data)
+
+    findings = detect_service_accounts_with_sensitive_access(iam_data, graph)
+
+    assert len(findings) == 1
+    finding = findings[0]
+    assert finding.severity == Severity.CRITICAL
+    assert finding.score == 100
+    assert "Service account has privileged admin, manage, or administer capability." in finding.evidence
+
+
 def test_run_all_detections_returns_deterministic_scores() -> None:
     iam_data, graph = load_sample_context()
 
@@ -88,6 +120,30 @@ def test_run_all_detections_returns_deterministic_scores() -> None:
         "finding-mfa-user-005",
         "finding-dormant-user-005",
         "finding-external-sensitive-user-004",
+        "finding-service-sensitive-user-006",
     ]
-    assert [finding.score for finding in first_findings] == [85, 85, 90]
+    assert [finding.score for finding in first_findings] == [85, 85, 90, 85]
     assert second_findings == first_findings
+
+
+def load_sample_with_service_account_admin_role() -> IAMData:
+    iam_data = load_iam_data(SAMPLE_DATA_PATH)
+    users = [
+        service_account_with_admin_role(user)
+        if user.id == "user-006"
+        else user
+        for user in iam_data.users
+    ]
+
+    return replace(
+        iam_data,
+        users=users,
+        users_by_id={user.id: user for user in users},
+    )
+
+
+def service_account_with_admin_role(user: User) -> User:
+    return replace(
+        user,
+        roles=[*user.roles, "role-platform-admin"],
+    )
