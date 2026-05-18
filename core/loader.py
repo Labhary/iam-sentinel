@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from core.models import IAMData
+from core.models import Group, IAMData, Permission, Resource, Role, User
 
 
 REQUIRED_SECTIONS = ("users", "groups", "roles", "permissions", "resources")
@@ -19,19 +19,26 @@ def load_iam_data(path: str | Path) -> IAMData:
         raw_data = json.load(file)
 
     validate_iam_data(raw_data)
-    lookups = build_lookup_maps(raw_data)
+    users = [build_user(user) for user in raw_data["users"]]
+    groups = [build_group(group) for group in raw_data["groups"]]
+    roles = [build_role(role) for role in raw_data["roles"]]
+    permissions = [
+        build_permission(permission)
+        for permission in raw_data["permissions"]
+    ]
+    resources = [build_resource(resource) for resource in raw_data["resources"]]
 
     return IAMData(
-        users=raw_data["users"],
-        groups=raw_data["groups"],
-        roles=raw_data["roles"],
-        permissions=raw_data["permissions"],
-        resources=raw_data["resources"],
-        users_by_id=lookups["users"],
-        groups_by_id=lookups["groups"],
-        roles_by_id=lookups["roles"],
-        permissions_by_id=lookups["permissions"],
-        resources_by_id=lookups["resources"],
+        users=users,
+        groups=groups,
+        roles=roles,
+        permissions=permissions,
+        resources=resources,
+        users_by_id={user.id: user for user in users},
+        groups_by_id={group.id: group for group in groups},
+        roles_by_id={role.id: role for role in roles},
+        permissions_by_id={permission.id: permission for permission in permissions},
+        resources_by_id={resource.id: resource for resource in resources},
     )
 
 
@@ -117,3 +124,51 @@ def require_reference(
         raise IAMDataValidationError(
             f"Invalid {target_type} reference from {source_type} {source_id}: {target_id}"
         )
+
+
+def build_user(data: dict[str, Any]) -> User:
+    return User(
+        id=data["id"],
+        name=data["name"],
+        email=data["email"],
+        type=data["type"],
+        groups=list(data.get("groups", [])),
+        roles=list(data.get("roles", [])),
+        mfa_enabled=data["mfa_enabled"],
+        last_login=data["last_login"],
+        external_user=data["external_user"],
+        service_account=data["service_account"],
+    )
+
+
+def build_group(data: dict[str, Any]) -> Group:
+    return Group(
+        id=data["id"],
+        name=data["name"],
+        roles=list(data.get("roles", [])),
+    )
+
+
+def build_role(data: dict[str, Any]) -> Role:
+    return Role(
+        id=data["id"],
+        name=data["name"],
+        permissions=list(data.get("permissions", [])),
+    )
+
+
+def build_permission(data: dict[str, Any]) -> Permission:
+    return Permission(
+        id=data["id"],
+        action=data["action"],
+        resource=data["resource"],
+    )
+
+
+def build_resource(data: dict[str, Any]) -> Resource:
+    return Resource(
+        id=data["id"],
+        name=data["name"],
+        type=data["type"],
+        sensitive=data["sensitive"],
+    )

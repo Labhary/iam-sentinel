@@ -1,16 +1,58 @@
 from dataclasses import dataclass
-from typing import Any
+
+
+@dataclass(frozen=True)
+class User:
+    id: str
+    name: str
+    email: str
+    type: str
+    groups: list[str]
+    roles: list[str]
+    mfa_enabled: bool
+    last_login: str
+    external_user: bool
+    service_account: bool
+
+
+@dataclass(frozen=True)
+class Group:
+    id: str
+    name: str
+    roles: list[str]
+
+
+@dataclass(frozen=True)
+class Role:
+    id: str
+    name: str
+    permissions: list[str]
+
+
+@dataclass(frozen=True)
+class Permission:
+    id: str
+    action: str
+    resource: str
+
+
+@dataclass(frozen=True)
+class Resource:
+    id: str
+    name: str
+    type: str
+    sensitive: bool
 
 
 @dataclass(frozen=True)
 class IAMData:
-    users: list[dict[str, Any]]
-    groups: list[dict[str, Any]]
-    roles: list[dict[str, Any]]
-    permissions: list[dict[str, Any]]
-    resources: list[dict[str, Any]]
-    users_by_id: dict[str, dict[str, Any]]
-    groups_by_id: dict[str, dict[str, Any]]
-    roles_by_id: dict[str, dict[str, Any]]
-    permissions_by_id: dict[str, dict[str, Any]]
-    resources_by_id: dict[str, dict[str, Any]]
+    users: list[User]
+    groups: list[Group]
+    roles: list[Role]
+    permissions: list[Permission]
+    resources: list[Resource]
+    users_by_id: dict[str, User]
+    groups_by_id: dict[str, Group]
+    roles_by_id: dict[str, Role]
+    permissions_by_id: dict[str, Permission]
+    resources_by_id: dict[str, Resource]

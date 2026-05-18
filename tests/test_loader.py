@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 from core.loader import IAMDataValidationError, load_iam_data, validate_iam_data
+from core.models import Group, Permission, Resource, Role, User
 
 
 SAMPLE_DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "sample_iam.json"
@@ -21,16 +22,26 @@ def test_sample_iam_data_loads() -> None:
 def test_sample_iam_data_loads_normalized_lookups() -> None:
     iam_data = load_iam_data(SAMPLE_DATA_PATH)
 
-    assert iam_data.users_by_id["user-003"]["name"] == "Priya Nair"
-    assert iam_data.groups_by_id["grp-admins"]["name"] == "Platform Administrators"
-    assert iam_data.roles_by_id["role-platform-admin"]["name"] == "Platform Admin"
-    assert iam_data.permissions_by_id["perm-read-payroll"]["resource"] == "res-payroll-system"
-    assert iam_data.resources_by_id["res-payroll-system"]["sensitive"] is True
+    assert iam_data.users_by_id["user-003"].name == "Priya Nair"
+    assert iam_data.groups_by_id["grp-admins"].name == "Platform Administrators"
+    assert iam_data.roles_by_id["role-platform-admin"].name == "Platform Admin"
+    assert iam_data.permissions_by_id["perm-read-payroll"].resource == "res-payroll-system"
+    assert iam_data.resources_by_id["res-payroll-system"].sensitive is True
+
+
+def test_sample_iam_data_loads_typed_entities() -> None:
+    iam_data = load_iam_data(SAMPLE_DATA_PATH)
+
+    assert isinstance(iam_data.users[0], User)
+    assert isinstance(iam_data.groups[0], Group)
+    assert isinstance(iam_data.roles[0], Role)
+    assert isinstance(iam_data.permissions[0], Permission)
+    assert isinstance(iam_data.resources[0], Resource)
 
 
 def test_sample_iam_data_contains_required_identity_types() -> None:
     iam_data = load_iam_data(SAMPLE_DATA_PATH)
-    identity_types = {user["type"] for user in iam_data.users}
+    identity_types = {user.type for user in iam_data.users}
 
     assert "normal_user" in identity_types
     assert "developer" in identity_types
@@ -55,13 +66,13 @@ def test_sample_iam_data_contains_required_user_fields() -> None:
     }
 
     for user in iam_data.users:
-        assert required_user_fields.issubset(user)
+        assert all(hasattr(user, field) for field in required_user_fields)
 
 
 def test_sample_iam_data_contains_sensitive_resources() -> None:
     iam_data = load_iam_data(SAMPLE_DATA_PATH)
 
-    assert any(resource["sensitive"] for resource in iam_data.resources)
+    assert any(resource.sensitive for resource in iam_data.resources)
 
 
 def test_validate_iam_data_rejects_missing_required_section() -> None:

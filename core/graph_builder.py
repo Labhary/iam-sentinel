@@ -15,26 +15,26 @@ def build_identity_graph(iam_data: IAMData) -> nx.DiGraph:
     add_nodes(graph, iam_data.resources, "resource")
 
     for user in iam_data.users:
-        user_id = user["id"]
-        for group_id in user.get("groups", []):
+        user_id = user.id
+        for group_id in user.groups:
             graph.add_edge(user_id, group_id, relationship="member_of")
-        for role_id in user.get("roles", []):
+        for role_id in user.roles:
             graph.add_edge(user_id, role_id, relationship="has_role")
 
     for group in iam_data.groups:
-        group_id = group["id"]
-        for role_id in group.get("roles", []):
+        group_id = group.id
+        for role_id in group.roles:
             graph.add_edge(group_id, role_id, relationship="grants_role")
 
     for role in iam_data.roles:
-        role_id = role["id"]
-        for permission_id in role.get("permissions", []):
+        role_id = role.id
+        for permission_id in role.permissions:
             graph.add_edge(role_id, permission_id, relationship="grants_permission")
 
     for permission in iam_data.permissions:
         graph.add_edge(
-            permission["id"],
-            permission["resource"],
+            permission.id,
+            permission.resource,
             relationship="applies_to",
         )
 
@@ -78,9 +78,9 @@ def format_attack_path(graph: nx.DiGraph, path: list[str]) -> str:
     return " -> ".join(display_names)
 
 
-def add_nodes(graph: nx.DiGraph, items: list[dict[str, Any]], node_type: str) -> None:
+def add_nodes(graph: nx.DiGraph, items: list[Any], node_type: str) -> None:
     for item in items:
-        node_id = item["id"]
+        node_id = item.id
         graph.add_node(
             node_id,
             node_type=node_type,
@@ -88,11 +88,11 @@ def add_nodes(graph: nx.DiGraph, items: list[dict[str, Any]], node_type: str) ->
         )
 
 
-def get_display_name(item: dict[str, Any], node_type: str) -> str:
-    if item.get("name"):
-        return item["name"]
+def get_display_name(item: Any, node_type: str) -> str:
+    if getattr(item, "name", None):
+        return item.name
 
-    item_id = item["id"]
+    item_id = item.id
     if node_type == "permission" and item_id.startswith("perm-"):
         return item_id.removeprefix("perm-").replace("-", " ").title()
 
