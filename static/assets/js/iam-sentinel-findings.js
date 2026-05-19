@@ -35,11 +35,11 @@
   }
 
   function showLoading(isLoading) {
-    document.getElementById('dashboard-loading').classList.toggle('d-none', !isLoading);
+    document.getElementById('findings-loading').classList.toggle('d-none', !isLoading);
   }
 
   function showError(message) {
-    const error = document.getElementById('dashboard-error');
+    const error = document.getElementById('findings-error');
     error.textContent = message;
     error.classList.toggle('d-none', !message);
   }
@@ -235,7 +235,7 @@
     state.selectedFindingId = null;
   }
 
-  async function refreshDashboard() {
+  async function refreshFindingsWorkbench() {
     showLoading(true);
     showError('');
 
@@ -246,7 +246,7 @@
       applyFindingControls();
       refreshSelectedFindingDetail();
     } catch (error) {
-      showError('Dashboard data could not be loaded.');
+      showError('Findings data could not be loaded.');
     } finally {
       showLoading(false);
     }
@@ -263,7 +263,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      await refreshDashboard();
+      await refreshFindingsWorkbench();
       showAlert('finding-action-feedback', successMessage, 'success');
     } catch (error) {
       showAlert('finding-action-feedback', 'Finding update failed.', 'danger');
@@ -368,7 +368,7 @@
         body: JSON.stringify(payload)
       })));
       state.selectedFindingIds.clear();
-      await refreshDashboard();
+      await refreshFindingsWorkbench();
       showAlert('bulk-action-feedback', successMessage, 'success');
     } catch (error) {
       showAlert('bulk-action-feedback', 'Bulk action failed.', 'danger');
@@ -439,11 +439,11 @@
     }
   }
 
-  function initDashboard() {
+  function initFindingsWorkbench() {
     state.findingModal = new bootstrap.Modal(document.getElementById('finding-detail-modal'));
     wireEvents();
-    refreshDashboard();
+    refreshFindingsWorkbench();
   }
 
-  document.addEventListener('DOMContentLoaded', initDashboard);
+  document.addEventListener('DOMContentLoaded', initFindingsWorkbench);
 })();

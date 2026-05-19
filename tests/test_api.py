@@ -12,6 +12,9 @@ def client(tmp_path):
     db_path = tmp_path / "api_findings.db"
     app.config["TESTING"] = True
     app.config["FINDINGS_DB_PATH"] = db_path
+    app.config["IAM_DATA_PATH"] = (
+        Path(__file__).resolve().parents[1] / "data" / "sample_iam.json"
+    )
 
     save_findings(
         db_path,
@@ -133,6 +136,39 @@ def test_get_findings_summary_returns_summary_metrics(client) -> None:
         "highest_score": 95,
         "affected_identities_count": 2,
     }
+
+
+def test_get_identities_returns_identity_fields(client) -> None:
+    response = client.get("/api/identities")
+
+    assert response.status_code == 200
+    identities = response.get_json()
+    assert identities
+    assert {
+        "id",
+        "name",
+        "email",
+        "type",
+        "mfa_enabled",
+        "external_user",
+        "service_account",
+        "groups",
+        "roles",
+    }.issubset(identities[0])
+
+
+def test_get_identities_includes_service_and_external_flags(client) -> None:
+    response = client.get("/api/identities")
+
+    assert response.status_code == 200
+    identities_by_id = {
+        identity["id"]: identity
+        for identity in response.get_json()
+    }
+    assert identities_by_id["user-004"]["external_user"] is True
+    assert identities_by_id["user-004"]["service_account"] is False
+    assert identities_by_id["user-006"]["service_account"] is True
+    assert identities_by_id["user-006"]["external_user"] is False
 
 
 def test_post_analysis_run_executes_and_persists_findings(tmp_path) -> None:

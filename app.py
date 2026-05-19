@@ -12,7 +12,8 @@ from core.finding_store import (
     update_finding_status,
 )
 from core.findings import summarize_findings
-from core.models import Finding, FindingStatus
+from core.loader import load_iam_data
+from core.models import Finding, FindingStatus, User
 
 
 app = Flask(__name__)
@@ -50,6 +51,12 @@ def get_findings():
 def get_findings_summary():
     summary = summarize_findings(load_findings(get_db_path()))
     return jsonify(summary_to_dict(summary))
+
+
+@app.get("/api/identities")
+def get_identities():
+    iam_data = load_iam_data(get_iam_data_path())
+    return jsonify([identity_to_dict(user) for user in iam_data.users])
 
 
 @app.post("/api/analysis/run")
@@ -142,6 +149,20 @@ def finding_to_dict(finding: Finding) -> dict:
         "analyst_notes": finding.analyst_notes,
         "updated_at": finding.updated_at,
         "activity": load_finding_activity(get_db_path(), finding.id),
+    }
+
+
+def identity_to_dict(user: User) -> dict:
+    return {
+        "id": user.id,
+        "name": user.name,
+        "email": user.email,
+        "type": user.type,
+        "mfa_enabled": user.mfa_enabled,
+        "external_user": user.external_user,
+        "service_account": user.service_account,
+        "groups": user.groups,
+        "roles": user.roles,
     }
 
 
