@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
 
-  <title>IAM Sentinel Dashboard</title>
+  <title>IAM Sentinel Findings</title>
   <meta content="" name="description">
   <meta content="" name="keywords">
 
@@ -275,14 +275,14 @@
     <ul class="sidebar-nav" id="sidebar-nav">
 
       <li class="nav-item">
-        <a class="nav-link" href="/dashboard">
+        <a class="nav-link collapsed" href="/dashboard">
           <i class="bi bi-grid"></i>
           <span>Dashboard</span>
         </a>
       </li><!-- End Dashboard Nav -->
 
       <li class="nav-item">
-        <a class="nav-link collapsed" href="/findings">
+        <a class="nav-link" href="/findings">
           <i class="bi bi-list-check"></i>
           <span>Findings</span>
         </a>
@@ -516,164 +516,239 @@
   <main id="main" class="main">
 
     <div class="pagetitle">
-      <h1>IAM Sentinel Dashboard</h1>
+      <h1>IAM Sentinel Findings</h1>
       <nav>
         <ol class="breadcrumb">
           <li class="breadcrumb-item"><a href="/">Home</a></li>
-          <li class="breadcrumb-item active">Dashboard</li>
+          <li class="breadcrumb-item active">Findings</li>
         </ol>
       </nav>
     </div><!-- End Page Title -->
 
     <section class="section">
-      <div class="row mb-3">
-        <div class="col-12 d-flex justify-content-end">
-          <button id="run-analysis-button" type="button" class="btn btn-primary">
-            <i class="bi bi-play-circle me-1"></i>
-            Run Analysis
-          </button>
-        </div>
-      </div>
-
       <div id="dashboard-error" class="alert alert-danger d-none" role="alert"></div>
       <div id="dashboard-loading" class="alert alert-info" role="status">Loading dashboard data...</div>
-
+      <div id="bulk-action-feedback" class="alert d-none" role="alert"></div>
       <div class="row">
-        <div class="col-lg-3 col-md-6">
-          <div class="card info-card">
-            <div class="card-body">
-              <h5 class="card-title">Total Findings</h5>
-              <div class="d-flex align-items-center">
-                <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                  <i class="bi bi-shield-exclamation"></i>
-                </div>
-                <div class="ps-3">
-                  <h6 id="total-findings">0</h6>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-lg-3 col-md-6">
-          <div class="card info-card">
-            <div class="card-body">
-              <h5 class="card-title">Highest Score</h5>
-              <div class="d-flex align-items-center">
-                <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                  <i class="bi bi-speedometer2"></i>
-                </div>
-                <div class="ps-3">
-                  <h6 id="highest-score">0</h6>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-lg-6">
+        <div class="col-12">
           <div class="card">
             <div class="card-body">
-              <h5 class="card-title">Severity Counts</h5>
-              <div class="d-flex flex-wrap gap-2">
-                <span class="badge bg-danger">CRITICAL <span id="severity-critical">0</span></span>
-                <span class="badge bg-warning text-dark">HIGH <span id="severity-high">0</span></span>
-                <span class="badge bg-warning-subtle text-dark border border-warning">MEDIUM <span id="severity-medium">0</span></span>
-                <span class="badge bg-success">LOW <span id="severity-low">0</span></span>
+              <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <h5 class="card-title mb-0">Findings</h5>
+                <span id="findings-count" class="text-muted small">Showing 0 of 0 findings</span>
+              </div>
+              <div class="row g-2 align-items-end mb-3">
+                <div class="col-lg-4 col-md-6">
+                  <label for="findings-search" class="form-label">Search</label>
+                  <input id="findings-search" class="form-control" type="search" placeholder="Title, identity, type, owner">
+                </div>
+                <div class="col-lg-2 col-md-6">
+                  <label for="severity-filter" class="form-label">Severity</label>
+                  <select id="severity-filter" class="form-select">
+                    <option value="ALL">ALL</option>
+                    <option value="CRITICAL">CRITICAL</option>
+                    <option value="HIGH">HIGH</option>
+                    <option value="MEDIUM">MEDIUM</option>
+                    <option value="LOW">LOW</option>
+                  </select>
+                </div>
+                <div class="col-lg-2 col-md-6">
+                  <label for="status-filter" class="form-label">Status</label>
+                  <select id="status-filter" class="form-select">
+                    <option value="ALL">ALL</option>
+                    <option value="OPEN">OPEN</option>
+                    <option value="IN_PROGRESS">IN_PROGRESS</option>
+                    <option value="RESOLVED">RESOLVED</option>
+                    <option value="SUPPRESSED">SUPPRESSED</option>
+                  </select>
+                </div>
+                <div class="col-lg-2 col-md-6">
+                  <label for="owner-filter" class="form-label">Owner</label>
+                  <select id="owner-filter" class="form-select">
+                    <option value="ALL">ALL</option>
+                    <option value="ASSIGNED">Assigned</option>
+                    <option value="UNASSIGNED">Unassigned</option>
+                  </select>
+                </div>
+                <div class="col-lg-2 col-md-6">
+                  <label for="findings-sort" class="form-label">Sort</label>
+                  <select id="findings-sort" class="form-select">
+                    <option value="severity_desc">Severity descending</option>
+                    <option value="score_desc">Score descending</option>
+                    <option value="status">Status</option>
+                    <option value="title">Title</option>
+                  </select>
+                </div>
+                <div class="col-md-6 d-flex justify-content-md-end">
+                  <button id="export-csv-button" type="button" class="btn btn-outline-primary" disabled>
+                    <i class="bi bi-download me-1"></i>
+                    Export CSV
+                  </button>
+                </div>
+              </div>
+              <div class="border rounded p-3 mb-3">
+                <div class="row g-2 align-items-end">
+                  <div class="col-lg-2 col-md-4">
+                    <span id="selected-findings-count" class="text-muted small">0 selected</span>
+                  </div>
+                  <div class="col-lg-3 col-md-4">
+                    <label for="bulk-status-select" class="form-label">Bulk Status</label>
+                    <select id="bulk-status-select" class="form-select">
+                      <option value="">Choose status</option>
+                      <option value="OPEN">OPEN</option>
+                      <option value="IN_PROGRESS">IN_PROGRESS</option>
+                      <option value="RESOLVED">RESOLVED</option>
+                      <option value="SUPPRESSED">SUPPRESSED</option>
+                    </select>
+                  </div>
+                  <div class="col-lg-2 col-md-4">
+                    <button id="bulk-status-button" type="button" class="btn btn-outline-primary w-100" disabled>Apply Status</button>
+                  </div>
+                  <div class="col-lg-3 col-md-8">
+                    <label for="bulk-owner-input" class="form-label">Bulk Owner</label>
+                    <input id="bulk-owner-input" class="form-control" type="text" placeholder="analyst@example.local">
+                  </div>
+                  <div class="col-lg-2 col-md-4">
+                    <button id="bulk-owner-button" type="button" class="btn btn-outline-primary w-100" disabled>Assign Owner</button>
+                  </div>
+                </div>
+              </div>
+              <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                  <thead>
+                    <tr>
+                      <th scope="col">
+                        <input id="select-all-findings" class="form-check-input" type="checkbox" aria-label="Select all findings">
+                      </th>
+                      <th scope="col">Severity</th>
+                      <th scope="col">Title</th>
+                      <th scope="col">Identity</th>
+                      <th scope="col">Score</th>
+                      <th scope="col">Status</th>
+                      <th scope="col">Owner</th>
+                    </tr>
+                  </thead>
+                  <tbody id="findings-table-body">
+                    <tr>
+                      <td colspan="7" class="text-muted">Loading findings...</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
         </div>
       </div>
-
-      <div class="row">
-        <div class="col-lg-3 col-md-6">
-          <div class="card info-card">
-            <div class="card-body">
-              <h5 class="card-title">Open Findings</h5>
-              <div class="d-flex align-items-center">
-                <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                  <i class="bi bi-exclamation-circle"></i>
-                </div>
-                <div class="ps-3">
-                  <h6 id="open-findings">0</h6>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-lg-3 col-md-6">
-          <div class="card info-card">
-            <div class="card-body">
-              <h5 class="card-title">In Progress</h5>
-              <div class="d-flex align-items-center">
-                <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                  <i class="bi bi-hourglass-split"></i>
-                </div>
-                <div class="ps-3">
-                  <h6 id="in-progress-findings">0</h6>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-lg-3 col-md-6">
-          <div class="card info-card">
-            <div class="card-body">
-              <h5 class="card-title">Resolved Findings</h5>
-              <div class="d-flex align-items-center">
-                <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                  <i class="bi bi-check-circle"></i>
-                </div>
-                <div class="ps-3">
-                  <h6 id="resolved-findings">0</h6>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-lg-3 col-md-6">
-          <div class="card info-card">
-            <div class="card-body">
-              <h5 class="card-title">Critical Findings</h5>
-              <div class="d-flex align-items-center">
-                <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                  <i class="bi bi-shield-fill-exclamation"></i>
-                </div>
-                <div class="ps-3">
-                  <h6 id="critical-findings">0</h6>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="row">
-        <div class="col-lg-6">
-          <div class="card">
-            <div class="card-body">
-              <h5 class="card-title">Severity Distribution</h5>
-              <canvas id="severity-distribution-chart"></canvas>
-            </div>
-          </div>
-        </div>
-        <div class="col-lg-6">
-          <div class="card">
-            <div class="card-body">
-              <h5 class="card-title">Status Distribution</h5>
-              <canvas id="status-distribution-chart"></canvas>
-            </div>
-          </div>
-        </div>
-      </div>
-
     </section>
 
   </main><!-- End #main -->
+
+  <div class="modal fade" id="finding-detail-modal" tabindex="-1" aria-labelledby="finding-detail-title" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div>
+            <h5 class="modal-title" id="finding-detail-title">Finding Detail</h5>
+            <div class="small text-muted" id="finding-detail-meta"></div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="finding-action-feedback" class="alert d-none" role="alert"></div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-3">
+              <span class="text-muted small d-block">Severity</span>
+              <span id="finding-detail-severity"></span>
+            </div>
+            <div class="col-md-3">
+              <span class="text-muted small d-block">Score</span>
+              <strong id="finding-detail-score"></strong>
+            </div>
+            <div class="col-md-3">
+              <span class="text-muted small d-block">Status</span>
+              <strong id="finding-detail-status"></strong>
+            </div>
+            <div class="col-md-3">
+              <span class="text-muted small d-block">Owner</span>
+              <strong id="finding-detail-owner"></strong>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <span class="text-muted small d-block">Created At</span>
+              <strong id="finding-detail-created-at"></strong>
+            </div>
+            <div class="col-md-6">
+              <span class="text-muted small d-block">Last Updated</span>
+              <strong id="finding-detail-updated-at"></strong>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <h6>Description</h6>
+            <p id="finding-detail-description" class="mb-0"></p>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-lg-6">
+              <h6>Evidence</h6>
+              <ul id="finding-detail-evidence"></ul>
+            </div>
+            <div class="col-lg-6">
+              <h6>Attack Paths</h6>
+              <ul id="finding-detail-attack-paths"></ul>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <h6>Recommendation</h6>
+            <p id="finding-detail-recommendation" class="mb-0"></p>
+          </div>
+
+          <div class="mb-4">
+            <h6>Analyst Notes</h6>
+            <ul id="finding-detail-notes"></ul>
+          </div>
+
+          <div class="mb-4">
+            <h6>Activity Timeline</h6>
+            <ul id="finding-detail-activity" class="list-group"></ul>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-lg-4">
+              <label for="finding-status-select" class="form-label">Change Status</label>
+              <div class="input-group">
+                <select id="finding-status-select" class="form-select">
+                  <option value="OPEN">OPEN</option>
+                  <option value="IN_PROGRESS">IN_PROGRESS</option>
+                  <option value="RESOLVED">RESOLVED</option>
+                  <option value="SUPPRESSED">SUPPRESSED</option>
+                </select>
+                <button id="save-status-button" class="btn btn-outline-primary" type="button">Save</button>
+              </div>
+            </div>
+            <div class="col-lg-4">
+              <label for="finding-owner-input" class="form-label">Assign Owner</label>
+              <div class="input-group">
+                <input id="finding-owner-input" class="form-control" type="text" placeholder="analyst@example.local">
+                <button id="save-owner-button" class="btn btn-outline-primary" type="button">Save</button>
+              </div>
+            </div>
+            <div class="col-lg-4">
+              <label for="finding-note-input" class="form-label">Add Analyst Note</label>
+              <div class="input-group">
+                <input id="finding-note-input" class="form-control" type="text" placeholder="Add note">
+                <button id="add-note-button" class="btn btn-outline-primary" type="button">Add</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- ======= Footer ======= -->
   <footer id="footer" class="footer">
@@ -701,7 +776,7 @@
   <script src="{{ url_for('static', filename='assets/vendor/tinymce/tinymce.min.js') }}"></script>
   <script src="{{ url_for('static', filename='assets/vendor/php-email-form/validate.js') }}"></script>
 
-  <script src="{{ url_for('static', filename='assets/js/iam-sentinel-dashboard.js') }}"></script>
+  <script src="{{ url_for('static', filename='assets/js/iam-sentinel-findings.js') }}"></script>
 
   <!-- Template Main JS File -->
   <script src="{{ url_for('static', filename='assets/js/main.js') }}"></script>

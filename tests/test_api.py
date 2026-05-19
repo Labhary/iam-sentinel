@@ -52,6 +52,27 @@ def test_get_dashboard_returns_page(client) -> None:
     assert response.data.count(b'<footer id="footer" class="footer">') == 1
     assert response.data.count(b"</body>") == 1
     assert response.data.count(b"</html>") == 1
+    assert b'id="run-analysis-button"' in response.data
+    assert b'id="total-findings"' in response.data
+    assert b'id="severity-distribution-chart"' in response.data
+    assert b'id="status-distribution-chart"' in response.data
+    assert b"assets/js/iam-sentinel-dashboard.js" in response.data
+    assert b"assets/js/iam-sentinel-findings.js" not in response.data
+    assert b'id="findings-table-body"' not in response.data
+    assert b'id="bulk-status-button"' not in response.data
+    assert b'id="finding-detail-modal"' not in response.data
+
+
+def test_get_findings_page_returns_workbench(client) -> None:
+    response = client.get("/findings")
+
+    assert response.status_code == 200
+    assert b"IAM Sentinel Findings" in response.data
+    assert response.data.count(b'<main id="main" class="main">') == 1
+    assert response.data.count(b"</main>") == 1
+    assert response.data.count(b'<footer id="footer" class="footer">') == 1
+    assert response.data.count(b"</body>") == 1
+    assert response.data.count(b"</html>") == 1
     assert b'id="findings-search"' in response.data
     assert b'id="severity-filter"' in response.data
     assert b'id="status-filter"' in response.data
@@ -63,10 +84,12 @@ def test_get_dashboard_returns_page(client) -> None:
     assert response.data.count(b'id="select-all-findings"') == 1
     assert response.data.count(b'id="bulk-status-button"') == 1
     assert response.data.count(b'id="bulk-owner-button"') == 1
-    assert response.data.count(b'id="severity-distribution-chart"') == 1
-    assert response.data.count(b'id="status-distribution-chart"') == 1
     assert response.data.count(b'id="finding-detail-activity"') == 1
-    assert b"assets/js/iam-sentinel-dashboard.js" in response.data
+    assert b"assets/js/iam-sentinel-findings.js" in response.data
+    assert b"assets/js/iam-sentinel-dashboard.js" not in response.data
+    assert b'id="run-analysis-button"' not in response.data
+    assert b'id="severity-distribution-chart"' not in response.data
+    assert b'id="status-distribution-chart"' not in response.data
 
 
 def test_get_findings_summary_returns_summary_metrics(client) -> None:

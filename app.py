@@ -30,6 +30,11 @@ def dashboard():
     return render_template("dashboard.html")
 
 
+@app.get("/findings")
+def findings_page():
+    return render_template("findings.html")
+
+
 @app.get("/api/findings")
 def get_findings():
     findings = load_findings(get_db_path())
