@@ -7,6 +7,7 @@ from core.finding_store import (
     add_finding_note,
     assign_finding_owner,
     finding_exists,
+    load_finding_activity,
     load_findings,
     update_finding_status,
 )
@@ -130,6 +131,7 @@ def finding_to_dict(finding: Finding) -> dict:
         "owner": finding.owner,
         "analyst_notes": finding.analyst_notes,
         "updated_at": finding.updated_at,
+        "activity": load_finding_activity(get_db_path(), finding.id),
     }
 
 

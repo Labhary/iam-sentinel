@@ -530,6 +530,7 @@
 
       <div id="dashboard-error" class="alert alert-danger d-none" role="alert"></div>
       <div id="dashboard-loading" class="alert alert-info" role="status">Loading dashboard data...</div>
+      <div id="bulk-action-feedback" class="alert d-none" role="alert"></div>
 
       <div class="row">
         <div class="col-lg-3 col-md-6">
@@ -574,6 +575,91 @@
                 <span class="badge bg-warning-subtle text-dark border border-warning">MEDIUM <span id="severity-medium">0</span></span>
                 <span class="badge bg-success">LOW <span id="severity-low">0</span></span>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">Open Findings</h5>
+              <div class="d-flex align-items-center">
+                <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                  <i class="bi bi-exclamation-circle"></i>
+                </div>
+                <div class="ps-3">
+                  <h6 id="open-findings">0</h6>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">In Progress</h5>
+              <div class="d-flex align-items-center">
+                <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                  <i class="bi bi-hourglass-split"></i>
+                </div>
+                <div class="ps-3">
+                  <h6 id="in-progress-findings">0</h6>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">Resolved Findings</h5>
+              <div class="d-flex align-items-center">
+                <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                  <i class="bi bi-check-circle"></i>
+                </div>
+                <div class="ps-3">
+                  <h6 id="resolved-findings">0</h6>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">Critical Findings</h5>
+              <div class="d-flex align-items-center">
+                <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                  <i class="bi bi-shield-fill-exclamation"></i>
+                </div>
+                <div class="ps-3">
+                  <h6 id="critical-findings">0</h6>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-lg-6">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Severity Distribution</h5>
+              <canvas id="severity-distribution-chart"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-6">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Status Distribution</h5>
+              <canvas id="status-distribution-chart"></canvas>
             </div>
           </div>
         </div>
@@ -636,10 +722,40 @@
                   </button>
                 </div>
               </div>
+              <div class="border rounded p-3 mb-3">
+                <div class="row g-2 align-items-end">
+                  <div class="col-lg-2 col-md-4">
+                    <span id="selected-findings-count" class="text-muted small">0 selected</span>
+                  </div>
+                  <div class="col-lg-3 col-md-4">
+                    <label for="bulk-status-select" class="form-label">Bulk Status</label>
+                    <select id="bulk-status-select" class="form-select">
+                      <option value="">Choose status</option>
+                      <option value="OPEN">OPEN</option>
+                      <option value="IN_PROGRESS">IN_PROGRESS</option>
+                      <option value="RESOLVED">RESOLVED</option>
+                      <option value="SUPPRESSED">SUPPRESSED</option>
+                    </select>
+                  </div>
+                  <div class="col-lg-2 col-md-4">
+                    <button id="bulk-status-button" type="button" class="btn btn-outline-primary w-100" disabled>Apply Status</button>
+                  </div>
+                  <div class="col-lg-3 col-md-8">
+                    <label for="bulk-owner-input" class="form-label">Bulk Owner</label>
+                    <input id="bulk-owner-input" class="form-control" type="text" placeholder="analyst@example.local">
+                  </div>
+                  <div class="col-lg-2 col-md-4">
+                    <button id="bulk-owner-button" type="button" class="btn btn-outline-primary w-100" disabled>Assign Owner</button>
+                  </div>
+                </div>
+              </div>
               <div class="table-responsive">
                 <table class="table table-hover align-middle">
                   <thead>
                     <tr>
+                      <th scope="col">
+                        <input id="select-all-findings" class="form-check-input" type="checkbox" aria-label="Select all findings">
+                      </th>
                       <th scope="col">Severity</th>
                       <th scope="col">Title</th>
                       <th scope="col">Identity</th>
@@ -650,7 +766,7 @@
                   </thead>
                   <tbody id="findings-table-body">
                     <tr>
-                      <td colspan="6" class="text-muted">Loading findings...</td>
+                      <td colspan="7" class="text-muted">Loading findings...</td>
                     </tr>
                   </tbody>
                 </table>
@@ -695,6 +811,17 @@
             </div>
           </div>
 
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <span class="text-muted small d-block">Created At</span>
+              <strong id="finding-detail-created-at"></strong>
+            </div>
+            <div class="col-md-6">
+              <span class="text-muted small d-block">Last Updated</span>
+              <strong id="finding-detail-updated-at"></strong>
+            </div>
+          </div>
+
           <div class="mb-3">
             <h6>Description</h6>
             <p id="finding-detail-description" class="mb-0"></p>
@@ -719,6 +846,11 @@
           <div class="mb-4">
             <h6>Analyst Notes</h6>
             <ul id="finding-detail-notes"></ul>
+          </div>
+
+          <div class="mb-4">
+            <h6>Activity Timeline</h6>
+            <ul id="finding-detail-activity" class="list-group"></ul>
           </div>
 
           <div class="row g-3">
@@ -789,8 +921,11 @@
     };
     let currentFindings = [];
     let filteredFindings = [];
+    let selectedFindingIds = new Set();
     let selectedFindingId = null;
     let findingModal = null;
+    let severityChart = null;
+    let statusChart = null;
 
     function setText(id, value) {
       document.getElementById(id).textContent = value ?? '0';
@@ -823,6 +958,13 @@
       feedback.classList.toggle('d-none', !message);
     }
 
+    function showBulkFeedback(message, type = 'success') {
+      const feedback = document.getElementById('bulk-action-feedback');
+      feedback.textContent = message;
+      feedback.className = `alert alert-${type}`;
+      feedback.classList.toggle('d-none', !message);
+    }
+
     async function fetchJson(url, options = {}) {
       const response = await fetch(url, options);
       if (!response.ok) {
@@ -839,6 +981,78 @@
       setText('severity-high', counts.HIGH);
       setText('severity-medium', counts.MEDIUM);
       setText('severity-low', counts.LOW);
+    }
+
+    function getStatusCounts(findings) {
+      return findings.reduce((counts, finding) => {
+        counts[finding.status] = (counts[finding.status] || 0) + 1;
+        return counts;
+      }, {});
+    }
+
+    function renderOperationalKpis(findings) {
+      const statusCounts = getStatusCounts(findings);
+      setText('open-findings', statusCounts.OPEN);
+      setText('in-progress-findings', statusCounts.IN_PROGRESS);
+      setText('resolved-findings', statusCounts.RESOLVED);
+      setText('critical-findings', findings.filter((finding) => finding.severity === 'CRITICAL').length);
+    }
+
+    function renderDistributionCharts(summary, findings) {
+      const severityCounts = summary.count_per_severity || {};
+      const statusCounts = getStatusCounts(findings);
+
+      severityChart = renderChart(
+        severityChart,
+        'severity-distribution-chart',
+        ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'],
+        [
+          severityCounts.CRITICAL || 0,
+          severityCounts.HIGH || 0,
+          severityCounts.MEDIUM || 0,
+          severityCounts.LOW || 0
+        ],
+        ['#dc3545', '#fd7e14', '#ffc107', '#198754']
+      );
+
+      statusChart = renderChart(
+        statusChart,
+        'status-distribution-chart',
+        ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'SUPPRESSED'],
+        [
+          statusCounts.OPEN || 0,
+          statusCounts.IN_PROGRESS || 0,
+          statusCounts.RESOLVED || 0,
+          statusCounts.SUPPRESSED || 0
+        ],
+        ['#0d6efd', '#ffc107', '#198754', '#6c757d']
+      );
+    }
+
+    function renderChart(existingChart, canvasId, labels, data, colors) {
+      if (existingChart) {
+        existingChart.data.datasets[0].data = data;
+        existingChart.update();
+        return existingChart;
+      }
+
+      return new Chart(document.getElementById(canvasId), {
+        type: 'doughnut',
+        data: {
+          labels,
+          datasets: [{
+            data,
+            backgroundColor: colors
+          }]
+        },
+        options: {
+          plugins: {
+            legend: {
+              position: 'bottom'
+            }
+          }
+        }
+      });
     }
 
     function getControlValue(id) {
@@ -899,10 +1113,23 @@
       document.getElementById('export-csv-button').disabled = filteredFindings.length === 0;
     }
 
+    function renderSelectionControls() {
+      const visibleIds = filteredFindings.map((finding) => finding.id);
+      const selectedVisibleCount = visibleIds.filter((id) => selectedFindingIds.has(id)).length;
+      const selectAll = document.getElementById('select-all-findings');
+
+      document.getElementById('selected-findings-count').textContent = `${selectedFindingIds.size} selected`;
+      selectAll.checked = visibleIds.length > 0 && selectedVisibleCount === visibleIds.length;
+      selectAll.indeterminate = selectedVisibleCount > 0 && selectedVisibleCount < visibleIds.length;
+      document.getElementById('bulk-status-button').disabled = selectedFindingIds.size === 0;
+      document.getElementById('bulk-owner-button').disabled = selectedFindingIds.size === 0;
+    }
+
     function applyFindingControls() {
       filteredFindings = getFilteredFindings();
       renderFindings(filteredFindings);
       renderFindingsCount();
+      renderSelectionControls();
     }
 
     function renderFindings(findings) {
@@ -911,8 +1138,12 @@
         ? findings.map((finding) => {
           const severity = escapeHtml(finding.severity);
           const badgeClass = severityBadgeClasses[finding.severity] || 'badge bg-secondary';
+          const checked = selectedFindingIds.has(finding.id) ? 'checked' : '';
           return `
             <tr class="finding-row" data-finding-id="${escapeHtml(finding.id)}" role="button" tabindex="0">
+              <td>
+                <input class="form-check-input finding-checkbox" type="checkbox" value="${escapeHtml(finding.id)}" aria-label="Select finding" ${checked}>
+              </td>
               <td><span class="${badgeClass}">${severity}</span></td>
               <td>${escapeHtml(finding.title)}</td>
               <td>${escapeHtml(finding.identity_id)}</td>
@@ -922,7 +1153,7 @@
             </tr>
           `;
         }).join('')
-        : '<tr><td colspan="6" class="text-muted">No findings match the current filters.</td></tr>';
+        : '<tr><td colspan="7" class="text-muted">No findings match the current filters.</td></tr>';
       tableBody.innerHTML = rows;
     }
 
@@ -934,6 +1165,27 @@
       }
 
       list.innerHTML = items.map((item) => `<li>${escapeHtml(item)}</li>`).join('');
+    }
+
+    function renderActivityList(finding) {
+      const list = document.getElementById('finding-detail-activity');
+      const activity = finding.activity && finding.activity.length
+        ? finding.activity
+        : [{
+          type: 'CREATED',
+          message: 'Finding created.',
+          created_at: finding.created_at
+        }];
+
+      list.innerHTML = activity.map((entry) => `
+        <li class="list-group-item">
+          <div class="d-flex justify-content-between gap-3">
+            <strong>${escapeHtml(entry.type)}</strong>
+            <span class="text-muted small">${escapeHtml(entry.created_at)}</span>
+          </div>
+          <div>${escapeHtml(entry.message)}</div>
+        </li>
+      `).join('');
     }
 
     function getSelectedFinding() {
@@ -952,6 +1204,8 @@
       document.getElementById('finding-detail-score').textContent = finding.score;
       document.getElementById('finding-detail-status').textContent = finding.status;
       document.getElementById('finding-detail-owner').textContent = finding.owner || 'Unassigned';
+      document.getElementById('finding-detail-created-at').textContent = finding.created_at || '';
+      document.getElementById('finding-detail-updated-at').textContent = finding.updated_at || '';
       document.getElementById('finding-detail-description').textContent = finding.description || '';
       document.getElementById('finding-detail-recommendation').textContent = finding.recommendation || '';
       document.getElementById('finding-status-select').value = finding.status;
@@ -961,6 +1215,7 @@
       renderList('finding-detail-evidence', finding.evidence);
       renderList('finding-detail-attack-paths', finding.attack_paths);
       renderList('finding-detail-notes', finding.analyst_notes);
+      renderActivityList(finding);
     }
 
     function openFindingDetail(findingId) {
@@ -990,7 +1245,10 @@
           fetchJson('/api/findings')
         ]);
         currentFindings = findings;
+        selectedFindingIds = new Set([...selectedFindingIds].filter((id) => currentFindings.some((finding) => finding.id === id)));
         renderSummary(summary);
+        renderOperationalKpis(findings);
+        renderDistributionCharts(summary, findings);
         applyFindingControls();
         refreshSelectedFindingDetail();
       } catch (error) {
@@ -1093,6 +1351,64 @@
       URL.revokeObjectURL(url);
     }
 
+    function toggleFindingSelection(findingId, isSelected) {
+      if (isSelected) {
+        selectedFindingIds.add(findingId);
+      } else {
+        selectedFindingIds.delete(findingId);
+      }
+      renderSelectionControls();
+    }
+
+    function toggleVisibleFindingsSelection(isSelected) {
+      filteredFindings.forEach((finding) => {
+        if (isSelected) {
+          selectedFindingIds.add(finding.id);
+        } else {
+          selectedFindingIds.delete(finding.id);
+        }
+      });
+      renderFindings(filteredFindings);
+      renderSelectionControls();
+    }
+
+    async function applyBulkAction(endpointSuffix, payload, successMessage) {
+      const findingIds = [...selectedFindingIds];
+      if (!findingIds.length) {
+        showBulkFeedback('Select at least one finding.', 'warning');
+        return;
+      }
+
+      showBulkFeedback('');
+      try {
+        await Promise.all(findingIds.map((findingId) => fetchJson(`/api/findings/${findingId}/${endpointSuffix}`, {
+          method: endpointSuffix === 'notes' ? 'POST' : 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })));
+        selectedFindingIds.clear();
+        await refreshDashboard();
+        showBulkFeedback(successMessage, 'success');
+      } catch (error) {
+        showBulkFeedback('Bulk action failed.', 'danger');
+      }
+    }
+
+    async function applyBulkStatus() {
+      const status = document.getElementById('bulk-status-select').value;
+      if (!status) {
+        showBulkFeedback('Choose a status before applying a bulk update.', 'warning');
+        return;
+      }
+
+      await applyBulkAction('status', { status }, 'Bulk status update complete.');
+    }
+
+    async function applyBulkOwner() {
+      const owner = document.getElementById('bulk-owner-input').value;
+      await applyBulkAction('owner', { owner }, 'Bulk owner assignment complete.');
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       findingModal = new bootstrap.Modal(document.getElementById('finding-detail-modal'));
       document.getElementById('run-analysis-button').addEventListener('click', runAnalysis);
@@ -1102,14 +1418,32 @@
       document.getElementById('owner-filter').addEventListener('change', applyFindingControls);
       document.getElementById('findings-sort').addEventListener('change', applyFindingControls);
       document.getElementById('export-csv-button').addEventListener('click', exportFilteredFindings);
+      document.getElementById('select-all-findings').addEventListener('change', (event) => {
+        toggleVisibleFindingsSelection(event.target.checked);
+      });
+      document.getElementById('bulk-status-button').addEventListener('click', applyBulkStatus);
+      document.getElementById('bulk-owner-button').addEventListener('click', applyBulkOwner);
       document.getElementById('findings-table-body').addEventListener('click', (event) => {
+        if (event.target.closest('.finding-checkbox')) {
+          return;
+        }
+
         const row = event.target.closest('.finding-row');
         if (row) {
           openFindingDetail(row.dataset.findingId);
         }
       });
+      document.getElementById('findings-table-body').addEventListener('change', (event) => {
+        const checkbox = event.target.closest('.finding-checkbox');
+        if (checkbox) {
+          toggleFindingSelection(checkbox.value, checkbox.checked);
+        }
+      });
       document.getElementById('findings-table-body').addEventListener('keydown', (event) => {
         if (event.key !== 'Enter') {
+          return;
+        }
+        if (event.target.closest('.finding-checkbox')) {
           return;
         }
 

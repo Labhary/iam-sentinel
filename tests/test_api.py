@@ -33,6 +33,13 @@ def test_get_findings_returns_deterministic_sorted_findings(client) -> None:
         "finding-critical",
         "finding-low",
     ]
+    assert response.get_json()[0]["activity"] == [
+        {
+            "type": "CREATED",
+            "message": "Finding created.",
+            "created_at": "2026-05-18T00:00:00Z",
+        }
+    ]
 
 
 def test_get_dashboard_returns_page(client) -> None:
@@ -51,6 +58,14 @@ def test_get_dashboard_returns_page(client) -> None:
     assert b'id="owner-filter"' in response.data
     assert b'id="findings-sort"' in response.data
     assert response.data.count(b'id="export-csv-button"') == 1
+    assert response.data.count(b'<th scope="col">') == 7
+    assert b'colspan="7"' in response.data
+    assert response.data.count(b'id="select-all-findings"') == 1
+    assert response.data.count(b'id="bulk-status-button"') == 1
+    assert response.data.count(b'id="bulk-owner-button"') == 1
+    assert response.data.count(b'id="severity-distribution-chart"') == 1
+    assert response.data.count(b'id="status-distribution-chart"') == 1
+    assert response.data.count(b'id="finding-detail-activity"') == 1
 
 
 def test_get_findings_summary_returns_summary_metrics(client) -> None:
@@ -99,6 +114,7 @@ def test_patch_finding_status_updates_status(client) -> None:
 
     assert response.status_code == 200
     assert response.get_json()["status"] == "IN_PROGRESS"
+    assert response.get_json()["activity"][-1]["type"] == "STATUS_CHANGED"
 
 
 def test_patch_finding_owner_assigns_owner(client) -> None:

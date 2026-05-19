@@ -5,6 +5,7 @@ from core.finding_store import (
     assign_finding_owner,
     finding_exists,
     initialize_database,
+    load_finding_activity,
     load_findings,
     save_findings,
     update_finding_status,
@@ -23,6 +24,13 @@ def test_initialize_database_creates_findings_table(tmp_path) -> None:
         ).fetchone()
 
     assert row == ("findings",)
+
+    with sqlite3.connect(db_path) as connection:
+        activity_row = connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'finding_activity'"
+        ).fetchone()
+
+    assert activity_row == ("finding_activity",)
 
 
 def test_save_and_load_findings_persists_finding_objects(tmp_path) -> None:
@@ -54,6 +62,13 @@ def test_save_findings_prevents_duplicate_ids(tmp_path) -> None:
     save_findings(db_path, [finding])
 
     assert load_findings(db_path) == [finding]
+    assert load_finding_activity(db_path, "finding-001") == [
+        {
+            "type": "CREATED",
+            "message": "Finding created.",
+            "created_at": "2026-05-18T00:00:00Z",
+        }
+    ]
 
 
 def test_load_findings_uses_deterministic_sort_order(tmp_path) -> None:
@@ -134,6 +149,54 @@ def test_add_finding_note_persists_notes_and_updated_at(tmp_path) -> None:
         "Access removal requested.",
     ]
     assert loaded_finding.updated_at == "2026-05-22T00:00:00Z"
+
+
+def test_finding_activity_records_workflow_changes(tmp_path) -> None:
+    db_path = tmp_path / "findings.db"
+    finding = make_finding("finding-001", Severity.HIGH, 85, "user-001")
+
+    save_findings(db_path, [finding])
+    update_finding_status(
+        db_path,
+        "finding-001",
+        FindingStatus.IN_PROGRESS,
+        updated_at="2026-05-19T00:00:00Z",
+    )
+    assign_finding_owner(
+        db_path,
+        "finding-001",
+        "analyst@example.local",
+        updated_at="2026-05-20T00:00:00Z",
+    )
+    add_finding_note(
+        db_path,
+        "finding-001",
+        "Confirmed with identity owner.",
+        updated_at="2026-05-21T00:00:00Z",
+    )
+
+    assert load_finding_activity(db_path, "finding-001") == [
+        {
+            "type": "CREATED",
+            "message": "Finding created.",
+            "created_at": "2026-05-18T00:00:00Z",
+        },
+        {
+            "type": "STATUS_CHANGED",
+            "message": "Status changed from OPEN to IN_PROGRESS.",
+            "created_at": "2026-05-19T00:00:00Z",
+        },
+        {
+            "type": "OWNER_CHANGED",
+            "message": "Owner changed from Unassigned to analyst@example.local.",
+            "created_at": "2026-05-20T00:00:00Z",
+        },
+        {
+            "type": "NOTE_ADDED",
+            "message": "Confirmed with identity owner.",
+            "created_at": "2026-05-21T00:00:00Z",
+        },
+    ]
 
 
 def make_finding(
