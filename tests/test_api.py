@@ -45,6 +45,12 @@ def test_get_dashboard_returns_page(client) -> None:
     assert response.data.count(b'<footer id="footer" class="footer">') == 1
     assert response.data.count(b"</body>") == 1
     assert response.data.count(b"</html>") == 1
+    assert b'id="findings-search"' in response.data
+    assert b'id="severity-filter"' in response.data
+    assert b'id="status-filter"' in response.data
+    assert b'id="owner-filter"' in response.data
+    assert b'id="findings-sort"' in response.data
+    assert response.data.count(b'id="export-csv-button"') == 1
 
 
 def test_get_findings_summary_returns_summary_metrics(client) -> None:

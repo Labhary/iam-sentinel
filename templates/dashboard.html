@@ -583,7 +583,59 @@
         <div class="col-12">
           <div class="card">
             <div class="card-body">
-              <h5 class="card-title">Findings</h5>
+              <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <h5 class="card-title mb-0">Findings</h5>
+                <span id="findings-count" class="text-muted small">Showing 0 of 0 findings</span>
+              </div>
+              <div class="row g-2 align-items-end mb-3">
+                <div class="col-lg-4 col-md-6">
+                  <label for="findings-search" class="form-label">Search</label>
+                  <input id="findings-search" class="form-control" type="search" placeholder="Title, identity, type, owner">
+                </div>
+                <div class="col-lg-2 col-md-6">
+                  <label for="severity-filter" class="form-label">Severity</label>
+                  <select id="severity-filter" class="form-select">
+                    <option value="ALL">ALL</option>
+                    <option value="CRITICAL">CRITICAL</option>
+                    <option value="HIGH">HIGH</option>
+                    <option value="MEDIUM">MEDIUM</option>
+                    <option value="LOW">LOW</option>
+                  </select>
+                </div>
+                <div class="col-lg-2 col-md-6">
+                  <label for="status-filter" class="form-label">Status</label>
+                  <select id="status-filter" class="form-select">
+                    <option value="ALL">ALL</option>
+                    <option value="OPEN">OPEN</option>
+                    <option value="IN_PROGRESS">IN_PROGRESS</option>
+                    <option value="RESOLVED">RESOLVED</option>
+                    <option value="SUPPRESSED">SUPPRESSED</option>
+                  </select>
+                </div>
+                <div class="col-lg-2 col-md-6">
+                  <label for="owner-filter" class="form-label">Owner</label>
+                  <select id="owner-filter" class="form-select">
+                    <option value="ALL">ALL</option>
+                    <option value="ASSIGNED">Assigned</option>
+                    <option value="UNASSIGNED">Unassigned</option>
+                  </select>
+                </div>
+                <div class="col-lg-2 col-md-6">
+                  <label for="findings-sort" class="form-label">Sort</label>
+                  <select id="findings-sort" class="form-select">
+                    <option value="severity_desc">Severity descending</option>
+                    <option value="score_desc">Score descending</option>
+                    <option value="status">Status</option>
+                    <option value="title">Title</option>
+                  </select>
+                </div>
+                <div class="col-md-6 d-flex justify-content-md-end">
+                  <button id="export-csv-button" type="button" class="btn btn-outline-primary" disabled>
+                    <i class="bi bi-download me-1"></i>
+                    Export CSV
+                  </button>
+                </div>
+              </div>
               <div class="table-responsive">
                 <table class="table table-hover align-middle">
                   <thead>
@@ -736,6 +788,7 @@
       LOW: 'badge bg-success'
     };
     let currentFindings = [];
+    let filteredFindings = [];
     let selectedFindingId = null;
     let findingModal = null;
 
@@ -788,27 +841,89 @@
       setText('severity-low', counts.LOW);
     }
 
-    function renderFindings(findings) {
-      const tableBody = document.getElementById('findings-table-body');
-      if (!findings.length) {
-        tableBody.innerHTML = '<tr><td colspan="6" class="text-muted">No findings available. Run analysis to populate results.</td></tr>';
-        return;
+    function getControlValue(id) {
+      return document.getElementById(id).value;
+    }
+
+    function getOwnerState(finding) {
+      return finding.owner ? 'ASSIGNED' : 'UNASSIGNED';
+    }
+
+    function matchesSearch(finding, searchTerm) {
+      if (!searchTerm) {
+        return true;
       }
 
-      tableBody.innerHTML = findings.map((finding) => {
-        const severity = escapeHtml(finding.severity);
-        const badgeClass = severityBadgeClasses[finding.severity] || 'badge bg-secondary';
-        return `
-          <tr class="finding-row" data-finding-id="${escapeHtml(finding.id)}" role="button" tabindex="0">
-            <td><span class="${badgeClass}">${severity}</span></td>
-            <td>${escapeHtml(finding.title)}</td>
-            <td>${escapeHtml(finding.identity_id)}</td>
-            <td>${escapeHtml(finding.score)}</td>
-            <td>${escapeHtml(finding.status)}</td>
-            <td>${escapeHtml(finding.owner || 'Unassigned')}</td>
-          </tr>
-        `;
-      }).join('');
+      return [
+        finding.title,
+        finding.identity_id,
+        finding.finding_type,
+        finding.owner
+      ].some((value) => String(value ?? '').toLowerCase().includes(searchTerm));
+    }
+
+    function sortFindings(findings) {
+      const severityRank = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
+      const sortValue = getControlValue('findings-sort');
+
+      return [...findings].sort((left, right) => {
+        if (sortValue === 'severity_desc') {
+          return (severityRank[right.severity] || 0) - (severityRank[left.severity] || 0);
+        }
+        if (sortValue === 'score_desc') {
+          return (right.score || 0) - (left.score || 0);
+        }
+        if (sortValue === 'status') {
+          return String(left.status || '').localeCompare(String(right.status || ''));
+        }
+        return String(left.title || '').localeCompare(String(right.title || ''));
+      });
+    }
+
+    function getFilteredFindings() {
+      const severityFilter = getControlValue('severity-filter');
+      const statusFilter = getControlValue('status-filter');
+      const ownerFilter = getControlValue('owner-filter');
+      const searchTerm = getControlValue('findings-search').trim().toLowerCase();
+
+      return sortFindings(currentFindings.filter((finding) => {
+        const matchesSeverity = severityFilter === 'ALL' || finding.severity === severityFilter;
+        const matchesStatus = statusFilter === 'ALL' || finding.status === statusFilter;
+        const matchesOwner = ownerFilter === 'ALL' || getOwnerState(finding) === ownerFilter;
+        return matchesSeverity && matchesStatus && matchesOwner && matchesSearch(finding, searchTerm);
+      }));
+    }
+
+    function renderFindingsCount() {
+      document.getElementById('findings-count').textContent = `Showing ${filteredFindings.length} of ${currentFindings.length} findings`;
+      document.getElementById('export-csv-button').disabled = filteredFindings.length === 0;
+    }
+
+    function applyFindingControls() {
+      filteredFindings = getFilteredFindings();
+      renderFindings(filteredFindings);
+      renderFindingsCount();
+    }
+
+    function renderFindings(findings) {
+      const tableBody = document.getElementById('findings-table-body');
+      const rows = findings.length
+        ? findings.map((finding) => {
+          const severity = escapeHtml(finding.severity);
+          const badgeClass = severityBadgeClasses[finding.severity] || 'badge bg-secondary';
+          return `
+            <tr class="finding-row" data-finding-id="${escapeHtml(finding.id)}" role="button" tabindex="0">
+              <td><span class="${badgeClass}">${severity}</span></td>
+              <td>${escapeHtml(finding.title)}</td>
+              <td>${escapeHtml(finding.identity_id)}</td>
+              <td>${escapeHtml(finding.score)}</td>
+              <td>${escapeHtml(finding.status)}</td>
+              <td>${escapeHtml(finding.owner || 'Unassigned')}</td>
+            </tr>
+          `;
+        }).join('')
+        : '<tr><td colspan="6" class="text-muted">No findings match the current filters.</td></tr>';
+      tableBody.innerHTML = rows;
     }
 
     function renderList(id, items) {
@@ -855,6 +970,16 @@
       findingModal.show();
     }
 
+    function refreshSelectedFindingDetail() {
+      const selectedFinding = getSelectedFinding();
+      if (selectedFinding) {
+        renderFindingDetail(selectedFinding);
+        return;
+      }
+
+      selectedFindingId = null;
+    }
+
     async function refreshDashboard() {
       showLoading(true);
       showError('');
@@ -866,8 +991,8 @@
         ]);
         currentFindings = findings;
         renderSummary(summary);
-        renderFindings(findings);
-        renderFindingDetail(getSelectedFinding());
+        applyFindingControls();
+        refreshSelectedFindingDetail();
       } catch (error) {
         showError('Dashboard data could not be loaded.');
       } finally {
@@ -936,9 +1061,47 @@
       );
     }
 
+    function csvEscape(value) {
+      const text = String(value ?? '');
+      if (/[",\r\n]/.test(text)) {
+        return `"${text.replaceAll('"', '""')}"`;
+      }
+      return text;
+    }
+
+    function exportFilteredFindings() {
+      const columns = [
+        'id',
+        'severity',
+        'score',
+        'status',
+        'owner',
+        'identity_id',
+        'finding_type',
+        'title'
+      ];
+      const rows = filteredFindings.map((finding) => columns.map((column) => csvEscape(finding[column])).join(','));
+      const csv = [columns.join(','), ...rows].join('\r\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'iam-sentinel-findings.csv';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       findingModal = new bootstrap.Modal(document.getElementById('finding-detail-modal'));
       document.getElementById('run-analysis-button').addEventListener('click', runAnalysis);
+      document.getElementById('findings-search').addEventListener('input', applyFindingControls);
+      document.getElementById('severity-filter').addEventListener('change', applyFindingControls);
+      document.getElementById('status-filter').addEventListener('change', applyFindingControls);
+      document.getElementById('owner-filter').addEventListener('change', applyFindingControls);
+      document.getElementById('findings-sort').addEventListener('change', applyFindingControls);
+      document.getElementById('export-csv-button').addEventListener('click', exportFilteredFindings);
       document.getElementById('findings-table-body').addEventListener('click', (event) => {
         const row = event.target.closest('.finding-row');
         if (row) {
