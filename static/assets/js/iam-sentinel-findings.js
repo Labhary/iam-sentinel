@@ -140,10 +140,13 @@
             <td>${escapeHtml(finding.score)}</td>
             <td>${escapeHtml(finding.status)}</td>
             <td>${escapeHtml(finding.owner || 'Unassigned')}</td>
+            <td>
+              <a class="btn btn-sm btn-outline-primary investigation-link" href="/findings/${encodeURIComponent(finding.id)}">Open Investigation</a>
+            </td>
           </tr>
         `;
       }).join('')
-      : '<tr><td colspan="7" class="text-muted">No findings match the current filters.</td></tr>';
+      : '<tr><td colspan="8" class="text-muted">No findings match the current filters.</td></tr>';
     tableBody.innerHTML = rows;
   }
 
@@ -408,7 +411,7 @@
   }
 
   function handleTableClick(event) {
-    if (event.target.closest('.finding-checkbox')) {
+    if (event.target.closest('.finding-checkbox, .investigation-link')) {
       return;
     }
 

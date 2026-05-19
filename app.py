@@ -35,6 +35,11 @@ def findings_page():
     return render_template("findings.html")
 
 
+@app.get("/findings/<finding_id>")
+def finding_detail_page(finding_id: str):
+    return render_template("finding_detail.html", finding_id=finding_id)
+
+
 @app.get("/api/findings")
 def get_findings():
     findings = load_findings(get_db_path())

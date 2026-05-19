@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+  <title>IAM Sentinel Investigation</title>
+  <meta content="" name="description">
+  <meta content="" name="keywords">
+
+  <link href="{{ url_for('static', filename='assets/img/favicon.png') }}" rel="icon">
+  <link href="{{ url_for('static', filename='assets/img/apple-touch-icon.png') }}" rel="apple-touch-icon">
+
+  <link href="https://fonts.gstatic.com" rel="preconnect">
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
+
+  <link href="{{ url_for('static', filename='assets/vendor/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='assets/vendor/bootstrap-icons/bootstrap-icons.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='assets/vendor/boxicons/css/boxicons.min.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='assets/vendor/quill/quill.snow.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='assets/vendor/quill/quill.bubble.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='assets/vendor/remixicon/remixicon.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='assets/vendor/simple-datatables/style.css') }}" rel="stylesheet">
+
+  <link href="{{ url_for('static', filename='assets/css/style.css') }}" rel="stylesheet">
+</head>
+
+<body>
+
+  <header id="header" class="header fixed-top d-flex align-items-center">
+    <div class="d-flex align-items-center justify-content-between">
+      <a href="/dashboard" class="logo d-flex align-items-center">
+        <img src="{{ url_for('static', filename='assets/img/logo.png') }}" alt="">
+        <span class="d-none d-lg-block">NiceAdmin</span>
+      </a>
+      <i class="bi bi-list toggle-sidebar-btn"></i>
+    </div>
+
+    <nav class="header-nav ms-auto">
+      <ul class="d-flex align-items-center">
+        <li class="nav-item dropdown pe-3">
+          <a class="nav-link nav-profile d-flex align-items-center pe-0" href="#" data-bs-toggle="dropdown">
+            <img src="{{ url_for('static', filename='assets/img/profile-img.jpg') }}" alt="Profile" class="rounded-circle">
+            <span class="d-none d-md-block dropdown-toggle ps-2">K. Anderson</span>
+          </a>
+        </li>
+      </ul>
+    </nav>
+  </header>
+
+  <aside id="sidebar" class="sidebar">
+    <ul class="sidebar-nav" id="sidebar-nav">
+      <li class="nav-item">
+        <a class="nav-link collapsed" href="/dashboard">
+          <i class="bi bi-grid"></i>
+          <span>Dashboard</span>
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a class="nav-link" href="/findings">
+          <i class="bi bi-list-check"></i>
+          <span>Findings</span>
+        </a>
+      </li>
+    </ul>
+  </aside>
+
+  <main id="main" class="main" data-finding-id="{{ finding_id }}">
+    <div id="finding-investigation-page" data-finding-id="{{ finding_id }}">
+      <div class="pagetitle">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <div>
+            <h1>IAM Sentinel Investigation</h1>
+            <nav>
+              <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Home</a></li>
+                <li class="breadcrumb-item"><a href="/findings">Findings</a></li>
+                <li class="breadcrumb-item active">Investigation</li>
+              </ol>
+            </nav>
+          </div>
+          <a class="btn btn-outline-primary" href="/findings">
+            <i class="bi bi-arrow-left me-1"></i>
+            Back to Findings
+          </a>
+        </div>
+      </div>
+
+      <section class="section">
+        <div id="finding-detail-loading" class="alert alert-info" role="status">Loading finding...</div>
+        <div id="finding-not-found" class="alert alert-warning d-none" role="alert" data-testid="finding-not-found">
+          Finding not found.
+        </div>
+        <div id="finding-action-feedback" class="alert d-none" role="alert"></div>
+
+        <div id="finding-detail-content" class="d-none">
+          <div class="row">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-body">
+                  <div class="d-flex flex-wrap align-items-start justify-content-between gap-2">
+                    <div>
+                      <h5 class="card-title mb-1" id="finding-detail-title">Finding Detail</h5>
+                      <div class="small text-muted" id="finding-detail-meta"></div>
+                    </div>
+                    <span id="finding-detail-severity"></span>
+                  </div>
+
+                  <div class="row g-3 mb-3">
+                    <div class="col-md-3">
+                      <span class="text-muted small d-block">Score</span>
+                      <strong id="finding-detail-score"></strong>
+                    </div>
+                    <div class="col-md-3">
+                      <span class="text-muted small d-block">Status</span>
+                      <strong id="finding-detail-status"></strong>
+                    </div>
+                    <div class="col-md-3">
+                      <span class="text-muted small d-block">Owner</span>
+                      <strong id="finding-detail-owner"></strong>
+                    </div>
+                    <div class="col-md-3">
+                      <span class="text-muted small d-block">Created At</span>
+                      <strong id="finding-detail-created-at"></strong>
+                    </div>
+                    <div class="col-md-3">
+                      <span class="text-muted small d-block">Last Updated</span>
+                      <strong id="finding-detail-updated-at"></strong>
+                    </div>
+                  </div>
+
+                  <div class="mb-3">
+                    <h6>Description</h6>
+                    <p id="finding-detail-description" class="mb-0"></p>
+                  </div>
+
+                  <div class="row g-3">
+                    <div class="col-lg-6">
+                      <h6>Evidence</h6>
+                      <ul id="finding-detail-evidence"></ul>
+                    </div>
+                    <div class="col-lg-6">
+                      <h6>Attack Paths</h6>
+                      <ul id="finding-detail-attack-paths"></ul>
+                    </div>
+                  </div>
+
+                  <div class="mb-3">
+                    <h6>Recommendation</h6>
+                    <p id="finding-detail-recommendation" class="mb-0"></p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-6">
+              <div class="card">
+                <div class="card-body">
+                  <h5 class="card-title">Analyst Notes</h5>
+                  <ul id="finding-detail-notes"></ul>
+
+                  <label for="finding-note-input" class="form-label">Add Analyst Note</label>
+                  <div class="input-group">
+                    <input id="finding-note-input" class="form-control" type="text" placeholder="Add note">
+                    <button id="add-note-button" class="btn btn-outline-primary" type="button">Add</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-6">
+              <div class="card">
+                <div class="card-body">
+                  <h5 class="card-title">Activity Timeline</h5>
+                  <ul id="finding-detail-activity" class="list-group"></ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <div class="card">
+                <div class="card-body">
+                  <h5 class="card-title">Analyst Actions</h5>
+                  <div class="row g-3">
+                    <div class="col-lg-6">
+                      <label for="finding-status-select" class="form-label">Change Status</label>
+                      <div class="input-group">
+                        <select id="finding-status-select" class="form-select">
+                          <option value="OPEN">OPEN</option>
+                          <option value="IN_PROGRESS">IN_PROGRESS</option>
+                          <option value="RESOLVED">RESOLVED</option>
+                          <option value="SUPPRESSED">SUPPRESSED</option>
+                        </select>
+                        <button id="save-status-button" class="btn btn-outline-primary" type="button">Save</button>
+                      </div>
+                    </div>
+                    <div class="col-lg-6">
+                      <label for="finding-owner-input" class="form-label">Assign Owner</label>
+                      <div class="input-group">
+                        <input id="finding-owner-input" class="form-control" type="text" placeholder="analyst@example.local">
+                        <button id="save-owner-button" class="btn btn-outline-primary" type="button">Save</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer id="footer" class="footer">
+    <div class="copyright">
+      &copy; Copyright <strong><span>NiceAdmin</span></strong>. All Rights Reserved
+    </div>
+    <div class="credits">
+      Designed by <a href="https://bootstrapmade.com/">BootstrapMade</a>
+    </div>
+  </footer>
+
+  <a href="#" class="back-to-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+
+  <script src="{{ url_for('static', filename='assets/vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='assets/js/iam-sentinel-finding-detail.js') }}"></script>
+  <script src="{{ url_for('static', filename='assets/js/main.js') }}"></script>
+
+</body>
+
+</html>

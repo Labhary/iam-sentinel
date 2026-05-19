@@ -79,8 +79,10 @@ def test_get_findings_page_returns_workbench(client) -> None:
     assert b'id="owner-filter"' in response.data
     assert b'id="findings-sort"' in response.data
     assert response.data.count(b'id="export-csv-button"') == 1
-    assert response.data.count(b'<th scope="col">') == 7
-    assert b'colspan="7"' in response.data
+    assert response.data.count(b'<th scope="col">') == 8
+    assert b'colspan="8"' in response.data
+    assert b'colspan="7"' not in response.data
+    assert b"Open Investigation" in response.data
     assert response.data.count(b'id="select-all-findings"') == 1
     assert response.data.count(b'id="bulk-status-button"') == 1
     assert response.data.count(b'id="bulk-owner-button"') == 1
@@ -90,6 +92,30 @@ def test_get_findings_page_returns_workbench(client) -> None:
     assert b'id="run-analysis-button"' not in response.data
     assert b'id="severity-distribution-chart"' not in response.data
     assert b'id="status-distribution-chart"' not in response.data
+
+
+def test_get_finding_detail_page_returns_investigation_shell(client) -> None:
+    response = client.get("/findings/finding-low")
+
+    assert response.status_code == 200
+    assert b"IAM Sentinel Investigation" in response.data
+    assert response.data.count(b'<main id="main" class="main"') == 1
+    assert response.data.count(b"</main>") == 1
+    assert b'data-finding-id="finding-low"' in response.data
+    assert b'id="finding-detail-content"' in response.data
+    assert b'id="finding-not-found"' in response.data
+    assert b"assets/js/iam-sentinel-finding-detail.js" in response.data
+    assert b"assets/js/iam-sentinel-findings.js" not in response.data
+    assert b"assets/js/iam-sentinel-dashboard.js" not in response.data
+
+
+def test_get_missing_finding_detail_page_returns_not_found_shell(client) -> None:
+    response = client.get("/findings/finding-missing")
+
+    assert response.status_code == 200
+    assert b'data-finding-id="finding-missing"' in response.data
+    assert b'id="finding-not-found"' in response.data
+    assert b'data-testid="finding-not-found"' in response.data
 
 
 def test_get_findings_summary_returns_summary_metrics(client) -> None:
