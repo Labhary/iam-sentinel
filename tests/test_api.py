@@ -97,6 +97,31 @@ def test_get_findings_page_returns_workbench(client) -> None:
     assert b'id="status-distribution-chart"' not in response.data
 
 
+def test_get_identities_page_returns_workbench(client) -> None:
+    response = client.get("/identities")
+
+    assert response.status_code == 200
+    assert b"IAM Sentinel Identities" in response.data
+    assert response.data.count(b'<main id="main" class="main">') == 1
+    assert response.data.count(b"</main>") == 1
+    assert b'id="identity-workbench"' in response.data
+    assert b'id="identities-search"' in response.data
+    assert b'id="mfa-filter"' in response.data
+    assert b'id="external-filter"' in response.data
+    assert b'id="service-account-filter"' in response.data
+    assert b'id="total-identities"' in response.data
+    assert b'id="external-identities"' in response.data
+    assert b'id="service-accounts"' in response.data
+    assert b'id="identities-without-mfa"' in response.data
+    assert b'id="identities-table-body"' in response.data
+    assert response.data.count(b'<th scope="col">') == 9
+    assert b'colspan="9"' in response.data
+    assert b"Open Identity" in response.data
+    assert b"assets/js/iam-sentinel-identities.js" in response.data
+    assert b"assets/js/iam-sentinel-findings.js" not in response.data
+    assert b"assets/js/iam-sentinel-dashboard.js" not in response.data
+
+
 def test_get_finding_detail_page_returns_investigation_shell(client) -> None:
     response = client.get("/findings/finding-low")
 
@@ -119,6 +144,32 @@ def test_get_missing_finding_detail_page_returns_not_found_shell(client) -> None
     assert b'data-finding-id="finding-missing"' in response.data
     assert b'id="finding-not-found"' in response.data
     assert b'data-testid="finding-not-found"' in response.data
+
+
+def test_get_identity_detail_page_returns_identity_shell(client) -> None:
+    response = client.get("/identities/user-004")
+
+    assert response.status_code == 200
+    assert b"IAM Sentinel Identity" in response.data
+    assert response.data.count(b'<main id="main" class="main"') == 1
+    assert response.data.count(b"</main>") == 1
+    assert b'data-identity-id="user-004"' in response.data
+    assert b'id="identity-detail-content"' in response.data
+    assert b'id="identity-detail-roles"' in response.data
+    assert b'id="identity-detail-groups"' in response.data
+    assert b'id="identity-related-findings"' in response.data
+    assert b'id="identity-not-found"' in response.data
+    assert b"assets/js/iam-sentinel-identity-detail.js" in response.data
+    assert b"assets/js/iam-sentinel-identities.js" not in response.data
+
+
+def test_get_missing_identity_detail_page_returns_not_found_shell(client) -> None:
+    response = client.get("/identities/user-missing")
+
+    assert response.status_code == 200
+    assert b'data-identity-id="user-missing"' in response.data
+    assert b'id="identity-not-found"' in response.data
+    assert b'data-testid="identity-not-found"' in response.data
 
 
 def test_get_findings_summary_returns_summary_metrics(client) -> None:

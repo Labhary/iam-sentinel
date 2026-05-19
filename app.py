@@ -41,6 +41,16 @@ def finding_detail_page(finding_id: str):
     return render_template("finding_detail.html", finding_id=finding_id)
 
 
+@app.get("/identities")
+def identities_page():
+    return render_template("identities.html")
+
+
+@app.get("/identities/<identity_id>")
+def identity_detail_page(identity_id: str):
+    return render_template("identity_detail.html", identity_id=identity_id)
+
+
 @app.get("/api/findings")
 def get_findings():
     findings = load_findings(get_db_path())

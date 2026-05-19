@@ -1,0 +1,121 @@
+{% set active_page = 'identities' %}
+{% extends "base.html" %}
+
+{% block title %}IAM Sentinel Identity{% endblock %}
+{% block main_attrs %} data-identity-id="{{ identity_id }}"{% endblock %}
+
+{% block content %}
+    <div id="identity-detail-page" data-identity-id="{{ identity_id }}">
+      <div class="pagetitle">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <div>
+            <h1>IAM Sentinel Identity</h1>
+            <nav>
+              <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Home</a></li>
+                <li class="breadcrumb-item"><a href="/identities">Identities</a></li>
+                <li class="breadcrumb-item active">Identity</li>
+              </ol>
+            </nav>
+          </div>
+          <a class="btn btn-outline-primary" href="/identities">
+            <i class="bi bi-arrow-left me-1"></i>
+            Back to Identities
+          </a>
+        </div>
+      </div>
+
+      <section class="section">
+        <div id="identity-detail-loading" class="alert alert-info" role="status">Loading identity...</div>
+        <div id="identity-not-found" class="alert alert-warning d-none" role="alert" data-testid="identity-not-found">
+          Identity not found.
+        </div>
+        <div id="identity-detail-error" class="alert alert-danger d-none" role="alert"></div>
+
+        <div id="identity-detail-content" class="d-none">
+          <div class="row">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-body">
+                  <h5 class="card-title mb-1" id="identity-detail-name">Identity Detail</h5>
+                  <div class="small text-muted mb-3" id="identity-detail-meta"></div>
+
+                  <div class="row g-3">
+                    <div class="col-md-3">
+                      <span class="text-muted small d-block">Email</span>
+                      <strong id="identity-detail-email"></strong>
+                    </div>
+                    <div class="col-md-3">
+                      <span class="text-muted small d-block">Type</span>
+                      <strong id="identity-detail-type"></strong>
+                    </div>
+                    <div class="col-md-2">
+                      <span class="text-muted small d-block">MFA</span>
+                      <span id="identity-detail-mfa"></span>
+                    </div>
+                    <div class="col-md-2">
+                      <span class="text-muted small d-block">External</span>
+                      <span id="identity-detail-external"></span>
+                    </div>
+                    <div class="col-md-2">
+                      <span class="text-muted small d-block">Service Account</span>
+                      <span id="identity-detail-service-account"></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-6">
+              <div class="card">
+                <div class="card-body">
+                  <h5 class="card-title">Roles</h5>
+                  <ul id="identity-detail-roles"></ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-6">
+              <div class="card">
+                <div class="card-body">
+                  <h5 class="card-title">Groups</h5>
+                  <ul id="identity-detail-groups"></ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <div class="card">
+                <div class="card-body">
+                  <h5 class="card-title">Related Findings</h5>
+                  <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                      <thead>
+                        <tr>
+                          <th scope="col">Severity</th>
+                          <th scope="col">Title</th>
+                          <th scope="col">Score</th>
+                          <th scope="col">Status</th>
+                          <th scope="col">Owner</th>
+                          <th scope="col">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody id="identity-related-findings">
+                        <tr>
+                          <td colspan="6" class="text-muted">Loading related findings...</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='assets/js/iam-sentinel-identity-detail.js') }}"></script>
+{% endblock %}

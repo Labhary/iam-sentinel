@@ -1,0 +1,124 @@
+{% set active_page = 'identities' %}
+{% extends "base.html" %}
+
+{% block title %}IAM Sentinel Identities{% endblock %}
+
+{% block content %}
+    <div class="pagetitle">
+      <h1>IAM Sentinel Identities</h1>
+      <nav>
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item active">Identities</li>
+        </ol>
+      </nav>
+    </div>
+
+    <section class="section" id="identity-workbench">
+      <div id="identities-error" class="alert alert-danger d-none" role="alert"></div>
+      <div id="identities-loading" class="alert alert-info" role="status">Loading identity data...</div>
+
+      <div class="row">
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">Total Identities</h5>
+              <h6 id="total-identities">0</h6>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">External Identities</h5>
+              <h6 id="external-identities">0</h6>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">Service Accounts</h5>
+              <h6 id="service-accounts">0</h6>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">Without MFA</h5>
+              <h6 id="identities-without-mfa">0</h6>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <h5 class="card-title mb-0">Identity Workbench</h5>
+            <span id="identities-count" class="text-muted small">Showing 0 of 0 identities</span>
+          </div>
+
+          <div class="row g-2 align-items-end mb-3">
+            <div class="col-lg-4 col-md-6">
+              <label for="identities-search" class="form-label">Search</label>
+              <input id="identities-search" class="form-control" type="search" placeholder="Name, email, type, role, group">
+            </div>
+            <div class="col-lg-2 col-md-6">
+              <label for="mfa-filter" class="form-label">MFA</label>
+              <select id="mfa-filter" class="form-select">
+                <option value="ALL">ALL</option>
+                <option value="ENABLED">Enabled</option>
+                <option value="DISABLED">Disabled</option>
+              </select>
+            </div>
+            <div class="col-lg-2 col-md-6">
+              <label for="external-filter" class="form-label">External</label>
+              <select id="external-filter" class="form-select">
+                <option value="ALL">ALL</option>
+                <option value="EXTERNAL">External users</option>
+                <option value="INTERNAL">Internal users</option>
+              </select>
+            </div>
+            <div class="col-lg-2 col-md-6">
+              <label for="service-account-filter" class="form-label">Service Account</label>
+              <select id="service-account-filter" class="form-select">
+                <option value="ALL">ALL</option>
+                <option value="SERVICE_ACCOUNT">Service accounts</option>
+                <option value="HUMAN">Human users</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-hover align-middle">
+              <thead>
+                <tr>
+                  <th scope="col">Name</th>
+                  <th scope="col">Email</th>
+                  <th scope="col">Type</th>
+                  <th scope="col">MFA Status</th>
+                  <th scope="col">External</th>
+                  <th scope="col">Service Account</th>
+                  <th scope="col">Role Count</th>
+                  <th scope="col">Group Count</th>
+                  <th scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="identities-table-body">
+                <tr>
+                  <td colspan="9" class="text-muted">Loading identities...</td>
+                </tr>
+              </tbody>
+            </table>
+            <span id="open-identity-marker" class="visually-hidden">Open Identity</span>
+          </div>
+        </div>
+      </div>
+    </section>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='assets/js/iam-sentinel-identities.js') }}"></script>
+{% endblock %}
