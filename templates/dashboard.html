@@ -512,35 +512,99 @@
       <h1>IAM Sentinel Dashboard</h1>
       <nav>
         <ol class="breadcrumb">
-          <li class="breadcrumb-item"><a href="index.html">Home</a></li>
-          <li class="breadcrumb-item">Pages</li>
-          <li class="breadcrumb-item active">Blank</li>
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item active">Dashboard</li>
         </ol>
       </nav>
     </div><!-- End Page Title -->
 
     <section class="section">
-      <div class="row">
-        <div class="col-lg-6">
+      <div class="row mb-3">
+        <div class="col-12 d-flex justify-content-end">
+          <button id="run-analysis-button" type="button" class="btn btn-primary">
+            <i class="bi bi-play-circle me-1"></i>
+            Run Analysis
+          </button>
+        </div>
+      </div>
 
-          <div class="card">
+      <div id="dashboard-error" class="alert alert-danger d-none" role="alert"></div>
+      <div id="dashboard-loading" class="alert alert-info" role="status">Loading dashboard data...</div>
+
+      <div class="row">
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
             <div class="card-body">
-              <h5 class="card-title">Example Card</h5>
-              <p>This is an examle page with no contrnt. You can use it as a starter for your custom pages.</p>
+              <h5 class="card-title">Total Findings</h5>
+              <div class="d-flex align-items-center">
+                <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                  <i class="bi bi-shield-exclamation"></i>
+                </div>
+                <div class="ps-3">
+                  <h6 id="total-findings">0</h6>
+                </div>
+              </div>
             </div>
           </div>
+        </div>
 
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">Highest Score</h5>
+              <div class="d-flex align-items-center">
+                <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                  <i class="bi bi-speedometer2"></i>
+                </div>
+                <div class="ps-3">
+                  <h6 id="highest-score">0</h6>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="col-lg-6">
-
           <div class="card">
             <div class="card-body">
-              <h5 class="card-title">Example Card</h5>
-              <p>This is an examle page with no contrnt. You can use it as a starter for your custom pages.</p>
+              <h5 class="card-title">Severity Counts</h5>
+              <div class="d-flex flex-wrap gap-2">
+                <span class="badge bg-danger">CRITICAL <span id="severity-critical">0</span></span>
+                <span class="badge bg-warning text-dark">HIGH <span id="severity-high">0</span></span>
+                <span class="badge bg-warning-subtle text-dark border border-warning">MEDIUM <span id="severity-medium">0</span></span>
+                <span class="badge bg-success">LOW <span id="severity-low">0</span></span>
+              </div>
             </div>
           </div>
+        </div>
+      </div>
 
+      <div class="row">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Findings</h5>
+              <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                  <thead>
+                    <tr>
+                      <th scope="col">Severity</th>
+                      <th scope="col">Title</th>
+                      <th scope="col">Identity</th>
+                      <th scope="col">Score</th>
+                      <th scope="col">Status</th>
+                      <th scope="col">Owner</th>
+                    </tr>
+                  </thead>
+                  <tbody id="findings-table-body">
+                    <tr>
+                      <td colspan="6" class="text-muted">Loading findings...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -572,6 +636,116 @@
   <script src="{{ url_for('static', filename='assets/vendor/simple-datatables/simple-datatables.js') }}"></script>
   <script src="{{ url_for('static', filename='assets/vendor/tinymce/tinymce.min.js') }}"></script>
   <script src="{{ url_for('static', filename='assets/vendor/php-email-form/validate.js') }}"></script>
+
+  <script>
+    const severityBadgeClasses = {
+      CRITICAL: 'badge bg-danger',
+      HIGH: 'badge bg-warning text-dark',
+      MEDIUM: 'badge bg-warning-subtle text-dark border border-warning',
+      LOW: 'badge bg-success'
+    };
+
+    function setText(id, value) {
+      document.getElementById(id).textContent = value ?? '0';
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    function showLoading(isLoading) {
+      document.getElementById('dashboard-loading').classList.toggle('d-none', !isLoading);
+      document.getElementById('run-analysis-button').disabled = isLoading;
+    }
+
+    function showError(message) {
+      const error = document.getElementById('dashboard-error');
+      error.textContent = message;
+      error.classList.toggle('d-none', !message);
+    }
+
+    async function fetchJson(url, options = {}) {
+      const response = await fetch(url, options);
+      if (!response.ok) {
+        throw new Error(`Request failed: ${response.status}`);
+      }
+      return response.json();
+    }
+
+    function renderSummary(summary) {
+      const counts = summary.count_per_severity || {};
+      setText('total-findings', summary.total_findings);
+      setText('highest-score', summary.highest_score);
+      setText('severity-critical', counts.CRITICAL);
+      setText('severity-high', counts.HIGH);
+      setText('severity-medium', counts.MEDIUM);
+      setText('severity-low', counts.LOW);
+    }
+
+    function renderFindings(findings) {
+      const tableBody = document.getElementById('findings-table-body');
+      if (!findings.length) {
+        tableBody.innerHTML = '<tr><td colspan="6" class="text-muted">No findings available. Run analysis to populate results.</td></tr>';
+        return;
+      }
+
+      tableBody.innerHTML = findings.map((finding) => {
+        const severity = escapeHtml(finding.severity);
+        const badgeClass = severityBadgeClasses[finding.severity] || 'badge bg-secondary';
+        return `
+          <tr>
+            <td><span class="${badgeClass}">${severity}</span></td>
+            <td>${escapeHtml(finding.title)}</td>
+            <td>${escapeHtml(finding.identity_id)}</td>
+            <td>${escapeHtml(finding.score)}</td>
+            <td>${escapeHtml(finding.status)}</td>
+            <td>${escapeHtml(finding.owner || 'Unassigned')}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function refreshDashboard() {
+      showLoading(true);
+      showError('');
+
+      try {
+        const [summary, findings] = await Promise.all([
+          fetchJson('/api/findings/summary'),
+          fetchJson('/api/findings')
+        ]);
+        renderSummary(summary);
+        renderFindings(findings);
+      } catch (error) {
+        showError('Dashboard data could not be loaded.');
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    async function runAnalysis() {
+      showLoading(true);
+      showError('');
+
+      try {
+        await fetchJson('/api/analysis/run', { method: 'POST' });
+        await refreshDashboard();
+      } catch (error) {
+        showError('Analysis could not be started.');
+        showLoading(false);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('run-analysis-button').addEventListener('click', runAnalysis);
+      refreshDashboard();
+    });
+  </script>
 
   <!-- Template Main JS File -->
   <script src="{{ url_for('static', filename='assets/js/main.js') }}"></script>
