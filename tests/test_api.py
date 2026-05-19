@@ -35,6 +35,13 @@ def test_get_findings_returns_deterministic_sorted_findings(client) -> None:
     ]
 
 
+def test_get_dashboard_returns_page(client) -> None:
+    response = client.get("/dashboard")
+
+    assert response.status_code == 200
+    assert b"IAM Sentinel Dashboard" in response.data
+
+
 def test_get_findings_summary_returns_summary_metrics(client) -> None:
     response = client.get("/api/findings/summary")
 

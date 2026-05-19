@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, render_template, request
 
 from core.analysis_runner import run_analysis
 from core.finding_store import (
@@ -22,6 +22,11 @@ app.config["IAM_DATA_PATH"] = Path("data") / "sample_iam.json"
 @app.get("/")
 def index():
     return jsonify({"message": "IAM Sentinel is running"})
+
+
+@app.get("/dashboard")
+def dashboard():
+    return render_template("dashboard.html")
 
 
 @app.get("/api/findings")
