@@ -24,7 +24,7 @@ pip install -r requirements.txt
 ## Run the App
 
 ```powershell
-python app.py
+.\.venv\Scripts\python.exe app.py
 ```
 
 Open:
@@ -33,16 +33,30 @@ Open:
 http://127.0.0.1:5000
 ```
 
-The app returns:
+Health check:
 
 ```text
-IAM Sentinel is running
+http://127.0.0.1:5000/
+```
+
+Dashboard:
+
+```text
+http://127.0.0.1:5000/dashboard
+```
+
+## Run Analysis
+
+With the Flask app running:
+
+```powershell
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:5000/api/analysis/run
 ```
 
 ## Run Tests
 
 ```powershell
-pytest
+.\.venv\Scripts\python.exe -m pytest
 ```
 
 ## Current Scope

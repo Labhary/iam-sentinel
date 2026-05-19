@@ -3,5 +3,7 @@ __pycache__/
 *.pyc
 .pytest_cache/
 instance/
+findings.db
 *.db
+.DS_Store
 .env
