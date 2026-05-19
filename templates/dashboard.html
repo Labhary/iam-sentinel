@@ -611,6 +611,97 @@
 
   </main><!-- End #main -->
 
+  <div class="modal fade" id="finding-detail-modal" tabindex="-1" aria-labelledby="finding-detail-title" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div>
+            <h5 class="modal-title" id="finding-detail-title">Finding Detail</h5>
+            <div class="small text-muted" id="finding-detail-meta"></div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="finding-action-feedback" class="alert d-none" role="alert"></div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-3">
+              <span class="text-muted small d-block">Severity</span>
+              <span id="finding-detail-severity"></span>
+            </div>
+            <div class="col-md-3">
+              <span class="text-muted small d-block">Score</span>
+              <strong id="finding-detail-score"></strong>
+            </div>
+            <div class="col-md-3">
+              <span class="text-muted small d-block">Status</span>
+              <strong id="finding-detail-status"></strong>
+            </div>
+            <div class="col-md-3">
+              <span class="text-muted small d-block">Owner</span>
+              <strong id="finding-detail-owner"></strong>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <h6>Description</h6>
+            <p id="finding-detail-description" class="mb-0"></p>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-lg-6">
+              <h6>Evidence</h6>
+              <ul id="finding-detail-evidence"></ul>
+            </div>
+            <div class="col-lg-6">
+              <h6>Attack Paths</h6>
+              <ul id="finding-detail-attack-paths"></ul>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <h6>Recommendation</h6>
+            <p id="finding-detail-recommendation" class="mb-0"></p>
+          </div>
+
+          <div class="mb-4">
+            <h6>Analyst Notes</h6>
+            <ul id="finding-detail-notes"></ul>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-lg-4">
+              <label for="finding-status-select" class="form-label">Change Status</label>
+              <div class="input-group">
+                <select id="finding-status-select" class="form-select">
+                  <option value="OPEN">OPEN</option>
+                  <option value="IN_PROGRESS">IN_PROGRESS</option>
+                  <option value="RESOLVED">RESOLVED</option>
+                  <option value="SUPPRESSED">SUPPRESSED</option>
+                </select>
+                <button id="save-status-button" class="btn btn-outline-primary" type="button">Save</button>
+              </div>
+            </div>
+            <div class="col-lg-4">
+              <label for="finding-owner-input" class="form-label">Assign Owner</label>
+              <div class="input-group">
+                <input id="finding-owner-input" class="form-control" type="text" placeholder="analyst@example.local">
+                <button id="save-owner-button" class="btn btn-outline-primary" type="button">Save</button>
+              </div>
+            </div>
+            <div class="col-lg-4">
+              <label for="finding-note-input" class="form-label">Add Analyst Note</label>
+              <div class="input-group">
+                <input id="finding-note-input" class="form-control" type="text" placeholder="Add note">
+                <button id="add-note-button" class="btn btn-outline-primary" type="button">Add</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ======= Footer ======= -->
   <footer id="footer" class="footer">
     <div class="copyright">
@@ -644,6 +735,9 @@
       MEDIUM: 'badge bg-warning-subtle text-dark border border-warning',
       LOW: 'badge bg-success'
     };
+    let currentFindings = [];
+    let selectedFindingId = null;
+    let findingModal = null;
 
     function setText(id, value) {
       document.getElementById(id).textContent = value ?? '0';
@@ -667,6 +761,13 @@
       const error = document.getElementById('dashboard-error');
       error.textContent = message;
       error.classList.toggle('d-none', !message);
+    }
+
+    function showActionFeedback(message, type = 'success') {
+      const feedback = document.getElementById('finding-action-feedback');
+      feedback.textContent = message;
+      feedback.className = `alert alert-${type}`;
+      feedback.classList.toggle('d-none', !message);
     }
 
     async function fetchJson(url, options = {}) {
@@ -698,7 +799,7 @@
         const severity = escapeHtml(finding.severity);
         const badgeClass = severityBadgeClasses[finding.severity] || 'badge bg-secondary';
         return `
-          <tr>
+          <tr class="finding-row" data-finding-id="${escapeHtml(finding.id)}" role="button" tabindex="0">
             <td><span class="${badgeClass}">${severity}</span></td>
             <td>${escapeHtml(finding.title)}</td>
             <td>${escapeHtml(finding.identity_id)}</td>
@@ -710,6 +811,50 @@
       }).join('');
     }
 
+    function renderList(id, items) {
+      const list = document.getElementById(id);
+      if (!items || !items.length) {
+        list.innerHTML = '<li class="text-muted">None</li>';
+        return;
+      }
+
+      list.innerHTML = items.map((item) => `<li>${escapeHtml(item)}</li>`).join('');
+    }
+
+    function getSelectedFinding() {
+      return currentFindings.find((finding) => finding.id === selectedFindingId);
+    }
+
+    function renderFindingDetail(finding) {
+      if (!finding) {
+        return;
+      }
+
+      const severityClass = severityBadgeClasses[finding.severity] || 'badge bg-secondary';
+      document.getElementById('finding-detail-title').textContent = finding.title;
+      document.getElementById('finding-detail-meta').textContent = `${finding.id} | ${finding.identity_id}`;
+      document.getElementById('finding-detail-severity').innerHTML = `<span class="${severityClass}">${escapeHtml(finding.severity)}</span>`;
+      document.getElementById('finding-detail-score').textContent = finding.score;
+      document.getElementById('finding-detail-status').textContent = finding.status;
+      document.getElementById('finding-detail-owner').textContent = finding.owner || 'Unassigned';
+      document.getElementById('finding-detail-description').textContent = finding.description || '';
+      document.getElementById('finding-detail-recommendation').textContent = finding.recommendation || '';
+      document.getElementById('finding-status-select').value = finding.status;
+      document.getElementById('finding-owner-input').value = finding.owner || '';
+      document.getElementById('finding-note-input').value = '';
+
+      renderList('finding-detail-evidence', finding.evidence);
+      renderList('finding-detail-attack-paths', finding.attack_paths);
+      renderList('finding-detail-notes', finding.analyst_notes);
+    }
+
+    function openFindingDetail(findingId) {
+      selectedFindingId = findingId;
+      showActionFeedback('');
+      renderFindingDetail(getSelectedFinding());
+      findingModal.show();
+    }
+
     async function refreshDashboard() {
       showLoading(true);
       showError('');
@@ -719,8 +864,10 @@
           fetchJson('/api/findings/summary'),
           fetchJson('/api/findings')
         ]);
+        currentFindings = findings;
         renderSummary(summary);
         renderFindings(findings);
+        renderFindingDetail(getSelectedFinding());
       } catch (error) {
         showError('Dashboard data could not be loaded.');
       } finally {
@@ -741,8 +888,76 @@
       }
     }
 
+    async function updateFinding(url, payload, successMessage) {
+      if (!selectedFindingId) {
+        return;
+      }
+
+      try {
+        await fetchJson(url, {
+          method: url.endsWith('/notes') ? 'POST' : 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        await refreshDashboard();
+        showActionFeedback(successMessage, 'success');
+      } catch (error) {
+        showActionFeedback('Finding update failed.', 'danger');
+      }
+    }
+
+    async function saveFindingStatus() {
+      await updateFinding(
+        `/api/findings/${selectedFindingId}/status`,
+        { status: document.getElementById('finding-status-select').value },
+        'Status updated.'
+      );
+    }
+
+    async function saveFindingOwner() {
+      await updateFinding(
+        `/api/findings/${selectedFindingId}/owner`,
+        { owner: document.getElementById('finding-owner-input').value },
+        'Owner updated.'
+      );
+    }
+
+    async function addFindingNote() {
+      const note = document.getElementById('finding-note-input').value.trim();
+      if (!note) {
+        showActionFeedback('Enter a note before adding it.', 'warning');
+        return;
+      }
+
+      await updateFinding(
+        `/api/findings/${selectedFindingId}/notes`,
+        { note },
+        'Note added.'
+      );
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
+      findingModal = new bootstrap.Modal(document.getElementById('finding-detail-modal'));
       document.getElementById('run-analysis-button').addEventListener('click', runAnalysis);
+      document.getElementById('findings-table-body').addEventListener('click', (event) => {
+        const row = event.target.closest('.finding-row');
+        if (row) {
+          openFindingDetail(row.dataset.findingId);
+        }
+      });
+      document.getElementById('findings-table-body').addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter') {
+          return;
+        }
+
+        const row = event.target.closest('.finding-row');
+        if (row) {
+          openFindingDetail(row.dataset.findingId);
+        }
+      });
+      document.getElementById('save-status-button').addEventListener('click', saveFindingStatus);
+      document.getElementById('save-owner-button').addEventListener('click', saveFindingOwner);
+      document.getElementById('add-note-button').addEventListener('click', addFindingNote);
       refreshDashboard();
     });
   </script>

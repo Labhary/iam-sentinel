@@ -40,6 +40,11 @@ def test_get_dashboard_returns_page(client) -> None:
 
     assert response.status_code == 200
     assert b"IAM Sentinel Dashboard" in response.data
+    assert response.data.count(b'<main id="main" class="main">') == 1
+    assert response.data.count(b"</main>") == 1
+    assert response.data.count(b'<footer id="footer" class="footer">') == 1
+    assert response.data.count(b"</body>") == 1
+    assert response.data.count(b"</html>") == 1
 
 
 def test_get_findings_summary_returns_summary_metrics(client) -> None:
