@@ -66,6 +66,7 @@ def test_get_dashboard_returns_page(client) -> None:
     assert response.data.count(b'id="severity-distribution-chart"') == 1
     assert response.data.count(b'id="status-distribution-chart"') == 1
     assert response.data.count(b'id="finding-detail-activity"') == 1
+    assert b"assets/js/iam-sentinel-dashboard.js" in response.data
 
 
 def test_get_findings_summary_returns_summary_metrics(client) -> None:
