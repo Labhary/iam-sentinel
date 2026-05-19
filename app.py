@@ -12,8 +12,9 @@ from core.finding_store import (
     update_finding_status,
 )
 from core.findings import summarize_findings
+from core.graph_builder import build_identity_graph, get_reachable_resources
 from core.loader import load_iam_data
-from core.models import Finding, FindingStatus, User
+from core.models import Finding, FindingStatus, Resource, User
 
 
 app = Flask(__name__)
@@ -51,6 +52,16 @@ def identity_detail_page(identity_id: str):
     return render_template("identity_detail.html", identity_id=identity_id)
 
 
+@app.get("/resources")
+def resources_page():
+    return render_template("resources.html")
+
+
+@app.get("/resources/<resource_id>")
+def resource_detail_page(resource_id: str):
+    return render_template("resource_detail.html", resource_id=resource_id)
+
+
 @app.get("/api/findings")
 def get_findings():
     findings = load_findings(get_db_path())
@@ -67,6 +78,18 @@ def get_findings_summary():
 def get_identities():
     iam_data = load_iam_data(get_iam_data_path())
     return jsonify([identity_to_dict(user) for user in iam_data.users])
+
+
+@app.get("/api/resources")
+def get_resources():
+    iam_data = load_iam_data(get_iam_data_path())
+    graph = build_identity_graph(iam_data)
+    findings = load_findings(get_db_path())
+    resource_access = build_resource_access(iam_data.users, graph)
+    return jsonify([
+        resource_to_dict(resource, iam_data.users_by_id, resource_access, findings)
+        for resource in iam_data.resources
+    ])
 
 
 @app.post("/api/analysis/run")
@@ -173,6 +196,50 @@ def identity_to_dict(user: User) -> dict:
         "service_account": user.service_account,
         "groups": user.groups,
         "roles": user.roles,
+    }
+
+
+def build_resource_access(users: list[User], graph) -> dict[str, list[str]]:
+    resource_access: dict[str, list[str]] = {}
+    for user in users:
+        for resource_id in get_reachable_resources(graph, user.id):
+            resource_access.setdefault(resource_id, []).append(user.id)
+
+    return {
+        resource_id: sorted(user_ids)
+        for resource_id, user_ids in resource_access.items()
+    }
+
+
+def resource_to_dict(
+    resource: Resource,
+    users_by_id: dict[str, User],
+    resource_access: dict[str, list[str]],
+    findings: list[Finding],
+) -> dict:
+    accessible_by = resource_access.get(resource.id, [])
+    return {
+        "id": resource.id,
+        "name": resource.name,
+        "type": resource.type,
+        "sensitive": resource.sensitive,
+        "accessible_by": accessible_by,
+        "accessible_by_count": len(accessible_by),
+        "external_access_count": sum(
+            1
+            for user_id in accessible_by
+            if users_by_id[user_id].external_user
+        ),
+        "service_account_access_count": sum(
+            1
+            for user_id in accessible_by
+            if users_by_id[user_id].service_account
+        ),
+        "related_findings_count": sum(
+            1
+            for finding in findings
+            if finding.resource_id == resource.id
+        ),
     }
 
 

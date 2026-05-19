@@ -1,0 +1,120 @@
+{% set active_page = 'resources' %}
+{% extends "base.html" %}
+
+{% block title %}IAM Sentinel Resources{% endblock %}
+
+{% block content %}
+    <div class="pagetitle">
+      <h1>IAM Sentinel Resources</h1>
+      <nav>
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item active">Resources</li>
+        </ol>
+      </nav>
+    </div>
+
+    <section class="section" id="resource-workbench">
+      <div id="resources-error" class="alert alert-danger d-none" role="alert"></div>
+      <div id="resources-loading" class="alert alert-info" role="status">Loading resource data...</div>
+
+      <div class="row">
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">Total Resources</h5>
+              <h6 id="total-resources">0</h6>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">Sensitive Resources</h5>
+              <h6 id="sensitive-resources">0</h6>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">External Access</h5>
+              <h6 id="resources-with-external-access">0</h6>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">Service Account Access</h5>
+              <h6 id="resources-with-service-account-access">0</h6>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <h5 class="card-title mb-0">Resource Workbench</h5>
+            <span id="resources-count" class="text-muted small">Showing 0 of 0 resources</span>
+          </div>
+
+          <div class="row g-2 align-items-end mb-3">
+            <div class="col-lg-4 col-md-6">
+              <label for="resources-search" class="form-label">Search</label>
+              <input id="resources-search" class="form-control" type="search" placeholder="Name, type, id">
+            </div>
+            <div class="col-lg-2 col-md-6">
+              <label for="sensitive-filter" class="form-label">Sensitive</label>
+              <select id="sensitive-filter" class="form-select">
+                <option value="ALL">ALL</option>
+                <option value="SENSITIVE">Sensitive only</option>
+              </select>
+            </div>
+            <div class="col-lg-2 col-md-6">
+              <label for="external-access-filter" class="form-label">External Access</label>
+              <select id="external-access-filter" class="form-select">
+                <option value="ALL">ALL</option>
+                <option value="HAS_EXTERNAL_ACCESS">Has external access</option>
+              </select>
+            </div>
+            <div class="col-lg-2 col-md-6">
+              <label for="service-account-access-filter" class="form-label">Service Access</label>
+              <select id="service-account-access-filter" class="form-select">
+                <option value="ALL">ALL</option>
+                <option value="HAS_SERVICE_ACCOUNT_ACCESS">Has service account access</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-hover align-middle">
+              <thead>
+                <tr>
+                  <th scope="col">Name</th>
+                  <th scope="col">Type</th>
+                  <th scope="col">Sensitive</th>
+                  <th scope="col">Accessible By</th>
+                  <th scope="col">External Access</th>
+                  <th scope="col">Service Account Access</th>
+                  <th scope="col">Related Findings</th>
+                  <th scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="resources-table-body">
+                <tr>
+                  <td colspan="8" class="text-muted">Loading resources...</td>
+                </tr>
+              </tbody>
+            </table>
+            <span id="open-resource-marker" class="visually-hidden">Open Resource</span>
+          </div>
+        </div>
+      </div>
+    </section>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='assets/js/iam-sentinel-resources.js') }}"></script>
+{% endblock %}

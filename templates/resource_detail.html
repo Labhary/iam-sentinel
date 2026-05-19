@@ -1,0 +1,126 @@
+{% set active_page = 'resources' %}
+{% extends "base.html" %}
+
+{% block title %}IAM Sentinel Resource{% endblock %}
+{% block main_attrs %} data-resource-id="{{ resource_id }}"{% endblock %}
+
+{% block content %}
+    <div id="resource-detail-page" data-resource-id="{{ resource_id }}">
+      <div class="pagetitle">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <div>
+            <h1>IAM Sentinel Resource</h1>
+            <nav>
+              <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/">Home</a></li>
+                <li class="breadcrumb-item"><a href="/resources">Resources</a></li>
+                <li class="breadcrumb-item active">Resource</li>
+              </ol>
+            </nav>
+          </div>
+          <a class="btn btn-outline-primary" href="/resources">
+            <i class="bi bi-arrow-left me-1"></i>
+            Back to Resources
+          </a>
+        </div>
+      </div>
+
+      <section class="section">
+        <div id="resource-detail-loading" class="alert alert-info" role="status">Loading resource...</div>
+        <div id="resource-not-found" class="alert alert-warning d-none" role="alert" data-testid="resource-not-found">
+          Resource not found.
+        </div>
+        <div id="resource-detail-error" class="alert alert-danger d-none" role="alert"></div>
+
+        <div id="resource-detail-content" class="d-none">
+          <div class="row">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-body">
+                  <h5 class="card-title mb-1" id="resource-detail-name">Resource Detail</h5>
+                  <div class="small text-muted mb-3" id="resource-detail-meta"></div>
+
+                  <div class="row g-3">
+                    <div class="col-md-3">
+                      <span class="text-muted small d-block">Type</span>
+                      <strong id="resource-detail-type"></strong>
+                    </div>
+                    <div class="col-md-3">
+                      <span class="text-muted small d-block">Sensitive</span>
+                      <span id="resource-detail-sensitive"></span>
+                    </div>
+                    <div class="col-md-3">
+                      <span class="text-muted small d-block">Accessible By</span>
+                      <strong id="resource-detail-accessible-count"></strong>
+                    </div>
+                    <div class="col-md-3">
+                      <span class="text-muted small d-block">Related Findings</span>
+                      <strong id="resource-detail-related-findings-count"></strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-4">
+              <div class="card">
+                <div class="card-body">
+                  <h5 class="card-title">Accessible Identities</h5>
+                  <ul id="resource-accessible-identities"></ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-4">
+              <div class="card">
+                <div class="card-body">
+                  <h5 class="card-title">External Identities</h5>
+                  <ul id="resource-external-identities"></ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-4">
+              <div class="card">
+                <div class="card-body">
+                  <h5 class="card-title">Service Accounts</h5>
+                  <ul id="resource-service-accounts"></ul>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <div class="card">
+                <div class="card-body">
+                  <h5 class="card-title">Related Findings</h5>
+                  <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                      <thead>
+                        <tr>
+                          <th scope="col">Severity</th>
+                          <th scope="col">Title</th>
+                          <th scope="col">Identity</th>
+                          <th scope="col">Score</th>
+                          <th scope="col">Status</th>
+                          <th scope="col">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody id="resource-related-findings">
+                        <tr>
+                          <td colspan="6" class="text-muted">Loading related findings...</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='assets/js/iam-sentinel-resource-detail.js') }}"></script>
+{% endblock %}

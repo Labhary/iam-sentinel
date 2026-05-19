@@ -19,8 +19,20 @@ def client(tmp_path):
     save_findings(
         db_path,
         [
-            make_finding("finding-low", Severity.LOW, 25, "user-001"),
-            make_finding("finding-critical", Severity.CRITICAL, 95, "user-002"),
+            make_finding(
+                "finding-low",
+                Severity.LOW,
+                25,
+                "user-001",
+                "res-payroll-system",
+            ),
+            make_finding(
+                "finding-critical",
+                Severity.CRITICAL,
+                95,
+                "user-002",
+                "res-customer-database",
+            ),
         ],
     )
 
@@ -122,6 +134,31 @@ def test_get_identities_page_returns_workbench(client) -> None:
     assert b"assets/js/iam-sentinel-dashboard.js" not in response.data
 
 
+def test_get_resources_page_returns_workbench(client) -> None:
+    response = client.get("/resources")
+
+    assert response.status_code == 200
+    assert b"IAM Sentinel Resources" in response.data
+    assert response.data.count(b'<main id="main" class="main">') == 1
+    assert response.data.count(b"</main>") == 1
+    assert b'id="resource-workbench"' in response.data
+    assert b'id="resources-search"' in response.data
+    assert b'id="sensitive-filter"' in response.data
+    assert b'id="external-access-filter"' in response.data
+    assert b'id="service-account-access-filter"' in response.data
+    assert b'id="total-resources"' in response.data
+    assert b'id="sensitive-resources"' in response.data
+    assert b'id="resources-with-external-access"' in response.data
+    assert b'id="resources-with-service-account-access"' in response.data
+    assert b'id="resources-table-body"' in response.data
+    assert response.data.count(b'<th scope="col">') == 8
+    assert b'colspan="8"' in response.data
+    assert b"Open Resource" in response.data
+    assert b"assets/js/iam-sentinel-resources.js" in response.data
+    assert b"assets/js/iam-sentinel-identities.js" not in response.data
+    assert b"assets/js/iam-sentinel-findings.js" not in response.data
+
+
 def test_get_finding_detail_page_returns_investigation_shell(client) -> None:
     response = client.get("/findings/finding-low")
 
@@ -172,6 +209,33 @@ def test_get_missing_identity_detail_page_returns_not_found_shell(client) -> Non
     assert b'data-testid="identity-not-found"' in response.data
 
 
+def test_get_resource_detail_page_returns_resource_shell(client) -> None:
+    response = client.get("/resources/res-payroll-system")
+
+    assert response.status_code == 200
+    assert b"IAM Sentinel Resource" in response.data
+    assert response.data.count(b'<main id="main" class="main"') == 1
+    assert response.data.count(b"</main>") == 1
+    assert b'data-resource-id="res-payroll-system"' in response.data
+    assert b'id="resource-detail-content"' in response.data
+    assert b'id="resource-accessible-identities"' in response.data
+    assert b'id="resource-external-identities"' in response.data
+    assert b'id="resource-service-accounts"' in response.data
+    assert b'id="resource-related-findings"' in response.data
+    assert b'id="resource-not-found"' in response.data
+    assert b"assets/js/iam-sentinel-resource-detail.js" in response.data
+    assert b"assets/js/iam-sentinel-resources.js" not in response.data
+
+
+def test_get_missing_resource_detail_page_returns_not_found_shell(client) -> None:
+    response = client.get("/resources/res-missing")
+
+    assert response.status_code == 200
+    assert b'data-resource-id="res-missing"' in response.data
+    assert b'id="resource-not-found"' in response.data
+    assert b'data-testid="resource-not-found"' in response.data
+
+
 def test_get_findings_summary_returns_summary_metrics(client) -> None:
     response = client.get("/api/findings/summary")
 
@@ -220,6 +284,43 @@ def test_get_identities_includes_service_and_external_flags(client) -> None:
     assert identities_by_id["user-004"]["service_account"] is False
     assert identities_by_id["user-006"]["service_account"] is True
     assert identities_by_id["user-006"]["external_user"] is False
+
+
+def test_get_resources_returns_resource_fields(client) -> None:
+    response = client.get("/api/resources")
+
+    assert response.status_code == 200
+    resources = response.get_json()
+    assert resources
+    assert {
+        "id",
+        "name",
+        "type",
+        "sensitive",
+        "accessible_by",
+        "accessible_by_count",
+        "external_access_count",
+        "service_account_access_count",
+        "related_findings_count",
+    }.issubset(resources[0])
+
+
+def test_get_resources_includes_access_and_finding_counts(client) -> None:
+    response = client.get("/api/resources")
+
+    assert response.status_code == 200
+    resources_by_id = {
+        resource["id"]: resource
+        for resource in response.get_json()
+    }
+    customer_database = resources_by_id["res-customer-database"]
+    payroll_system = resources_by_id["res-payroll-system"]
+
+    assert customer_database["sensitive"] is True
+    assert "user-004" in customer_database["accessible_by"]
+    assert customer_database["external_access_count"] == 1
+    assert payroll_system["service_account_access_count"] == 1
+    assert payroll_system["related_findings_count"] == 1
 
 
 def test_post_analysis_run_executes_and_persists_findings(tmp_path) -> None:
@@ -314,6 +415,7 @@ def make_finding(
     severity: Severity,
     score: int,
     identity_id: str,
+    resource_id: str = "res-001",
 ) -> Finding:
     return Finding(
         id=finding_id,
@@ -321,7 +423,7 @@ def make_finding(
         severity=severity,
         score=score,
         identity_id=identity_id,
-        resource_id="res-001",
+        resource_id=resource_id,
         finding_type="test",
         description="Test description.",
         evidence=["Test evidence."],
