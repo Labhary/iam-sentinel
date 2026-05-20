@@ -27,8 +27,15 @@
     error.classList.toggle('d-none', !message);
   }
 
-  async function fetchJson(url) {
-    const response = await fetch(url);
+  function showFeedback(message, type = 'success') {
+    const feedback = document.getElementById('access-paths-feedback');
+    feedback.textContent = message;
+    feedback.className = `alert alert-${type}`;
+    feedback.classList.toggle('d-none', !message);
+  }
+
+  async function fetchJson(url, options = {}) {
+    const response = await fetch(url, options);
     if (!response.ok) {
       throw new Error(`Request failed: ${response.status}`);
     }
@@ -108,6 +115,7 @@
             <div class="btn-group btn-group-sm" role="group" aria-label="Access path actions">
               <a class="btn btn-outline-primary" href="/identities/${encodeURIComponent(accessPath.identity_id)}">Identity</a>
               <a class="btn btn-outline-secondary" href="/resources/${encodeURIComponent(accessPath.resource_id)}">Resource</a>
+              <button class="btn btn-outline-success create-review-button" type="button" data-identity-id="${escapeHtml(accessPath.identity_id)}" data-resource-id="${escapeHtml(accessPath.resource_id)}">Create Review</button>
             </div>
           </td>
         </tr>
@@ -142,6 +150,29 @@
     document.getElementById('access-path-identity-filter').addEventListener('input', refreshAccessPathsWorkbench);
     document.getElementById('access-path-resource-filter').addEventListener('input', refreshAccessPathsWorkbench);
     document.getElementById('access-path-sensitive-only').addEventListener('change', refreshAccessPathsWorkbench);
+    document.getElementById('access-paths-table-body').addEventListener('click', handleAccessPathAction);
+  }
+
+  async function handleAccessPathAction(event) {
+    const button = event.target.closest('.create-review-button');
+    if (!button) {
+      return;
+    }
+
+    showFeedback('');
+    try {
+      await fetchJson('/api/access-reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identity_id: button.dataset.identityId,
+          resource_id: button.dataset.resourceId
+        })
+      });
+      showFeedback('Access review created.');
+    } catch (error) {
+      showFeedback('An active review already exists or the review could not be created.', 'warning');
+    }
   }
 
   function initAccessPathsWorkbench() {

@@ -17,6 +17,19 @@ class FindingStatus(Enum):
     SUPPRESSED = "SUPPRESSED"
 
 
+class AccessReviewStatus(Enum):
+    OPEN = "OPEN"
+    IN_REVIEW = "IN_REVIEW"
+    COMPLETED = "COMPLETED"
+
+
+class AccessReviewDecision(Enum):
+    UNDECIDED = "UNDECIDED"
+    APPROVE = "APPROVE"
+    REVOKE = "REVOKE"
+    NEEDS_FOLLOW_UP = "NEEDS_FOLLOW_UP"
+
+
 @dataclass(frozen=True)
 class User:
     id: str
@@ -98,3 +111,16 @@ class IAMData:
     roles_by_id: dict[str, Role]
     permissions_by_id: dict[str, Permission]
     resources_by_id: dict[str, Resource]
+
+
+@dataclass(frozen=True)
+class AccessReview:
+    id: str
+    identity_id: str
+    resource_id: str
+    status: AccessReviewStatus
+    reviewer: Optional[str]
+    decision: AccessReviewDecision
+    notes: str
+    created_at: str
+    updated_at: str

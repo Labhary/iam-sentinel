@@ -177,6 +177,7 @@ def test_get_access_paths_page_returns_workbench(client) -> None:
     assert response.data.count(b'<main id="main" class="main">') == 1
     assert response.data.count(b"</main>") == 1
     assert b'id="access-paths-workbench"' in response.data
+    assert b'id="access-paths-feedback"' in response.data
     assert b'id="access-paths-search"' in response.data
     assert b'id="access-path-sensitive-only"' in response.data
     assert b'id="access-path-identity-filter"' in response.data
@@ -193,6 +194,26 @@ def test_get_access_paths_page_returns_workbench(client) -> None:
     assert b"assets/js/iam-sentinel-resources.js" not in response.data
     assert b"Access Paths" in response.data
     assert b'href="/access-paths"' in response.data
+
+
+def test_get_access_reviews_page_returns_workbench(client) -> None:
+    response = client.get("/access-reviews")
+
+    assert response.status_code == 200
+    assert b"IAM Sentinel Access Reviews" in response.data
+    assert response.data.count(b'<main id="main" class="main">') == 1
+    assert b'id="access-reviews-workbench"' in response.data
+    assert b'id="total-access-reviews"' in response.data
+    assert b'id="open-access-reviews"' in response.data
+    assert b'id="completed-access-reviews"' in response.data
+    assert b'id="revoke-access-reviews"' in response.data
+    assert b'id="access-reviews-table-body"' in response.data
+    assert response.data.count(b'<th scope="col">') == 7
+    assert b'colspan="7"' in response.data
+    assert b'id="access-review-actions-marker"' in response.data
+    assert b"assets/js/iam-sentinel-access-reviews.js" in response.data
+    assert b"Access Reviews" in response.data
+    assert b'href="/access-reviews"' in response.data
 
 
 def test_get_finding_detail_page_returns_investigation_shell(client) -> None:
@@ -430,6 +451,105 @@ def test_get_access_paths_filters_sensitive_only(client) -> None:
         path["resource_id"]
         for path in access_paths
     }
+
+
+def test_create_access_review(client) -> None:
+    response = client.post(
+        "/api/access-reviews",
+        json={
+            "identity_id": "user-004",
+            "resource_id": "res-customer-database",
+        },
+    )
+
+    assert response.status_code == 201
+    review = response.get_json()
+    assert review["identity_id"] == "user-004"
+    assert review["resource_id"] == "res-customer-database"
+    assert review["status"] == "OPEN"
+    assert review["decision"] == "UNDECIDED"
+    assert review["reviewer"] is None
+    assert review["notes"] == ""
+    assert review["created_at"]
+    assert review["updated_at"]
+
+
+def test_duplicate_active_access_review_is_prevented(client) -> None:
+    payload = {
+        "identity_id": "user-004",
+        "resource_id": "res-customer-database",
+    }
+
+    first_response = client.post("/api/access-reviews", json=payload)
+    duplicate_response = client.post("/api/access-reviews", json=payload)
+
+    assert first_response.status_code == 201
+    assert duplicate_response.status_code == 409
+    assert duplicate_response.get_json() == {
+        "error": "Active access review already exists."
+    }
+
+
+def test_update_access_review(client) -> None:
+    create_response = client.post(
+        "/api/access-reviews",
+        json={
+            "identity_id": "user-006",
+            "resource_id": "res-payroll-system",
+        },
+    )
+    review_id = create_response.get_json()["id"]
+
+    response = client.patch(
+        f"/api/access-reviews/{review_id}",
+        json={
+            "status": "COMPLETED",
+            "reviewer": "analyst@example.local",
+            "decision": "REVOKE",
+            "notes": "Payroll service account access should be removed.",
+        },
+    )
+
+    assert response.status_code == 200
+    review = response.get_json()
+    assert review["status"] == "COMPLETED"
+    assert review["reviewer"] == "analyst@example.local"
+    assert review["decision"] == "REVOKE"
+    assert review["notes"] == "Payroll service account access should be removed."
+
+
+def test_list_access_reviews(client) -> None:
+    client.post(
+        "/api/access-reviews",
+        json={
+            "identity_id": "user-004",
+            "resource_id": "res-customer-database",
+        },
+    )
+    client.post(
+        "/api/access-reviews",
+        json={
+            "identity_id": "user-006",
+            "resource_id": "res-payroll-system",
+        },
+    )
+
+    response = client.get("/api/access-reviews")
+
+    assert response.status_code == 200
+    reviews = response.get_json()
+    assert len(reviews) == 2
+    assert {
+        "id",
+        "identity_id",
+        "resource_id",
+        "status",
+        "reviewer",
+        "decision",
+        "notes",
+        "created_at",
+        "updated_at",
+    }.issubset(reviews[0])
 
 
 def test_post_analysis_run_executes_and_persists_findings(tmp_path) -> None:

@@ -1,0 +1,92 @@
+{% set active_page = 'access_reviews' %}
+{% extends "base.html" %}
+
+{% block title %}IAM Sentinel Access Reviews{% endblock %}
+
+{% block content %}
+    <div class="pagetitle">
+      <h1>IAM Sentinel Access Reviews</h1>
+      <nav>
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item active">Access Reviews</li>
+        </ol>
+      </nav>
+    </div>
+
+    <section class="section" id="access-reviews-workbench">
+      <div id="access-reviews-error" class="alert alert-danger d-none" role="alert"></div>
+      <div id="access-reviews-feedback" class="alert d-none" role="alert"></div>
+      <div id="access-reviews-loading" class="alert alert-info" role="status">Loading access review data...</div>
+
+      <div class="row">
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">Total Reviews</h5>
+              <h6 id="total-access-reviews">0</h6>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">Open Reviews</h5>
+              <h6 id="open-access-reviews">0</h6>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">Completed Reviews</h5>
+              <h6 id="completed-access-reviews">0</h6>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">Revoke Decisions</h5>
+              <h6 id="revoke-access-reviews">0</h6>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <h5 class="card-title mb-0">Access Review Workbench</h5>
+            <span id="access-reviews-count" class="text-muted small">Showing 0 reviews</span>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-hover align-middle">
+              <thead>
+                <tr>
+                  <th scope="col">identity_id</th>
+                  <th scope="col">resource_id</th>
+                  <th scope="col">status</th>
+                  <th scope="col">reviewer</th>
+                  <th scope="col">decision</th>
+                  <th scope="col">updated_at</th>
+                  <th scope="col">actions</th>
+                </tr>
+              </thead>
+              <tbody id="access-reviews-table-body">
+                <tr>
+                  <td colspan="7" class="text-muted">Loading access reviews...</td>
+                </tr>
+              </tbody>
+            </table>
+            <span id="access-review-actions-marker" class="visually-hidden">Access review actions</span>
+          </div>
+        </div>
+      </div>
+    </section>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='assets/js/iam-sentinel-access-reviews.js') }}"></script>
+{% endblock %}

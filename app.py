@@ -2,6 +2,11 @@ from pathlib import Path
 
 from flask import Flask, jsonify, render_template, request
 
+from core.access_review_store import (
+    create_access_review,
+    load_access_reviews,
+    update_access_review,
+)
 from core.analysis_runner import run_analysis
 from core.finding_store import (
     add_finding_note,
@@ -19,7 +24,15 @@ from core.graph_builder import (
     get_reachable_resources,
 )
 from core.loader import load_iam_data
-from core.models import Finding, FindingStatus, Resource, User
+from core.models import (
+    AccessReview,
+    AccessReviewDecision,
+    AccessReviewStatus,
+    Finding,
+    FindingStatus,
+    Resource,
+    User,
+)
 
 
 app = Flask(__name__)
@@ -65,6 +78,11 @@ def resources_page():
 @app.get("/access-paths")
 def access_paths_page():
     return render_template("access_paths.html")
+
+
+@app.get("/access-reviews")
+def access_reviews_page():
+    return render_template("access_reviews.html")
 
 
 @app.get("/resources/<resource_id>")
@@ -115,6 +133,52 @@ def get_access_paths():
         sensitive_only=request.args.get("sensitive_only") == "true",
     )
     return jsonify(access_paths)
+
+
+@app.get("/api/access-reviews")
+def get_access_reviews():
+    return jsonify([
+        access_review_to_dict(review)
+        for review in load_access_reviews(get_db_path())
+    ])
+
+
+@app.post("/api/access-reviews")
+def post_access_review():
+    payload = request.get_json(silent=True) or {}
+    identity_id = payload.get("identity_id")
+    resource_id = payload.get("resource_id")
+    if not identity_id or not resource_id:
+        return error_response("Missing required fields: identity_id and resource_id", 400)
+
+    review = create_access_review(get_db_path(), identity_id, resource_id)
+    if review is None:
+        return error_response("Active access review already exists.", 409)
+
+    return jsonify(access_review_to_dict(review)), 201
+
+
+@app.patch("/api/access-reviews/<review_id>")
+def patch_access_review(review_id: str):
+    payload = request.get_json(silent=True) or {}
+    try:
+        status = parse_access_review_status(payload.get("status"))
+        decision = parse_access_review_decision(payload.get("decision"))
+    except ValueError as error:
+        return error_response(str(error), 400)
+
+    review = update_access_review(
+        get_db_path(),
+        review_id,
+        status=status,
+        reviewer=payload.get("reviewer") if "reviewer" in payload else None,
+        decision=decision,
+        notes=payload.get("notes") if "notes" in payload else None,
+    )
+    if review is None:
+        return error_response("Access review not found.", 404)
+
+    return jsonify(access_review_to_dict(review))
 
 
 @app.post("/api/analysis/run")
@@ -224,6 +288,38 @@ def identity_to_dict(user: User) -> dict:
         "groups": user.groups,
         "roles": user.roles,
     }
+
+
+def access_review_to_dict(review: AccessReview) -> dict:
+    return {
+        "id": review.id,
+        "identity_id": review.identity_id,
+        "resource_id": review.resource_id,
+        "status": review.status.value,
+        "reviewer": review.reviewer,
+        "decision": review.decision.value,
+        "notes": review.notes,
+        "created_at": review.created_at,
+        "updated_at": review.updated_at,
+    }
+
+
+def parse_access_review_status(value: str | None) -> AccessReviewStatus | None:
+    if value is None:
+        return None
+    try:
+        return AccessReviewStatus(value)
+    except ValueError as exc:
+        raise ValueError("Invalid access review status.") from exc
+
+
+def parse_access_review_decision(value: str | None) -> AccessReviewDecision | None:
+    if value is None:
+        return None
+    try:
+        return AccessReviewDecision(value)
+    except ValueError as exc:
+        raise ValueError("Invalid access review decision.") from exc
 
 
 def build_resource_access(users: list[User], graph) -> dict[str, list[str]]:
