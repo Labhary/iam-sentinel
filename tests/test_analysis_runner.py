@@ -3,6 +3,7 @@ from pathlib import Path
 
 from core.analysis_runner import run_analysis
 from core.finding_store import load_findings
+from core.models import FindingStatus
 
 
 SAMPLE_DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "sample_iam.json"
@@ -53,6 +54,26 @@ def test_run_analysis_persists_findings(tmp_path) -> None:
 
     persisted_findings = load_findings(db_path)
     assert persisted_findings == result["findings"]
+
+
+def test_run_analysis_seeds_demo_findings_with_mixed_statuses(tmp_path) -> None:
+    db_path = tmp_path / "findings.db"
+
+    result = run_analysis(
+        iam_data_path=SAMPLE_DATA_PATH,
+        db_path=db_path,
+        analysis_date=FIXED_ANALYSIS_DATE,
+        execution_timestamp=FIXED_EXECUTION_TIMESTAMP,
+    )
+
+    statuses = {finding.id: finding.status for finding in result["findings"]}
+
+    assert statuses["finding-external-sensitive-user-004"] == FindingStatus.IN_PROGRESS
+    assert statuses["finding-toxic-combo-user-007"] == FindingStatus.RESOLVED
+    assert statuses["finding-service-sensitive-user-009"] == FindingStatus.SUPPRESSED
+    assert list(statuses.values()).count(FindingStatus.OPEN) > list(statuses.values()).count(
+        FindingStatus.RESOLVED
+    )
 
 
 def test_run_analysis_repeated_runs_are_deterministic_and_do_not_duplicate(tmp_path) -> None:

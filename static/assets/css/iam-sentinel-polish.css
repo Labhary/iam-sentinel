@@ -101,6 +101,39 @@
   flex-wrap: wrap;
 }
 
+#footer {
+  margin-top: 18px;
+}
+
+.dashboard-analysis-action {
+  text-align: right;
+}
+
+#last-analysis-run {
+  display: block;
+  line-height: 1.25;
+}
+
+.dashboard-chart-card {
+  min-height: 320px;
+}
+
+.dashboard-chart-card .card-body {
+  display: flex;
+  min-height: 320px;
+  flex-direction: column;
+}
+
+.dashboard-chart-wrap {
+  position: relative;
+  min-height: 220px;
+  max-height: 240px;
+}
+
+.dashboard-chart-wrap canvas {
+  max-height: 240px;
+}
+
 @media (max-width: 767.98px) {
   #main {
     padding-left: 14px;

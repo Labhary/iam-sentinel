@@ -17,10 +17,13 @@
     <section class="section">
       <div class="row mb-3">
         <div class="col-12 d-flex justify-content-end">
-          <button id="run-analysis-button" type="button" class="btn btn-primary">
-            <i class="bi bi-play-circle me-1"></i>
-            Run Analysis
-          </button>
+          <div class="dashboard-analysis-action d-flex flex-column align-items-end gap-1">
+            <button id="run-analysis-button" type="button" class="btn btn-primary">
+              <i class="bi bi-play-circle me-1"></i>
+              Run Analysis
+            </button>
+            <span id="last-analysis-run" class="text-muted small">Last analysis run: Not run in this session</span>
+          </div>
         </div>
       </div>
 
@@ -143,18 +146,53 @@
 
       <div class="row">
         <div class="col-lg-6">
-          <div class="card">
+          <div class="card dashboard-chart-card">
             <div class="card-body">
               <h5 class="card-title">Severity Distribution</h5>
-              <canvas id="severity-distribution-chart"></canvas>
+              <div class="dashboard-chart-wrap">
+                <canvas id="severity-distribution-chart"></canvas>
+              </div>
             </div>
           </div>
         </div>
         <div class="col-lg-6">
-          <div class="card">
+          <div class="card dashboard-chart-card">
             <div class="card-body">
               <h5 class="card-title">Status Distribution</h5>
-              <canvas id="status-distribution-chart"></canvas>
+              <div class="dashboard-chart-wrap">
+                <canvas id="status-distribution-chart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body">
+              <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <h5 class="card-title mb-0">Top Risk Findings</h5>
+                <span class="text-muted small">Highest risk, balanced by finding type</span>
+              </div>
+              <div class="table-responsive">
+                <table class="table table-hover align-middle table-sm">
+                  <thead>
+                    <tr>
+                      <th scope="col">Severity</th>
+                      <th scope="col">Finding</th>
+                      <th scope="col">Identity</th>
+                      <th scope="col">Score</th>
+                      <th scope="col">Link</th>
+                    </tr>
+                  </thead>
+                  <tbody id="top-risk-findings-table">
+                    <tr>
+                      <td colspan="5" class="text-muted">Preparing top risk findings table...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>

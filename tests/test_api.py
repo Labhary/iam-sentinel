@@ -149,6 +149,22 @@ def test_chart_scripts_have_single_safe_chart_creation_path(
     assert "if (!window.Chart || !canvas)" in script
 
 
+def test_dashboard_script_has_single_analysis_flow() -> None:
+    script = (
+        Path(__file__).resolve().parents[1]
+        / "static/assets/js/iam-sentinel-dashboard.js"
+    ).read_text()
+
+    assert "getTopRiskFindingsLegacy" not in script
+    assert script.count("function getTopRiskFindings(") == 1
+    assert script.count('"/api/analysis/run"') + script.count("'/api/analysis/run'") == 1
+    assert script.count("await refreshDashboard();") == 1
+    assert "renderLastAnalysisRun(result.execution_timestamp)" in script
+    assert "function formatAnalysisTimestamp(timestamp)" in script
+    assert "new Intl.DateTimeFormat('en-US'" in script
+    assert "timeZone: 'UTC'" in script
+
+
 def test_get_findings_returns_deterministic_sorted_findings(client) -> None:
     response = client.get("/api/findings")
 
@@ -178,10 +194,15 @@ def test_get_dashboard_returns_page(client) -> None:
     assert response.data.count(b'<footer id="footer" class="footer">') == 1
     assert response.data.count(b"</body>") == 1
     assert response.data.count(b"</html>") == 1
-    assert b'id="run-analysis-button"' in response.data
+    assert response.data.count(b'id="run-analysis-button"') == 1
+    assert response.data.count(b'id="last-analysis-run"') == 1
+    assert b"Last analysis run: Not run in this session" in response.data
     assert b'id="total-findings"' in response.data
     assert b'id="severity-distribution-chart"' in response.data
     assert b'id="status-distribution-chart"' in response.data
+    assert b"Top Risk Findings" in response.data
+    assert b'id="top-risk-findings-table"' in response.data
+    assert b"Preparing top risk findings table..." in response.data
     assert b"assets/js/iam-sentinel-dashboard.js" in response.data
     assert b"assets/js/iam-sentinel-findings.js" not in response.data
     assert b'id="findings-table-body"' not in response.data
