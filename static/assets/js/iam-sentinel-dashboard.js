@@ -53,13 +53,18 @@
   }
 
   function renderChart(existingChart, canvasId, labels, data, colors) {
+    const canvas = document.getElementById(canvasId);
+    if (!window.Chart || !canvas) {
+      return existingChart;
+    }
+
     if (existingChart) {
       existingChart.data.datasets[0].data = data;
       existingChart.update();
       return existingChart;
     }
 
-    return new Chart(document.getElementById(canvasId), {
+    return new Chart(canvas, {
       type: 'doughnut',
       data: {
         labels,

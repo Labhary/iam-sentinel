@@ -41,6 +41,95 @@ def client(tmp_path):
         yield test_client
 
 
+@pytest.mark.parametrize(
+    ("route", "expected_title", "expected_script"),
+    [
+        ("/dashboard", b"IAM Sentinel Dashboard", b"assets/js/iam-sentinel-dashboard.js"),
+        ("/findings", b"IAM Sentinel Findings", b"assets/js/iam-sentinel-findings.js"),
+        ("/findings/finding-low", b"IAM Sentinel Investigation", b"assets/js/iam-sentinel-finding-detail.js"),
+        ("/identities", b"IAM Sentinel Identities", b"assets/js/iam-sentinel-identities.js"),
+        ("/identities/user-004", b"IAM Sentinel Identity", b"assets/js/iam-sentinel-identity-detail.js"),
+        ("/resources", b"IAM Sentinel Resources", b"assets/js/iam-sentinel-resources.js"),
+        ("/resources/res-payroll-system", b"IAM Sentinel Resource", b"assets/js/iam-sentinel-resource-detail.js"),
+        ("/access-paths", b"IAM Sentinel Access Paths", b"assets/js/iam-sentinel-access-paths.js"),
+        ("/access-reviews", b"IAM Sentinel Access Reviews", b"assets/js/iam-sentinel-access-reviews.js"),
+        ("/reports", b"IAM Sentinel Reports", b"assets/js/iam-sentinel-reports.js"),
+    ],
+)
+def test_ui_routes_return_consistent_shell(client, route, expected_title, expected_script) -> None:
+    response = client.get(route)
+
+    assert response.status_code == 200
+    assert expected_title in response.data
+    assert response.data.count(b'<main id="main" class="main') == 1
+    assert response.data.count(b"</main>") == 1
+    assert response.data.count(b'<div class="pagetitle">') == 1
+    assert response.data.count(b"<h1>") == 1
+    assert response.data.count(b'role="status"') == 1
+    shared_helper = b"assets/js/iam-sentinel-ui.js"
+    assert response.data.count(shared_helper) == 1
+    assert response.data.count(expected_script) == 1
+    assert response.data.index(shared_helper) < response.data.index(expected_script)
+
+
+@pytest.mark.parametrize(
+    ("route", "not_found_marker"),
+    [
+        ("/findings/finding-missing", b'id="finding-not-found"'),
+        ("/identities/user-missing", b'id="identity-not-found"'),
+        ("/resources/res-missing", b'id="resource-not-found"'),
+    ],
+)
+def test_missing_detail_pages_render_not_found_state(client, route, not_found_marker) -> None:
+    response = client.get(route)
+
+    assert response.status_code == 200
+    assert response.data.count(b'<main id="main" class="main') == 1
+    assert response.data.count(b'<div class="pagetitle">') == 1
+    assert not_found_marker in response.data
+    assert b'data-testid="' in response.data
+
+
+@pytest.mark.parametrize(
+    "script_path",
+    [
+        "static/assets/js/iam-sentinel-reports.js",
+        "static/assets/js/iam-sentinel-access-reviews.js",
+    ],
+)
+def test_helper_refactored_scripts_do_not_reintroduce_local_wrappers(script_path) -> None:
+    script = (Path(__file__).resolve().parents[1] / script_path).read_text()
+
+    for wrapper_name in [
+        "escapeHtml",
+        "setText",
+        "showLoading",
+        "showError",
+        "showFeedback",
+        "fetchJson",
+    ]:
+        assert f"function {wrapper_name}" not in script
+    assert "window.IamSentinelUI" in script
+    assert "ui.fetchJson" in script
+
+
+@pytest.mark.parametrize(
+    ("script_path", "expected_chart_creations"),
+    [
+        ("static/assets/js/iam-sentinel-dashboard.js", 1),
+        ("static/assets/js/iam-sentinel-access-reviews.js", 1),
+    ],
+)
+def test_chart_scripts_have_single_safe_chart_creation_path(
+    script_path,
+    expected_chart_creations,
+) -> None:
+    script = (Path(__file__).resolve().parents[1] / script_path).read_text()
+
+    assert script.count("new Chart(") == expected_chart_creations
+    assert "if (!window.Chart || !canvas)" in script
+
+
 def test_get_findings_returns_deterministic_sorted_findings(client) -> None:
     response = client.get("/api/findings")
 

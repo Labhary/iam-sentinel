@@ -1,45 +1,16 @@
 (() => {
-  function escapeHtml(value) {
-    return String(value ?? '')
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#039;');
-  }
-
-  function setText(id, value) {
-    document.getElementById(id).textContent = value ?? '0';
-  }
-
-  function showLoading(isLoading) {
-    document.getElementById('reports-loading').classList.toggle('d-none', !isLoading);
-  }
-
-  function showError(message) {
-    const error = document.getElementById('reports-error');
-    error.textContent = message;
-    error.classList.toggle('d-none', !message);
-  }
-
-  async function fetchJson(url) {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Request failed: ${response.status}`);
-    }
-    return response.json();
-  }
+  const ui = window.IamSentinelUI;
 
   function renderMetricCards(report) {
-    setText('governance-summary-generated-at', `Generated at ${report.generated_at || ''}`);
-    setText('report-total-findings', report.total_findings);
-    setText('report-critical-findings', report.critical_findings);
-    setText('report-high-findings', report.high_findings);
-    setText('report-risky-external-identities', report.risky_external_identities);
-    setText('report-stale-reviews', report.stale_reviews);
-    setText('report-revoke-decisions', report.revoke_decisions);
-    setText('report-open-access-reviews', report.open_access_reviews);
-    setText('report-completed-access-reviews', report.completed_access_reviews);
+    ui.setText('governance-summary-generated-at', `Generated at ${report.generated_at || ''}`);
+    ui.setText('report-total-findings', report.total_findings);
+    ui.setText('report-critical-findings', report.critical_findings);
+    ui.setText('report-high-findings', report.high_findings);
+    ui.setText('report-risky-external-identities', report.risky_external_identities);
+    ui.setText('report-stale-reviews', report.stale_reviews);
+    ui.setText('report-revoke-decisions', report.revoke_decisions);
+    ui.setText('report-open-access-reviews', report.open_access_reviews);
+    ui.setText('report-completed-access-reviews', report.completed_access_reviews);
   }
 
   function renderTopList(tableId, rows, idKey) {
@@ -51,9 +22,9 @@
 
     tableBody.innerHTML = rows.slice(0, 10).map((row) => `
       <tr>
-        <td>${escapeHtml(row[idKey])}</td>
-        <td>${escapeHtml(row.finding_count)}</td>
-        <td>${escapeHtml(row.highest_score)}</td>
+        <td>${ui.escapeHtml(row[idKey])}</td>
+        <td>${ui.escapeHtml(row.finding_count)}</td>
+        <td>${ui.escapeHtml(row.highest_score)}</td>
       </tr>
     `).join('');
   }
@@ -65,15 +36,15 @@
   }
 
   async function refreshReport() {
-    showLoading(true);
-    showError('');
+    ui.toggleLoading('reports-loading', true);
+    ui.showAlert('reports-error', '');
 
     try {
-      renderReport(await fetchJson('/api/reports/governance-summary?format=json'));
+      renderReport(await ui.fetchJson('/api/reports/governance-summary?format=json'));
     } catch (error) {
-      showError('Governance summary could not be loaded.');
+      ui.showAlert('reports-error', 'Governance summary could not be loaded.');
     } finally {
-      showLoading(false);
+      ui.toggleLoading('reports-loading', false);
     }
   }
 

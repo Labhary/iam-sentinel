@@ -1,4 +1,6 @@
 (() => {
+  const ui = window.IamSentinelUI;
+
   const state = {
     reviews: [],
     metrics: null,
@@ -6,69 +8,31 @@
     statusChart: null
   };
 
-  function escapeHtml(value) {
-    return String(value ?? '')
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#039;');
-  }
-
-  function setText(id, value) {
-    document.getElementById(id).textContent = value ?? '0';
-  }
-
-  function showLoading(isLoading) {
-    document.getElementById('access-reviews-loading').classList.toggle('d-none', !isLoading);
-  }
-
-  function showError(message) {
-    const error = document.getElementById('access-reviews-error');
-    error.textContent = message;
-    error.classList.toggle('d-none', !message);
-  }
-
-  function showFeedback(message, type = 'success') {
-    const feedback = document.getElementById('access-reviews-feedback');
-    feedback.textContent = message;
-    feedback.className = `alert alert-${type}`;
-    feedback.classList.toggle('d-none', !message);
-  }
-
-  async function fetchJson(url, options = {}) {
-    const response = await fetch(url, options);
-    if (!response.ok) {
-      throw new Error(`Request failed: ${response.status}`);
-    }
-    return response.json();
-  }
-
   function renderSummary() {
     const metrics = state.metrics || {};
-    setText('total-access-reviews', metrics.total_reviews || 0);
-    setText('open-access-reviews', metrics.open_reviews || 0);
-    setText('completed-access-reviews', metrics.completed_reviews || 0);
-    setText('revoke-access-reviews', metrics.revoke_decisions || 0);
-    setText('in-review-access-reviews', metrics.in_review_reviews || 0);
-    setText('stale-access-reviews', metrics.stale_open_reviews || 0);
-    setText('needs-follow-up-access-reviews', metrics.needs_follow_up_decisions || 0);
-    setText('unique-access-reviewers', metrics.unique_reviewers || 0);
+    ui.setText('total-access-reviews', metrics.total_reviews || 0);
+    ui.setText('open-access-reviews', metrics.open_reviews || 0);
+    ui.setText('completed-access-reviews', metrics.completed_reviews || 0);
+    ui.setText('revoke-access-reviews', metrics.revoke_decisions || 0);
+    ui.setText('in-review-access-reviews', metrics.in_review_reviews || 0);
+    ui.setText('stale-access-reviews', metrics.stale_open_reviews || 0);
+    ui.setText('needs-follow-up-access-reviews', metrics.needs_follow_up_decisions || 0);
+    ui.setText('unique-access-reviewers', metrics.unique_reviewers || 0);
     document.getElementById('access-reviews-count').textContent = `Showing ${state.reviews.length} reviews`;
   }
 
   function option(value, selectedValue, label = value) {
     const selected = value === selectedValue ? 'selected' : '';
-    return `<option value="${escapeHtml(value)}" ${selected}>${escapeHtml(label)}</option>`;
+    return `<option value="${ui.escapeHtml(value)}" ${selected}>${ui.escapeHtml(label)}</option>`;
   }
 
   function renderReviews() {
     const tableBody = document.getElementById('access-reviews-table-body');
     const rows = state.reviews.length
       ? state.reviews.map((review) => `
-        <tr data-review-id="${escapeHtml(review.id)}">
-          <td><a href="/identities/${encodeURIComponent(review.identity_id)}">${escapeHtml(review.identity_id)}</a></td>
-          <td><a href="/resources/${encodeURIComponent(review.resource_id)}">${escapeHtml(review.resource_id)}</a></td>
+        <tr data-review-id="${ui.escapeHtml(review.id)}">
+          <td><a href="/identities/${encodeURIComponent(review.identity_id)}">${ui.escapeHtml(review.identity_id)}</a></td>
+          <td><a href="/resources/${encodeURIComponent(review.resource_id)}">${ui.escapeHtml(review.resource_id)}</a></td>
           <td>
             <select class="form-select form-select-sm review-status">
               ${option('OPEN', review.status)}
@@ -77,7 +41,7 @@
             </select>
           </td>
           <td>
-            <input class="form-control form-control-sm review-reviewer" type="text" value="${escapeHtml(review.reviewer || '')}" placeholder="reviewer@example.local">
+            <input class="form-control form-control-sm review-reviewer" type="text" value="${ui.escapeHtml(review.reviewer || '')}" placeholder="reviewer@example.local">
           </td>
           <td>
             <select class="form-select form-select-sm review-decision">
@@ -88,12 +52,12 @@
             </select>
           </td>
           <td>
-            ${escapeHtml(review.updated_at)}
+            ${ui.escapeHtml(review.updated_at)}
             ${review.stale ? '<span class="badge bg-warning text-dark ms-1">Stale</span>' : ''}
           </td>
           <td>
             <div class="d-flex flex-column gap-2">
-              <textarea class="form-control form-control-sm review-notes" rows="2" placeholder="Review notes">${escapeHtml(review.notes || '')}</textarea>
+              <textarea class="form-control form-control-sm review-notes" rows="2" placeholder="Review notes">${ui.escapeHtml(review.notes || '')}</textarea>
               <button class="btn btn-sm btn-outline-primary save-review-button" type="button">Save</button>
             </div>
           </td>
@@ -106,14 +70,14 @@
   function renderMetricTable(id, rows, labelKey) {
     const tableBody = document.getElementById(id);
     if (!rows || !rows.length) {
-      tableBody.innerHTML = '<tr><td class="text-muted">No data.</td></tr>';
+      tableBody.innerHTML = '<tr><td colspan="2" class="text-muted">No analytics data available.</td></tr>';
       return;
     }
 
     tableBody.innerHTML = rows.slice(0, 5).map((row) => `
       <tr>
-        <td>${escapeHtml(row[labelKey])}</td>
-        <td class="text-end">${escapeHtml(row.count)}</td>
+        <td>${ui.escapeHtml(row[labelKey])}</td>
+        <td class="text-end">${ui.escapeHtml(row.count)}</td>
       </tr>
     `).join('');
   }
@@ -159,11 +123,16 @@
   }
 
   function renderChart(existingChart, canvasId, labels, data, colors) {
+    const canvas = document.getElementById(canvasId);
+    if (!window.Chart || !canvas) {
+      return existingChart;
+    }
+
     if (existingChart) {
       existingChart.destroy();
     }
 
-    return new Chart(document.getElementById(canvasId), {
+    return new Chart(canvas, {
       type: 'doughnut',
       data: {
         labels,
@@ -184,13 +153,13 @@
   }
 
   async function refreshAccessReviews() {
-    showLoading(true);
-    showError('');
+    ui.toggleLoading('access-reviews-loading', true);
+    ui.showAlert('access-reviews-error', '');
 
     try {
       const [reviews, metrics] = await Promise.all([
-        fetchJson('/api/access-reviews'),
-        fetchJson('/api/access-review-metrics')
+        ui.fetchJson('/api/access-reviews'),
+        ui.fetchJson('/api/access-review-metrics')
       ]);
       state.reviews = reviews;
       state.metrics = metrics;
@@ -199,9 +168,9 @@
       renderCharts();
       renderReviews();
     } catch (error) {
-      showError('Access review data could not be loaded.');
+      ui.showAlert('access-reviews-error', 'Access review data could not be loaded.');
     } finally {
-      showLoading(false);
+      ui.toggleLoading('access-reviews-loading', false);
     }
   }
 
@@ -214,17 +183,17 @@
       notes: row.querySelector('.review-notes').value
     };
 
-    showFeedback('');
+    ui.showAlert('access-reviews-feedback', '', 'success');
     try {
-      await fetchJson(`/api/access-reviews/${encodeURIComponent(reviewId)}`, {
+      await ui.fetchJson(`/api/access-reviews/${encodeURIComponent(reviewId)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
       await refreshAccessReviews();
-      showFeedback('Access review updated.');
+      ui.showAlert('access-reviews-feedback', 'Access review updated.', 'success');
     } catch (error) {
-      showFeedback('Access review update failed.', 'danger');
+      ui.showAlert('access-reviews-feedback', 'Access review update failed.', 'danger');
     }
   }
 
