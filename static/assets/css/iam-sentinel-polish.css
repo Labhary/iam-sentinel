@@ -1,0 +1,119 @@
+/* IAM Sentinel product polish layered on top of NiceAdmin. */
+
+.pagetitle {
+  margin-bottom: 18px;
+}
+
+.pagetitle .breadcrumb {
+  margin-bottom: 0;
+}
+
+.section > .alert,
+.modal-body > .alert {
+  margin-bottom: 16px;
+}
+
+.card {
+  margin-bottom: 22px;
+}
+
+.card .card-title {
+  padding-bottom: 12px;
+}
+
+.card-title.mb-0 {
+  padding-bottom: 0;
+}
+
+.table-responsive {
+  border-radius: 6px;
+  overflow: auto;
+}
+
+.table {
+  margin-bottom: 0;
+}
+
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #fff;
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.075);
+}
+
+.table td,
+.table th {
+  vertical-align: middle;
+}
+
+.table td {
+  overflow-wrap: anywhere;
+}
+
+.table .btn,
+.btn-group-sm > .btn,
+.btn-sm {
+  white-space: nowrap;
+}
+
+.badge {
+  min-height: 1.55rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  line-height: 1;
+}
+
+.list-group-item,
+.card-body li,
+.modal-body li {
+  overflow-wrap: anywhere;
+}
+
+#finding-detail-risk-explanation,
+#finding-detail-attack-paths,
+#finding-detail-risk-factors,
+#finding-detail-activity,
+#resource-accessible-identities,
+#resource-external-identities,
+#resource-service-accounts,
+#identity-detail-roles,
+#identity-detail-groups {
+  overflow-wrap: anywhere;
+}
+
+#finding-detail-risk-factors li,
+#finding-detail-activity .list-group-item {
+  margin-bottom: 0.35rem;
+}
+
+.finding-row:hover,
+.table-hover tbody tr:hover {
+  background-color: #f8fbff;
+}
+
+.form-label {
+  margin-bottom: 0.35rem;
+}
+
+.btn-group {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 767.98px) {
+  #main {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .card-body {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .table-responsive {
+    margin-left: -2px;
+    margin-right: -2px;
+  }
+}

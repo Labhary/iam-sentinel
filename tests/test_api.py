@@ -42,21 +42,28 @@ def client(tmp_path):
 
 
 @pytest.mark.parametrize(
-    ("route", "expected_title", "expected_script"),
+    ("route", "expected_title", "expected_script", "loading_id", "loading_text"),
     [
-        ("/dashboard", b"IAM Sentinel Dashboard", b"assets/js/iam-sentinel-dashboard.js"),
-        ("/findings", b"IAM Sentinel Findings", b"assets/js/iam-sentinel-findings.js"),
-        ("/findings/finding-low", b"IAM Sentinel Investigation", b"assets/js/iam-sentinel-finding-detail.js"),
-        ("/identities", b"IAM Sentinel Identities", b"assets/js/iam-sentinel-identities.js"),
-        ("/identities/user-004", b"IAM Sentinel Identity", b"assets/js/iam-sentinel-identity-detail.js"),
-        ("/resources", b"IAM Sentinel Resources", b"assets/js/iam-sentinel-resources.js"),
-        ("/resources/res-payroll-system", b"IAM Sentinel Resource", b"assets/js/iam-sentinel-resource-detail.js"),
-        ("/access-paths", b"IAM Sentinel Access Paths", b"assets/js/iam-sentinel-access-paths.js"),
-        ("/access-reviews", b"IAM Sentinel Access Reviews", b"assets/js/iam-sentinel-access-reviews.js"),
-        ("/reports", b"IAM Sentinel Reports", b"assets/js/iam-sentinel-reports.js"),
+        ("/dashboard", b"IAM Sentinel Dashboard", b"assets/js/iam-sentinel-dashboard.js", b'id="dashboard-loading"', b"Loading dashboard..."),
+        ("/findings", b"IAM Sentinel Findings", b"assets/js/iam-sentinel-findings.js", b'id="findings-loading"', b"Loading findings..."),
+        ("/findings/finding-low", b"IAM Sentinel Investigation", b"assets/js/iam-sentinel-finding-detail.js", b'id="finding-detail-loading"', b"Loading finding..."),
+        ("/identities", b"IAM Sentinel Identities", b"assets/js/iam-sentinel-identities.js", b'id="identities-loading"', b"Loading identities..."),
+        ("/identities/user-004", b"IAM Sentinel Identity", b"assets/js/iam-sentinel-identity-detail.js", b'id="identity-detail-loading"', b"Loading identity..."),
+        ("/resources", b"IAM Sentinel Resources", b"assets/js/iam-sentinel-resources.js", b'id="resources-loading"', b"Loading resources..."),
+        ("/resources/res-payroll-system", b"IAM Sentinel Resource", b"assets/js/iam-sentinel-resource-detail.js", b'id="resource-detail-loading"', b"Loading resource..."),
+        ("/access-paths", b"IAM Sentinel Access Paths", b"assets/js/iam-sentinel-access-paths.js", b'id="access-paths-loading"', b"Loading access paths..."),
+        ("/access-reviews", b"IAM Sentinel Access Reviews", b"assets/js/iam-sentinel-access-reviews.js", b'id="access-reviews-loading"', b"Loading access reviews..."),
+        ("/reports", b"IAM Sentinel Reports", b"assets/js/iam-sentinel-reports.js", b'id="reports-loading"', b"Loading governance summary..."),
     ],
 )
-def test_ui_routes_return_consistent_shell(client, route, expected_title, expected_script) -> None:
+def test_ui_routes_return_consistent_shell(
+    client,
+    route,
+    expected_title,
+    expected_script,
+    loading_id,
+    loading_text,
+) -> None:
     response = client.get(route)
 
     assert response.status_code == 200
@@ -66,6 +73,18 @@ def test_ui_routes_return_consistent_shell(client, route, expected_title, expect
     assert response.data.count(b'<div class="pagetitle">') == 1
     assert response.data.count(b"<h1>") == 1
     assert response.data.count(b'role="status"') == 1
+    assert response.data.count(loading_id) == 1
+    assert response.data.count(loading_text) == 1
+    assert b"Loading dashboard data..." not in response.data
+    assert b"Loading findings data..." not in response.data
+    assert b"Loading identity data..." not in response.data
+    assert b"Loading resource data..." not in response.data
+    assert b"Loading access path data..." not in response.data
+    assert b"Loading access review data..." not in response.data
+    product_css = b"assets/css/iam-sentinel-polish.css"
+    niceadmin_css = b"assets/css/style.css"
+    assert response.data.count(product_css) == 1
+    assert response.data.index(niceadmin_css) < response.data.index(product_css)
     shared_helper = b"assets/js/iam-sentinel-ui.js"
     assert response.data.count(shared_helper) == 1
     assert response.data.count(expected_script) == 1
