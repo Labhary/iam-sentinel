@@ -1,0 +1,111 @@
+{% set active_page = 'access_paths' %}
+{% extends "base.html" %}
+
+{% block title %}IAM Sentinel Access Paths{% endblock %}
+
+{% block content %}
+    <div class="pagetitle">
+      <h1>IAM Sentinel Access Paths</h1>
+      <nav>
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item active">Access Paths</li>
+        </ol>
+      </nav>
+    </div>
+
+    <section class="section" id="access-paths-workbench">
+      <div id="access-paths-error" class="alert alert-danger d-none" role="alert"></div>
+      <div id="access-paths-loading" class="alert alert-info" role="status">Loading access path data...</div>
+
+      <div class="row">
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">Total Paths</h5>
+              <h6 id="total-access-paths">0</h6>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">Sensitive Resource Paths</h5>
+              <h6 id="sensitive-resource-paths">0</h6>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">External Identity Paths</h5>
+              <h6 id="external-identity-paths">0</h6>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">Service Account Paths</h5>
+              <h6 id="service-account-paths">0</h6>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <h5 class="card-title mb-0">Access Path Workbench</h5>
+            <span id="access-paths-count" class="text-muted small">Showing 0 of 0 paths</span>
+          </div>
+
+          <div class="row g-2 align-items-end mb-3">
+            <div class="col-lg-3 col-md-6">
+              <label for="access-paths-search" class="form-label">Search</label>
+              <input id="access-paths-search" class="form-control" type="search" placeholder="Identity, resource, path">
+            </div>
+            <div class="col-lg-3 col-md-6">
+              <label for="access-path-identity-filter" class="form-label">Identity ID</label>
+              <input id="access-path-identity-filter" class="form-control" type="text" placeholder="user-001">
+            </div>
+            <div class="col-lg-3 col-md-6">
+              <label for="access-path-resource-filter" class="form-label">Resource ID</label>
+              <input id="access-path-resource-filter" class="form-control" type="text" placeholder="res-payroll-system">
+            </div>
+            <div class="col-lg-3 col-md-6">
+              <div class="form-check">
+                <input id="access-path-sensitive-only" class="form-check-input" type="checkbox">
+                <label for="access-path-sensitive-only" class="form-check-label">Sensitive only</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-hover align-middle">
+              <thead>
+                <tr>
+                  <th scope="col">Identity</th>
+                  <th scope="col">Resource</th>
+                  <th scope="col">Sensitive</th>
+                  <th scope="col">Path Length</th>
+                  <th scope="col">Path Display</th>
+                  <th scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="access-paths-table-body">
+                <tr>
+                  <td colspan="6" class="text-muted">Loading access paths...</td>
+                </tr>
+              </tbody>
+            </table>
+            <span id="access-path-detail-links" class="visually-hidden">Access path detail links</span>
+          </div>
+        </div>
+      </div>
+    </section>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='assets/js/iam-sentinel-access-paths.js') }}"></script>
+{% endblock %}

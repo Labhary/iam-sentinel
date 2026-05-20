@@ -12,7 +12,12 @@ from core.finding_store import (
     update_finding_status,
 )
 from core.findings import summarize_findings
-from core.graph_builder import build_identity_graph, get_reachable_resources
+from core.graph_builder import (
+    build_identity_graph,
+    format_attack_path,
+    get_attack_paths,
+    get_reachable_resources,
+)
 from core.loader import load_iam_data
 from core.models import Finding, FindingStatus, Resource, User
 
@@ -57,6 +62,11 @@ def resources_page():
     return render_template("resources.html")
 
 
+@app.get("/access-paths")
+def access_paths_page():
+    return render_template("access_paths.html")
+
+
 @app.get("/resources/<resource_id>")
 def resource_detail_page(resource_id: str):
     return render_template("resource_detail.html", resource_id=resource_id)
@@ -90,6 +100,21 @@ def get_resources():
         resource_to_dict(resource, iam_data.users_by_id, resource_access, findings)
         for resource in iam_data.resources
     ])
+
+
+@app.get("/api/access-paths")
+def get_access_paths():
+    iam_data = load_iam_data(get_iam_data_path())
+    graph = build_identity_graph(iam_data)
+    access_paths = build_access_paths(
+        iam_data.users,
+        iam_data.resources_by_id,
+        graph,
+        identity_id=request.args.get("identity_id"),
+        resource_id=request.args.get("resource_id"),
+        sensitive_only=request.args.get("sensitive_only") == "true",
+    )
+    return jsonify(access_paths)
 
 
 @app.post("/api/analysis/run")
@@ -209,6 +234,54 @@ def build_resource_access(users: list[User], graph) -> dict[str, list[str]]:
         resource_id: sorted(user_ids)
         for resource_id, user_ids in resource_access.items()
     }
+
+
+def build_access_paths(
+    users: list[User],
+    resources_by_id: dict[str, Resource],
+    graph,
+    identity_id: str | None = None,
+    resource_id: str | None = None,
+    sensitive_only: bool = False,
+) -> list[dict]:
+    access_paths = []
+
+    for user in users:
+        if identity_id and user.id != identity_id:
+            continue
+
+        for reachable_resource_id in get_reachable_resources(graph, user.id):
+            if resource_id and reachable_resource_id != resource_id:
+                continue
+
+            resource = resources_by_id[reachable_resource_id]
+            if sensitive_only and not resource.sensitive:
+                continue
+
+            for path_nodes in get_attack_paths(graph, user.id, resource.id):
+                path_display = format_attack_path(graph, path_nodes)
+                access_paths.append({
+                    "identity_id": user.id,
+                    "identity_name": user.name,
+                    "identity_external_user": user.external_user,
+                    "identity_service_account": user.service_account,
+                    "resource_id": resource.id,
+                    "resource_name": resource.name,
+                    "resource_sensitive": resource.sensitive,
+                    "path_nodes": path_nodes,
+                    "path_display": path_display,
+                    "path_length": max(len(path_nodes) - 1, 0),
+                })
+
+    return sorted(
+        access_paths,
+        key=lambda path: (
+            not path["resource_sensitive"],
+            path["identity_id"],
+            path["resource_id"],
+            path["path_display"],
+        ),
+    )
 
 
 def resource_to_dict(

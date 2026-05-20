@@ -1,0 +1,153 @@
+(() => {
+  const state = {
+    accessPaths: [],
+    filteredAccessPaths: []
+  };
+
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+
+  function setText(id, value) {
+    document.getElementById(id).textContent = value ?? '0';
+  }
+
+  function showLoading(isLoading) {
+    document.getElementById('access-paths-loading').classList.toggle('d-none', !isLoading);
+  }
+
+  function showError(message) {
+    const error = document.getElementById('access-paths-error');
+    error.textContent = message;
+    error.classList.toggle('d-none', !message);
+  }
+
+  async function fetchJson(url) {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Request failed: ${response.status}`);
+    }
+    return response.json();
+  }
+
+  function getControlValue(id) {
+    return document.getElementById(id).value;
+  }
+
+  function buildApiUrl() {
+    const params = new URLSearchParams();
+    const identityId = getControlValue('access-path-identity-filter').trim();
+    const resourceId = getControlValue('access-path-resource-filter').trim();
+    const sensitiveOnly = document.getElementById('access-path-sensitive-only').checked;
+
+    if (identityId) {
+      params.set('identity_id', identityId);
+    }
+    if (resourceId) {
+      params.set('resource_id', resourceId);
+    }
+    if (sensitiveOnly) {
+      params.set('sensitive_only', 'true');
+    }
+
+    const queryString = params.toString();
+    return queryString ? `/api/access-paths?${queryString}` : '/api/access-paths';
+  }
+
+  function matchesSearch(accessPath, searchTerm) {
+    if (!searchTerm) {
+      return true;
+    }
+
+    return [
+      accessPath.identity_id,
+      accessPath.identity_name,
+      accessPath.resource_id,
+      accessPath.resource_name,
+      accessPath.path_display
+    ].some((value) => String(value ?? '').toLowerCase().includes(searchTerm));
+  }
+
+  function getFilteredAccessPaths() {
+    const searchTerm = getControlValue('access-paths-search').trim().toLowerCase();
+    return state.accessPaths.filter((accessPath) => matchesSearch(accessPath, searchTerm));
+  }
+
+  function renderSummary() {
+    setText('total-access-paths', state.accessPaths.length);
+    setText('sensitive-resource-paths', state.accessPaths.filter((path) => path.resource_sensitive).length);
+    setText('external-identity-paths', state.accessPaths.filter((path) => path.identity_external_user).length);
+    setText('service-account-paths', state.accessPaths.filter((path) => path.identity_service_account).length);
+  }
+
+  function renderAccessPathsCount() {
+    document.getElementById('access-paths-count').textContent = `Showing ${state.filteredAccessPaths.length} of ${state.accessPaths.length} paths`;
+  }
+
+  function sensitiveBadge(isSensitive) {
+    const badgeClass = isSensitive ? 'badge bg-danger' : 'badge bg-success';
+    return `<span class="${badgeClass}">${isSensitive ? 'Sensitive' : 'Not Sensitive'}</span>`;
+  }
+
+  function renderAccessPaths(accessPaths) {
+    const tableBody = document.getElementById('access-paths-table-body');
+    const rows = accessPaths.length
+      ? accessPaths.map((accessPath) => `
+        <tr>
+          <td>${escapeHtml(accessPath.identity_name)}<div class="text-muted small">${escapeHtml(accessPath.identity_id)}</div></td>
+          <td>${escapeHtml(accessPath.resource_name)}<div class="text-muted small">${escapeHtml(accessPath.resource_id)}</div></td>
+          <td>${sensitiveBadge(accessPath.resource_sensitive)}</td>
+          <td>${escapeHtml(accessPath.path_length)}</td>
+          <td>${escapeHtml(accessPath.path_display)}</td>
+          <td>
+            <div class="btn-group btn-group-sm" role="group" aria-label="Access path actions">
+              <a class="btn btn-outline-primary" href="/identities/${encodeURIComponent(accessPath.identity_id)}">Identity</a>
+              <a class="btn btn-outline-secondary" href="/resources/${encodeURIComponent(accessPath.resource_id)}">Resource</a>
+            </div>
+          </td>
+        </tr>
+      `).join('')
+      : '<tr><td colspan="6" class="text-muted">No access paths match the current filters.</td></tr>';
+    tableBody.innerHTML = rows;
+  }
+
+  function applyAccessPathSearch() {
+    state.filteredAccessPaths = getFilteredAccessPaths();
+    renderAccessPaths(state.filteredAccessPaths);
+    renderAccessPathsCount();
+  }
+
+  async function refreshAccessPathsWorkbench() {
+    showLoading(true);
+    showError('');
+
+    try {
+      state.accessPaths = await fetchJson(buildApiUrl());
+      renderSummary();
+      applyAccessPathSearch();
+    } catch (error) {
+      showError('Access path data could not be loaded.');
+    } finally {
+      showLoading(false);
+    }
+  }
+
+  function wireEvents() {
+    document.getElementById('access-paths-search').addEventListener('input', applyAccessPathSearch);
+    document.getElementById('access-path-identity-filter').addEventListener('input', refreshAccessPathsWorkbench);
+    document.getElementById('access-path-resource-filter').addEventListener('input', refreshAccessPathsWorkbench);
+    document.getElementById('access-path-sensitive-only').addEventListener('change', refreshAccessPathsWorkbench);
+  }
+
+  function initAccessPathsWorkbench() {
+    wireEvents();
+    refreshAccessPathsWorkbench();
+  }
+
+  document.addEventListener('DOMContentLoaded', initAccessPathsWorkbench);
+})();

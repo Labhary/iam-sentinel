@@ -164,6 +164,32 @@ def test_get_resources_page_returns_workbench(client) -> None:
     assert b"assets/js/iam-sentinel-findings.js" not in response.data
 
 
+def test_get_access_paths_page_returns_workbench(client) -> None:
+    response = client.get("/access-paths")
+
+    assert response.status_code == 200
+    assert b"IAM Sentinel Access Paths" in response.data
+    assert response.data.count(b'<main id="main" class="main">') == 1
+    assert response.data.count(b"</main>") == 1
+    assert b'id="access-paths-workbench"' in response.data
+    assert b'id="access-paths-search"' in response.data
+    assert b'id="access-path-sensitive-only"' in response.data
+    assert b'id="access-path-identity-filter"' in response.data
+    assert b'id="access-path-resource-filter"' in response.data
+    assert b'id="total-access-paths"' in response.data
+    assert b'id="sensitive-resource-paths"' in response.data
+    assert b'id="external-identity-paths"' in response.data
+    assert b'id="service-account-paths"' in response.data
+    assert b'id="access-paths-table-body"' in response.data
+    assert response.data.count(b'<th scope="col">') == 6
+    assert b'colspan="6"' in response.data
+    assert b'id="access-path-detail-links"' in response.data
+    assert b"assets/js/iam-sentinel-access-paths.js" in response.data
+    assert b"assets/js/iam-sentinel-resources.js" not in response.data
+    assert b"Access Paths" in response.data
+    assert b'href="/access-paths"' in response.data
+
+
 def test_get_finding_detail_page_returns_investigation_shell(client) -> None:
     response = client.get("/findings/finding-low")
 
@@ -341,6 +367,61 @@ def test_get_resources_includes_access_and_finding_counts(client) -> None:
     assert customer_database["external_access_count"] == 1
     assert payroll_system["service_account_access_count"] == 1
     assert payroll_system["related_findings_count"] == 1
+
+
+def test_get_access_paths_returns_required_fields(client) -> None:
+    response = client.get("/api/access-paths")
+
+    assert response.status_code == 200
+    access_paths = response.get_json()
+    assert access_paths
+    assert {
+        "identity_id",
+        "identity_name",
+        "resource_id",
+        "resource_name",
+        "resource_sensitive",
+        "path_nodes",
+        "path_display",
+        "path_length",
+    }.issubset(access_paths[0])
+    assert access_paths[0]["resource_sensitive"] is True
+    assert access_paths[0]["identity_id"] <= access_paths[-1]["identity_id"]
+    assert access_paths[0]["path_nodes"][0].startswith("user-")
+    assert access_paths[0]["path_nodes"][-1].startswith("res-")
+    assert " -> " in access_paths[0]["path_display"]
+    assert access_paths[0]["path_length"] == len(access_paths[0]["path_nodes"]) - 1
+
+
+def test_get_access_paths_filters_by_identity_id(client) -> None:
+    response = client.get("/api/access-paths?identity_id=user-004")
+
+    assert response.status_code == 200
+    access_paths = response.get_json()
+    assert access_paths
+    assert {path["identity_id"] for path in access_paths} == {"user-004"}
+
+
+def test_get_access_paths_filters_by_resource_id(client) -> None:
+    response = client.get("/api/access-paths?resource_id=res-payroll-system")
+
+    assert response.status_code == 200
+    access_paths = response.get_json()
+    assert access_paths
+    assert {path["resource_id"] for path in access_paths} == {"res-payroll-system"}
+
+
+def test_get_access_paths_filters_sensitive_only(client) -> None:
+    response = client.get("/api/access-paths?sensitive_only=true")
+
+    assert response.status_code == 200
+    access_paths = response.get_json()
+    assert access_paths
+    assert all(path["resource_sensitive"] is True for path in access_paths)
+    assert "res-source-repositories" not in {
+        path["resource_id"]
+        for path in access_paths
+    }
 
 
 def test_post_analysis_run_executes_and_persists_findings(tmp_path) -> None:
