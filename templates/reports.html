@@ -1,0 +1,151 @@
+{% set active_page = 'reports' %}
+{% extends "base.html" %}
+
+{% block title %}IAM Sentinel Reports{% endblock %}
+
+{% block content %}
+    <div class="pagetitle">
+      <h1>IAM Sentinel Reports</h1>
+      <nav>
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item active">Reports</li>
+        </ol>
+      </nav>
+    </div>
+
+    <section class="section" id="reports-workbench">
+      <div id="reports-error" class="alert alert-danger d-none" role="alert"></div>
+      <div id="reports-loading" class="alert alert-info" role="status">Loading governance summary...</div>
+
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <span id="governance-summary-generated-at" class="text-muted small">Generated at pending</span>
+        <div class="btn-group" role="group" aria-label="Report exports">
+          <a id="export-governance-json" class="btn btn-outline-primary" href="/api/reports/governance-summary?format=json">
+            <i class="bi bi-filetype-json me-1"></i>
+            Export JSON
+          </a>
+          <a id="export-governance-csv" class="btn btn-outline-primary" href="/api/reports/governance-summary?format=csv">
+            <i class="bi bi-filetype-csv me-1"></i>
+            Export CSV
+          </a>
+        </div>
+      </div>
+
+      <div class="row" id="governance-summary-cards">
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">Total Findings</h5>
+              <h6 id="report-total-findings">0</h6>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">Critical Findings</h5>
+              <h6 id="report-critical-findings">0</h6>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">High Findings</h5>
+              <h6 id="report-high-findings">0</h6>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">Risky External Identities</h5>
+              <h6 id="report-risky-external-identities">0</h6>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">Stale Reviews</h5>
+              <h6 id="report-stale-reviews">0</h6>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">Revoke Decisions</h5>
+              <h6 id="report-revoke-decisions">0</h6>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">Open Access Reviews</h5>
+              <h6 id="report-open-access-reviews">0</h6>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">Completed Access Reviews</h5>
+              <h6 id="report-completed-access-reviews">0</h6>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row" id="governance-summary-tables">
+        <div class="col-lg-6">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Top Risky Resources</h5>
+              <div class="table-responsive">
+                <table class="table table-sm">
+                  <thead>
+                    <tr>
+                      <th scope="col">Resource</th>
+                      <th scope="col">Findings</th>
+                      <th scope="col">Highest Score</th>
+                    </tr>
+                  </thead>
+                  <tbody id="top-risky-resources-table">
+                    <tr><td colspan="3" class="text-muted">No risky resources.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-6">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Top Risky Identities</h5>
+              <div class="table-responsive">
+                <table class="table table-sm">
+                  <thead>
+                    <tr>
+                      <th scope="col">Identity</th>
+                      <th scope="col">Findings</th>
+                      <th scope="col">Highest Score</th>
+                    </tr>
+                  </thead>
+                  <tbody id="top-risky-identities-table">
+                    <tr><td colspan="3" class="text-muted">No risky identities.</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='assets/js/iam-sentinel-reports.js') }}"></script>
+{% endblock %}

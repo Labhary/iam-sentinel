@@ -229,6 +229,32 @@ def test_get_access_reviews_page_returns_workbench(client) -> None:
     assert b'href="/access-reviews"' in response.data
 
 
+def test_get_reports_page_returns_workbench(client) -> None:
+    response = client.get("/reports")
+
+    assert response.status_code == 200
+    assert b"IAM Sentinel Reports" in response.data
+    assert response.data.count(b'<main id="main" class="main">') == 1
+    assert b'id="reports-workbench"' in response.data
+    assert b'id="governance-summary-cards"' in response.data
+    assert b'id="report-total-findings"' in response.data
+    assert b'id="report-critical-findings"' in response.data
+    assert b'id="report-high-findings"' in response.data
+    assert b'id="report-risky-external-identities"' in response.data
+    assert b'id="report-stale-reviews"' in response.data
+    assert b'id="report-revoke-decisions"' in response.data
+    assert b'id="report-open-access-reviews"' in response.data
+    assert b'id="report-completed-access-reviews"' in response.data
+    assert b'id="governance-summary-tables"' in response.data
+    assert b'id="top-risky-resources-table"' in response.data
+    assert b'id="top-risky-identities-table"' in response.data
+    assert b'id="export-governance-json"' in response.data
+    assert b'id="export-governance-csv"' in response.data
+    assert b"assets/js/iam-sentinel-reports.js" in response.data
+    assert b"Reports" in response.data
+    assert b'href="/reports"' in response.data
+
+
 def test_get_finding_detail_page_returns_investigation_shell(client) -> None:
     response = client.get("/findings/finding-low")
 
@@ -663,6 +689,73 @@ def test_access_review_metrics_uses_deterministic_ordering(client) -> None:
     assert metrics["reviews_per_reviewer"] == [
         {"reviewer": "analyst-a@example.local", "count": 2},
         {"reviewer": "analyst-b@example.local", "count": 1},
+    ]
+
+
+def test_governance_summary_report_returns_required_fields(client) -> None:
+    response = client.get("/api/reports/governance-summary")
+
+    assert response.status_code == 200
+    report = response.get_json()
+    assert {
+        "generated_at",
+        "total_findings",
+        "critical_findings",
+        "high_findings",
+        "risky_external_identities",
+        "stale_reviews",
+        "revoke_decisions",
+        "top_risky_resources",
+        "top_risky_identities",
+        "open_access_reviews",
+        "completed_access_reviews",
+    }.issubset(report)
+    assert report["total_findings"] == 2
+    assert report["critical_findings"] == 1
+    assert report["top_risky_resources"]
+    assert report["top_risky_identities"]
+
+
+def test_governance_summary_csv_export_content_type(client) -> None:
+    response = client.get("/api/reports/governance-summary?format=csv")
+
+    assert response.status_code == 200
+    assert response.content_type.startswith("text/csv")
+    assert b"generated_at,total_findings,critical_findings" in response.data
+    assert b"top_risky_resources,top_risky_identities" in response.data
+
+
+def test_governance_summary_uses_deterministic_top_list_ordering(tmp_path) -> None:
+    db_path = tmp_path / "report_findings.db"
+    app.config["TESTING"] = True
+    app.config["FINDINGS_DB_PATH"] = db_path
+    app.config["IAM_DATA_PATH"] = (
+        Path(__file__).resolve().parents[1] / "data" / "sample_iam.json"
+    )
+    save_findings(
+        db_path,
+        [
+            make_finding("finding-z", Severity.HIGH, 80, "user-010", "res-z"),
+            make_finding("finding-a", Severity.HIGH, 70, "user-001", "res-a"),
+            make_finding("finding-z-2", Severity.CRITICAL, 95, "user-001", "res-z"),
+            make_finding("finding-b", Severity.LOW, 25, "user-002", "res-b"),
+        ],
+    )
+
+    with app.test_client() as test_client:
+        response = test_client.get("/api/reports/governance-summary")
+
+    assert response.status_code == 200
+    report = response.get_json()
+    assert report["top_risky_resources"] == [
+        {"resource_id": "res-z", "finding_count": 2, "highest_score": 95},
+        {"resource_id": "res-a", "finding_count": 1, "highest_score": 70},
+        {"resource_id": "res-b", "finding_count": 1, "highest_score": 25},
+    ]
+    assert report["top_risky_identities"] == [
+        {"identity_id": "user-001", "finding_count": 2, "highest_score": 95},
+        {"identity_id": "user-002", "finding_count": 1, "highest_score": 25},
+        {"identity_id": "user-010", "finding_count": 1, "highest_score": 80},
     ]
 
 

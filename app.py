@@ -1,6 +1,9 @@
+import csv
+from datetime import datetime, timezone
+from io import StringIO
 from pathlib import Path
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, Response, jsonify, render_template, request
 
 from core.access_review_store import (
     build_access_review_metrics,
@@ -87,6 +90,11 @@ def access_reviews_page():
     return render_template("access_reviews.html")
 
 
+@app.get("/reports")
+def reports_page():
+    return render_template("reports.html")
+
+
 @app.get("/resources/<resource_id>")
 def resource_detail_page(resource_id: str):
     return render_template("resource_detail.html", resource_id=resource_id)
@@ -148,6 +156,17 @@ def get_access_reviews():
 @app.get("/api/access-review-metrics")
 def get_access_review_metrics():
     return jsonify(build_access_review_metrics(load_access_reviews(get_db_path())))
+
+
+@app.get("/api/reports/governance-summary")
+def get_governance_summary_report():
+    report = build_governance_summary_report()
+    report_format = request.args.get("format", "json")
+    if report_format == "csv":
+        return governance_summary_csv_response(report)
+    if report_format != "json":
+        return error_response("Invalid report format.", 400)
+    return jsonify(report)
 
 
 @app.post("/api/access-reviews")
@@ -295,6 +314,135 @@ def identity_to_dict(user: User) -> dict:
         "groups": user.groups,
         "roles": user.roles,
     }
+
+
+def build_governance_summary_report() -> dict:
+    findings = load_findings(get_db_path())
+    reviews = load_access_reviews(get_db_path())
+    review_metrics = build_access_review_metrics(reviews)
+    iam_data = load_iam_data(get_iam_data_path())
+    external_user_ids = {
+        user.id
+        for user in iam_data.users
+        if user.external_user
+    }
+
+    return {
+        "generated_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+        "total_findings": len(findings),
+        "critical_findings": sum(1 for finding in findings if finding.severity.value == "CRITICAL"),
+        "high_findings": sum(1 for finding in findings if finding.severity.value == "HIGH"),
+        "risky_external_identities": len({
+            finding.identity_id
+            for finding in findings
+            if finding.identity_id in external_user_ids
+        }),
+        "stale_reviews": review_metrics["stale_open_reviews"],
+        "revoke_decisions": review_metrics["revoke_decisions"],
+        "top_risky_resources": build_top_risky_resources(findings),
+        "top_risky_identities": build_top_risky_identities(findings),
+        "open_access_reviews": review_metrics["open_reviews"] + review_metrics["in_review_reviews"],
+        "completed_access_reviews": review_metrics["completed_reviews"],
+    }
+
+
+def build_top_risky_resources(findings: list[Finding]) -> list[dict]:
+    resource_rows: dict[str, dict] = {}
+    for finding in findings:
+        if not finding.resource_id:
+            continue
+        row = resource_rows.setdefault(
+            finding.resource_id,
+            {
+                "resource_id": finding.resource_id,
+                "finding_count": 0,
+                "highest_score": 0,
+            },
+        )
+        row["finding_count"] += 1
+        row["highest_score"] = max(row["highest_score"], finding.score)
+
+    return sorted(
+        resource_rows.values(),
+        key=lambda row: (-row["finding_count"], row["resource_id"]),
+    )
+
+
+def build_top_risky_identities(findings: list[Finding]) -> list[dict]:
+    identity_rows: dict[str, dict] = {}
+    for finding in findings:
+        row = identity_rows.setdefault(
+            finding.identity_id,
+            {
+                "identity_id": finding.identity_id,
+                "finding_count": 0,
+                "highest_score": 0,
+            },
+        )
+        row["finding_count"] += 1
+        row["highest_score"] = max(row["highest_score"], finding.score)
+
+    return sorted(
+        identity_rows.values(),
+        key=lambda row: (-row["finding_count"], row["identity_id"]),
+    )
+
+
+def governance_summary_csv_response(report: dict) -> Response:
+    output = StringIO()
+    writer = csv.DictWriter(
+        output,
+        fieldnames=[
+            "generated_at",
+            "total_findings",
+            "critical_findings",
+            "high_findings",
+            "risky_external_identities",
+            "stale_reviews",
+            "revoke_decisions",
+            "open_access_reviews",
+            "completed_access_reviews",
+            "top_risky_resources",
+            "top_risky_identities",
+        ],
+    )
+    writer.writeheader()
+    writer.writerow({
+        **{
+            key: report[key]
+            for key in [
+                "generated_at",
+                "total_findings",
+                "critical_findings",
+                "high_findings",
+                "risky_external_identities",
+                "stale_reviews",
+                "revoke_decisions",
+                "open_access_reviews",
+                "completed_access_reviews",
+            ]
+        },
+        "top_risky_resources": format_top_list_for_csv(
+            report["top_risky_resources"],
+            "resource_id",
+        ),
+        "top_risky_identities": format_top_list_for_csv(
+            report["top_risky_identities"],
+            "identity_id",
+        ),
+    })
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=governance-summary.csv"},
+    )
+
+
+def format_top_list_for_csv(rows: list[dict], id_key: str) -> str:
+    return "; ".join(
+        f"{row[id_key]} ({row['finding_count']} findings, max score {row['highest_score']})"
+        for row in rows
+    )
 
 
 def access_review_to_dict(review: AccessReview) -> dict:
