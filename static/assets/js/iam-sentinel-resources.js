@@ -94,7 +94,7 @@
           <td>${escapeHtml(resource.service_account_access_count)}</td>
           <td>${escapeHtml(resource.related_findings_count)}</td>
           <td>
-            <a class="btn btn-sm btn-outline-primary" href="/resources/${encodeURIComponent(resource.id)}">Open Resource</a>
+            <a class="btn btn-sm btn-outline-primary" href="/resources/${encodeURIComponent(resource.id)}">${escapeHtml(resource.id)}</a>
           </td>
         </tr>
       `).join('')

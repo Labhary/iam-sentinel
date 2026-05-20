@@ -103,7 +103,7 @@
           <td>${escapeHtml((identity.roles || []).length)}</td>
           <td>${escapeHtml((identity.groups || []).length)}</td>
           <td>
-            <a class="btn btn-sm btn-outline-primary" href="/identities/${encodeURIComponent(identity.id)}">Open Identity</a>
+            <a class="btn btn-sm btn-outline-primary" href="/identities/${encodeURIComponent(identity.id)}">${escapeHtml(identity.id)}</a>
           </td>
         </tr>
       `).join('')

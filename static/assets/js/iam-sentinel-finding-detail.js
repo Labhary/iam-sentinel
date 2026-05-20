@@ -84,6 +84,10 @@
 
     setText('finding-detail-title', finding.title);
     setText('finding-detail-meta', `${finding.id} | ${finding.identity_id}`);
+    document.getElementById('finding-detail-links').innerHTML = `
+      <a class="btn btn-sm btn-outline-primary" href="/identities/${encodeURIComponent(finding.identity_id)}">Identity ${escapeHtml(finding.identity_id)}</a>
+      ${finding.resource_id ? `<a class="btn btn-sm btn-outline-primary" href="/resources/${encodeURIComponent(finding.resource_id)}">Resource ${escapeHtml(finding.resource_id)}</a>` : ''}
+    `;
     document.getElementById('finding-detail-severity').innerHTML = `<span class="${severityClass}">${escapeHtml(finding.severity)}</span>`;
     setText('finding-detail-score', finding.score);
     setText('finding-detail-status', finding.status);

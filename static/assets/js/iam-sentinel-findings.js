@@ -136,7 +136,7 @@
             </td>
             <td><span class="${badgeClass}">${severity}</span></td>
             <td>${escapeHtml(finding.title)}</td>
-            <td>${escapeHtml(finding.identity_id)}</td>
+            <td><a class="identity-link" href="/identities/${encodeURIComponent(finding.identity_id)}">${escapeHtml(finding.identity_id)}</a></td>
             <td>${escapeHtml(finding.score)}</td>
             <td>${escapeHtml(finding.status)}</td>
             <td>${escapeHtml(finding.owner || 'Unassigned')}</td>
@@ -200,6 +200,10 @@
     const severityClass = severityBadgeClasses[finding.severity] || 'badge bg-secondary';
     document.getElementById('finding-detail-title').textContent = finding.title;
     document.getElementById('finding-detail-meta').textContent = `${finding.id} | ${finding.identity_id}`;
+    document.getElementById('finding-detail-links').innerHTML = `
+      <a class="btn btn-sm btn-outline-primary" href="/identities/${encodeURIComponent(finding.identity_id)}">Identity ${escapeHtml(finding.identity_id)}</a>
+      ${finding.resource_id ? `<a class="btn btn-sm btn-outline-primary" href="/resources/${encodeURIComponent(finding.resource_id)}">Resource ${escapeHtml(finding.resource_id)}</a>` : ''}
+    `;
     document.getElementById('finding-detail-severity').innerHTML = `<span class="${severityClass}">${escapeHtml(finding.severity)}</span>`;
     document.getElementById('finding-detail-score').textContent = finding.score;
     document.getElementById('finding-detail-status').textContent = finding.status;
@@ -411,7 +415,7 @@
   }
 
   function handleTableClick(event) {
-    if (event.target.closest('.finding-checkbox, .investigation-link')) {
+    if (event.target.closest('.finding-checkbox, .investigation-link, .identity-link')) {
       return;
     }
 

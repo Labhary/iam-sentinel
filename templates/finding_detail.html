@@ -12,9 +12,8 @@
             <h1>IAM Sentinel Investigation</h1>
             <nav>
               <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="/">Home</a></li>
                 <li class="breadcrumb-item"><a href="/findings">Findings</a></li>
-                <li class="breadcrumb-item active">Investigation</li>
+                <li class="breadcrumb-item active">{{ finding_id }}</li>
               </ol>
             </nav>
           </div>
@@ -41,6 +40,9 @@
                     <div>
                       <h5 class="card-title mb-1" id="finding-detail-title">Finding Detail</h5>
                       <div class="small text-muted" id="finding-detail-meta"></div>
+                      <div id="finding-detail-links" class="d-flex flex-wrap gap-2 mt-2">
+                        <span class="visually-hidden">Identity and resource links</span>
+                      </div>
                     </div>
                     <span id="finding-detail-severity"></span>
                   </div>

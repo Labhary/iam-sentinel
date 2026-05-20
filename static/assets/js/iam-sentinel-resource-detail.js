@@ -88,12 +88,12 @@
       return `
         <tr>
           <td><span class="${severityClass}">${escapeHtml(finding.severity)}</span></td>
-          <td>${escapeHtml(finding.title)}</td>
+          <td><a href="/findings/${encodeURIComponent(finding.id)}">${escapeHtml(finding.title)}</a></td>
           <td>${escapeHtml(finding.identity_id)}</td>
           <td>${escapeHtml(finding.score)}</td>
           <td>${escapeHtml(finding.status)}</td>
           <td>
-            <a class="btn btn-sm btn-outline-primary" href="/findings/${encodeURIComponent(finding.id)}">Open Finding</a>
+            <a class="btn btn-sm btn-outline-primary" href="/findings/${encodeURIComponent(finding.id)}">${escapeHtml(finding.id)}</a>
           </td>
         </tr>
       `;

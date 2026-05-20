@@ -98,6 +98,11 @@ def test_get_findings_page_returns_workbench(client) -> None:
     assert b'colspan="8"' in response.data
     assert b'colspan="7"' not in response.data
     assert b"Open Investigation" in response.data
+    assert b'id="finding-identity-link-marker"' in response.data
+    assert response.data.count(b'id="finding-detail-links"') == 1
+    assert b"Open Identity Open Resource" not in response.data
+    assert b"Open Identity" not in response.data
+    assert b"Open Resource" not in response.data
     assert response.data.count(b'id="select-all-findings"') == 1
     assert response.data.count(b'id="bulk-status-button"') == 1
     assert response.data.count(b'id="bulk-owner-button"') == 1
@@ -128,7 +133,7 @@ def test_get_identities_page_returns_workbench(client) -> None:
     assert b'id="identities-table-body"' in response.data
     assert response.data.count(b'<th scope="col">') == 9
     assert b'colspan="9"' in response.data
-    assert b"Open Identity" in response.data
+    assert b'id="identity-detail-link-marker"' in response.data
     assert b"assets/js/iam-sentinel-identities.js" in response.data
     assert b"assets/js/iam-sentinel-findings.js" not in response.data
     assert b"assets/js/iam-sentinel-dashboard.js" not in response.data
@@ -153,7 +158,7 @@ def test_get_resources_page_returns_workbench(client) -> None:
     assert b'id="resources-table-body"' in response.data
     assert response.data.count(b'<th scope="col">') == 8
     assert b'colspan="8"' in response.data
-    assert b"Open Resource" in response.data
+    assert b'id="resource-detail-link-marker"' in response.data
     assert b"assets/js/iam-sentinel-resources.js" in response.data
     assert b"assets/js/iam-sentinel-identities.js" not in response.data
     assert b"assets/js/iam-sentinel-findings.js" not in response.data
@@ -168,6 +173,12 @@ def test_get_finding_detail_page_returns_investigation_shell(client) -> None:
     assert response.data.count(b"</main>") == 1
     assert b'data-finding-id="finding-low"' in response.data
     assert b'id="finding-detail-content"' in response.data
+    assert b'<a href="/dashboard">Dashboard</a>' not in response.data
+    assert b'<a href="/findings">Findings</a>' in response.data
+    assert b'finding-low' in response.data
+    assert response.data.count(b'id="finding-detail-links"') == 1
+    assert b"Identity and resource links" in response.data
+    assert b"Open Identity Open Resource" not in response.data
     assert b'id="finding-not-found"' in response.data
     assert b"assets/js/iam-sentinel-finding-detail.js" in response.data
     assert b"assets/js/iam-sentinel-findings.js" not in response.data
@@ -191,10 +202,14 @@ def test_get_identity_detail_page_returns_identity_shell(client) -> None:
     assert response.data.count(b'<main id="main" class="main"') == 1
     assert response.data.count(b"</main>") == 1
     assert b'data-identity-id="user-004"' in response.data
+    assert b'<a href="/dashboard">Dashboard</a>' not in response.data
+    assert b'<a href="/identities">Identities</a>' in response.data
+    assert b'user-004' in response.data
     assert b'id="identity-detail-content"' in response.data
     assert b'id="identity-detail-roles"' in response.data
     assert b'id="identity-detail-groups"' in response.data
     assert b'id="identity-related-findings"' in response.data
+    assert b'id="identity-finding-link-marker"' in response.data
     assert b'id="identity-not-found"' in response.data
     assert b"assets/js/iam-sentinel-identity-detail.js" in response.data
     assert b"assets/js/iam-sentinel-identities.js" not in response.data
@@ -217,11 +232,16 @@ def test_get_resource_detail_page_returns_resource_shell(client) -> None:
     assert response.data.count(b'<main id="main" class="main"') == 1
     assert response.data.count(b"</main>") == 1
     assert b'data-resource-id="res-payroll-system"' in response.data
+    assert b'<a href="/dashboard">Dashboard</a>' not in response.data
+    assert b'<a href="/resources">Resources</a>' in response.data
+    assert b'res-payroll-system' in response.data
     assert b'id="resource-detail-content"' in response.data
     assert b'id="resource-accessible-identities"' in response.data
     assert b'id="resource-external-identities"' in response.data
     assert b'id="resource-service-accounts"' in response.data
     assert b'id="resource-related-findings"' in response.data
+    assert b'id="resource-identity-link-marker"' in response.data
+    assert b'id="resource-finding-link-marker"' in response.data
     assert b'id="resource-not-found"' in response.data
     assert b"assets/js/iam-sentinel-resource-detail.js" in response.data
     assert b"assets/js/iam-sentinel-resources.js" not in response.data

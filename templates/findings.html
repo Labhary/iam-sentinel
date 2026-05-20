@@ -125,6 +125,7 @@
                   </tbody>
                 </table>
                 <span id="open-investigation-marker" class="visually-hidden">Open Investigation</span>
+                <span id="finding-identity-link-marker" class="visually-hidden">Identity ID links</span>
               </div>
             </div>
           </div>
@@ -142,7 +143,12 @@
             <h5 class="modal-title" id="finding-detail-title">Finding Detail</h5>
             <div class="small text-muted" id="finding-detail-meta"></div>
           </div>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <div class="d-flex align-items-center gap-2">
+            <div id="finding-detail-links" class="d-flex flex-wrap gap-2">
+              <span class="visually-hidden">Identity and resource links</span>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
         </div>
         <div class="modal-body">
           <div id="finding-action-feedback" class="alert d-none" role="alert"></div>

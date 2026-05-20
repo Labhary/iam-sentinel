@@ -12,9 +12,8 @@
             <h1>IAM Sentinel Identity</h1>
             <nav>
               <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="/">Home</a></li>
                 <li class="breadcrumb-item"><a href="/identities">Identities</a></li>
-                <li class="breadcrumb-item active">Identity</li>
+                <li class="breadcrumb-item active">{{ identity_id }}</li>
               </ol>
             </nav>
           </div>
@@ -88,6 +87,7 @@
               <div class="card">
                 <div class="card-body">
                   <h5 class="card-title">Related Findings</h5>
+                  <span id="identity-finding-link-marker" class="visually-hidden">Finding detail links</span>
                   <div class="table-responsive">
                     <table class="table table-hover align-middle">
                       <thead>
