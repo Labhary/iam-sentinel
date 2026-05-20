@@ -1,5 +1,6 @@
 import sqlite3
 import uuid
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -10,6 +11,7 @@ ACTIVE_REVIEW_STATUSES = {
     AccessReviewStatus.OPEN.value,
     AccessReviewStatus.IN_REVIEW.value,
 }
+STALE_REVIEW_DAYS = 7
 
 
 def initialize_access_review_database(db_path: str | Path) -> None:
@@ -177,6 +179,92 @@ def active_review_exists(
         ).fetchone()
 
     return row is not None
+
+
+def build_access_review_metrics(
+    reviews: list[AccessReview],
+    reference_time: datetime | None = None,
+) -> dict:
+    reviewer_counts = Counter(
+        normalize_reviewer(review.reviewer)
+        for review in reviews
+    )
+    resource_counts = Counter(review.resource_id for review in reviews)
+    identity_counts = Counter(review.identity_id for review in reviews)
+    reviewers = {
+        review.reviewer
+        for review in reviews
+        if review.reviewer
+    }
+
+    return {
+        "total_reviews": len(reviews),
+        "open_reviews": count_status(reviews, AccessReviewStatus.OPEN),
+        "in_review_reviews": count_status(reviews, AccessReviewStatus.IN_REVIEW),
+        "completed_reviews": count_status(reviews, AccessReviewStatus.COMPLETED),
+        "approve_decisions": count_decision(reviews, AccessReviewDecision.APPROVE),
+        "revoke_decisions": count_decision(reviews, AccessReviewDecision.REVOKE),
+        "needs_follow_up_decisions": count_decision(
+            reviews,
+            AccessReviewDecision.NEEDS_FOLLOW_UP,
+        ),
+        "undecided_reviews": count_decision(reviews, AccessReviewDecision.UNDECIDED),
+        "stale_open_reviews": sum(
+            1
+            for review in reviews
+            if is_access_review_stale(review, reference_time)
+        ),
+        "unique_reviewers": len(reviewers),
+        "reviews_per_reviewer": format_counter(reviewer_counts, "reviewer"),
+        "most_reviewed_resources": format_counter(resource_counts, "resource_id"),
+        "most_reviewed_identities": format_counter(identity_counts, "identity_id"),
+    }
+
+
+def is_access_review_stale(
+    review: AccessReview,
+    reference_time: datetime | None = None,
+) -> bool:
+    if review.status.value not in ACTIVE_REVIEW_STATUSES:
+        return False
+
+    resolved_reference_time = reference_time or datetime.now(timezone.utc)
+    updated_at = parse_timestamp(review.updated_at)
+    return (resolved_reference_time - updated_at).days > STALE_REVIEW_DAYS
+
+
+def count_status(reviews: list[AccessReview], status: AccessReviewStatus) -> int:
+    return sum(1 for review in reviews if review.status == status)
+
+
+def count_decision(reviews: list[AccessReview], decision: AccessReviewDecision) -> int:
+    return sum(1 for review in reviews if review.decision == decision)
+
+
+def format_counter(counter: Counter, key_name: str) -> list[dict]:
+    return [
+        {
+            key_name: item_id,
+            "count": count,
+        }
+        for item_id, count in sorted(
+            counter.items(),
+            key=lambda item: (-item[1], item[0]),
+        )
+    ]
+
+
+def normalize_reviewer(reviewer: str | None) -> str:
+    if not reviewer:
+        return "Unassigned"
+    return reviewer
+
+
+def parse_timestamp(timestamp: str) -> datetime:
+    parsed = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
 
 
 def connect(db_path: str | Path) -> sqlite3.Connection:

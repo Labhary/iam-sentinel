@@ -1,6 +1,9 @@
 (() => {
   const state = {
-    reviews: []
+    reviews: [],
+    metrics: null,
+    decisionChart: null,
+    statusChart: null
   };
 
   function escapeHtml(value) {
@@ -42,10 +45,15 @@
   }
 
   function renderSummary() {
-    setText('total-access-reviews', state.reviews.length);
-    setText('open-access-reviews', state.reviews.filter((review) => review.status === 'OPEN' || review.status === 'IN_REVIEW').length);
-    setText('completed-access-reviews', state.reviews.filter((review) => review.status === 'COMPLETED').length);
-    setText('revoke-access-reviews', state.reviews.filter((review) => review.decision === 'REVOKE').length);
+    const metrics = state.metrics || {};
+    setText('total-access-reviews', metrics.total_reviews || 0);
+    setText('open-access-reviews', metrics.open_reviews || 0);
+    setText('completed-access-reviews', metrics.completed_reviews || 0);
+    setText('revoke-access-reviews', metrics.revoke_decisions || 0);
+    setText('in-review-access-reviews', metrics.in_review_reviews || 0);
+    setText('stale-access-reviews', metrics.stale_open_reviews || 0);
+    setText('needs-follow-up-access-reviews', metrics.needs_follow_up_decisions || 0);
+    setText('unique-access-reviewers', metrics.unique_reviewers || 0);
     document.getElementById('access-reviews-count').textContent = `Showing ${state.reviews.length} reviews`;
   }
 
@@ -79,7 +87,10 @@
               ${option('NEEDS_FOLLOW_UP', review.decision)}
             </select>
           </td>
-          <td>${escapeHtml(review.updated_at)}</td>
+          <td>
+            ${escapeHtml(review.updated_at)}
+            ${review.stale ? '<span class="badge bg-warning text-dark ms-1">Stale</span>' : ''}
+          </td>
           <td>
             <div class="d-flex flex-column gap-2">
               <textarea class="form-control form-control-sm review-notes" rows="2" placeholder="Review notes">${escapeHtml(review.notes || '')}</textarea>
@@ -92,13 +103,100 @@
     tableBody.innerHTML = rows;
   }
 
+  function renderMetricTable(id, rows, labelKey) {
+    const tableBody = document.getElementById(id);
+    if (!rows || !rows.length) {
+      tableBody.innerHTML = '<tr><td class="text-muted">No data.</td></tr>';
+      return;
+    }
+
+    tableBody.innerHTML = rows.slice(0, 5).map((row) => `
+      <tr>
+        <td>${escapeHtml(row[labelKey])}</td>
+        <td class="text-end">${escapeHtml(row.count)}</td>
+      </tr>
+    `).join('');
+  }
+
+  function renderAnalyticsTables() {
+    const metrics = state.metrics || {};
+    renderMetricTable('top-reviewed-resources-table', metrics.most_reviewed_resources, 'resource_id');
+    renderMetricTable('top-reviewed-identities-table', metrics.most_reviewed_identities, 'identity_id');
+    renderMetricTable('reviewer-workload-table', metrics.reviews_per_reviewer, 'reviewer');
+  }
+
+  function renderCharts() {
+    if (!window.Chart || !state.metrics) {
+      return;
+    }
+
+    const decisionData = [
+      state.metrics.approve_decisions,
+      state.metrics.revoke_decisions,
+      state.metrics.needs_follow_up_decisions,
+      state.metrics.undecided_reviews
+    ];
+    const statusData = [
+      state.metrics.open_reviews,
+      state.metrics.in_review_reviews,
+      state.metrics.completed_reviews
+    ];
+
+    state.decisionChart = renderChart(
+      state.decisionChart,
+      'access-review-decision-chart',
+      ['Approve', 'Revoke', 'Needs Follow-up', 'Undecided'],
+      decisionData,
+      ['#198754', '#dc3545', '#ffc107', '#6c757d']
+    );
+    state.statusChart = renderChart(
+      state.statusChart,
+      'access-review-status-chart',
+      ['Open', 'In Review', 'Completed'],
+      statusData,
+      ['#0d6efd', '#ffc107', '#198754']
+    );
+  }
+
+  function renderChart(existingChart, canvasId, labels, data, colors) {
+    if (existingChart) {
+      existingChart.destroy();
+    }
+
+    return new Chart(document.getElementById(canvasId), {
+      type: 'doughnut',
+      data: {
+        labels,
+        datasets: [{
+          data,
+          backgroundColor: colors
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            position: 'bottom'
+          }
+        }
+      }
+    });
+  }
+
   async function refreshAccessReviews() {
     showLoading(true);
     showError('');
 
     try {
-      state.reviews = await fetchJson('/api/access-reviews');
+      const [reviews, metrics] = await Promise.all([
+        fetchJson('/api/access-reviews'),
+        fetchJson('/api/access-review-metrics')
+      ]);
+      state.reviews = reviews;
+      state.metrics = metrics;
       renderSummary();
+      renderAnalyticsTables();
+      renderCharts();
       renderReviews();
     } catch (error) {
       showError('Access review data could not be loaded.');

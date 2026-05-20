@@ -54,6 +54,99 @@
         </div>
       </div>
 
+      <div class="row" id="access-review-analytics-cards">
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">In Review</h5>
+              <h6 id="in-review-access-reviews">0</h6>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">Stale Reviews</h5>
+              <h6 id="stale-access-reviews">0</h6>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">Needs Follow-up</h5>
+              <h6 id="needs-follow-up-access-reviews">0</h6>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">Unique Reviewers</h5>
+              <h6 id="unique-access-reviewers">0</h6>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row" id="access-review-analytics">
+        <div class="col-lg-6">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Decision Distribution</h5>
+              <canvas id="access-review-decision-chart"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-6">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Review Status Distribution</h5>
+              <canvas id="access-review-status-chart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row" id="access-review-analytics-tables">
+        <div class="col-lg-4">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Top Reviewed Resources</h5>
+              <table class="table table-sm">
+                <tbody id="top-reviewed-resources-table">
+                  <tr><td class="text-muted">No resource review data.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Top Reviewed Identities</h5>
+              <table class="table table-sm">
+                <tbody id="top-reviewed-identities-table">
+                  <tr><td class="text-muted">No identity review data.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Reviewer Workload</h5>
+              <table class="table table-sm">
+                <tbody id="reviewer-workload-table">
+                  <tr><td class="text-muted">No reviewer workload data.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-body">
           <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">

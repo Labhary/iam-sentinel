@@ -1,4 +1,5 @@
 from pathlib import Path
+import sqlite3
 
 import pytest
 
@@ -207,6 +208,18 @@ def test_get_access_reviews_page_returns_workbench(client) -> None:
     assert b'id="open-access-reviews"' in response.data
     assert b'id="completed-access-reviews"' in response.data
     assert b'id="revoke-access-reviews"' in response.data
+    assert b'id="access-review-analytics-cards"' in response.data
+    assert b'id="in-review-access-reviews"' in response.data
+    assert b'id="stale-access-reviews"' in response.data
+    assert b'id="needs-follow-up-access-reviews"' in response.data
+    assert b'id="unique-access-reviewers"' in response.data
+    assert b'id="access-review-analytics"' in response.data
+    assert b'id="access-review-decision-chart"' in response.data
+    assert b'id="access-review-status-chart"' in response.data
+    assert b'id="access-review-analytics-tables"' in response.data
+    assert b'id="top-reviewed-resources-table"' in response.data
+    assert b'id="top-reviewed-identities-table"' in response.data
+    assert b'id="reviewer-workload-table"' in response.data
     assert b'id="access-reviews-table-body"' in response.data
     assert response.data.count(b'<th scope="col">') == 7
     assert b'colspan="7"' in response.data
@@ -550,6 +563,107 @@ def test_list_access_reviews(client) -> None:
         "created_at",
         "updated_at",
     }.issubset(reviews[0])
+
+
+def test_access_review_metrics_returns_expected_fields(client) -> None:
+    client.post(
+        "/api/access-reviews",
+        json={
+            "identity_id": "user-004",
+            "resource_id": "res-customer-database",
+        },
+    )
+
+    response = client.get("/api/access-review-metrics")
+
+    assert response.status_code == 200
+    metrics = response.get_json()
+    assert {
+        "total_reviews",
+        "open_reviews",
+        "in_review_reviews",
+        "completed_reviews",
+        "approve_decisions",
+        "revoke_decisions",
+        "needs_follow_up_decisions",
+        "undecided_reviews",
+        "stale_open_reviews",
+        "unique_reviewers",
+        "reviews_per_reviewer",
+        "most_reviewed_resources",
+        "most_reviewed_identities",
+    }.issubset(metrics)
+    assert metrics["total_reviews"] == 1
+    assert metrics["open_reviews"] == 1
+    assert metrics["undecided_reviews"] == 1
+
+
+def test_access_review_metrics_calculates_stale_reviews(client) -> None:
+    create_response = client.post(
+        "/api/access-reviews",
+        json={
+            "identity_id": "user-004",
+            "resource_id": "res-customer-database",
+        },
+    )
+    review_id = create_response.get_json()["id"]
+    with sqlite3.connect(app.config["FINDINGS_DB_PATH"]) as connection:
+        connection.execute(
+            "UPDATE access_reviews SET updated_at = ? WHERE id = ?",
+            ("2000-01-01T00:00:00+00:00", review_id),
+        )
+
+    response = client.get("/api/access-review-metrics")
+    reviews_response = client.get("/api/access-reviews")
+
+    assert response.status_code == 200
+    assert response.get_json()["stale_open_reviews"] == 1
+    assert reviews_response.get_json()[0]["stale"] is True
+
+
+def test_access_review_metrics_uses_deterministic_ordering(client) -> None:
+    first = client.post(
+        "/api/access-reviews",
+        json={"identity_id": "user-010", "resource_id": "res-z"},
+    ).get_json()
+    second = client.post(
+        "/api/access-reviews",
+        json={"identity_id": "user-001", "resource_id": "res-z"},
+    ).get_json()
+    third = client.post(
+        "/api/access-reviews",
+        json={"identity_id": "user-002", "resource_id": "res-a"},
+    ).get_json()
+    client.patch(
+        f"/api/access-reviews/{first['id']}",
+        json={"reviewer": "analyst-b@example.local", "decision": "APPROVE"},
+    )
+    client.patch(
+        f"/api/access-reviews/{second['id']}",
+        json={"reviewer": "analyst-a@example.local", "decision": "REVOKE"},
+    )
+    client.patch(
+        f"/api/access-reviews/{third['id']}",
+        json={"reviewer": "analyst-a@example.local", "decision": "NEEDS_FOLLOW_UP"},
+    )
+
+    response = client.get("/api/access-review-metrics")
+
+    assert response.status_code == 200
+    metrics = response.get_json()
+    assert metrics["most_reviewed_resources"] == [
+        {"resource_id": "res-z", "count": 2},
+        {"resource_id": "res-a", "count": 1},
+    ]
+    assert metrics["most_reviewed_identities"] == [
+        {"identity_id": "user-001", "count": 1},
+        {"identity_id": "user-002", "count": 1},
+        {"identity_id": "user-010", "count": 1},
+    ]
+    assert metrics["reviews_per_reviewer"] == [
+        {"reviewer": "analyst-a@example.local", "count": 2},
+        {"reviewer": "analyst-b@example.local", "count": 1},
+    ]
 
 
 def test_post_analysis_run_executes_and_persists_findings(tmp_path) -> None:

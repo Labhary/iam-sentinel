@@ -3,7 +3,9 @@ from pathlib import Path
 from flask import Flask, jsonify, render_template, request
 
 from core.access_review_store import (
+    build_access_review_metrics,
     create_access_review,
+    is_access_review_stale,
     load_access_reviews,
     update_access_review,
 )
@@ -141,6 +143,11 @@ def get_access_reviews():
         access_review_to_dict(review)
         for review in load_access_reviews(get_db_path())
     ])
+
+
+@app.get("/api/access-review-metrics")
+def get_access_review_metrics():
+    return jsonify(build_access_review_metrics(load_access_reviews(get_db_path())))
 
 
 @app.post("/api/access-reviews")
@@ -301,6 +308,7 @@ def access_review_to_dict(review: AccessReview) -> dict:
         "notes": review.notes,
         "created_at": review.created_at,
         "updated_at": review.updated_at,
+        "stale": is_access_review_stale(review),
     }
 
 
