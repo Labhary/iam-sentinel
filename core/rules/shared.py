@@ -118,3 +118,11 @@ def format_sensitive_resource_evidence(iam_data: IAMData, resource_ids: list[str
         for resource_id in sorted(resource_ids)
     ]
     return f"Reachable sensitive resources: {', '.join(resource_names)}."
+
+
+def format_risk_explanation(identity_name: str, risk_factors: list[str]) -> str:
+    if not risk_factors:
+        return f"{identity_name} was flagged by the detection rule."
+
+    normalized_factors = ", ".join(risk_factors)
+    return f"{identity_name} was rated at this risk level because of: {normalized_factors}."

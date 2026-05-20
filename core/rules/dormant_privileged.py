@@ -9,6 +9,7 @@ from core.rules.shared import (
     days_since_last_login,
     first_resource_id,
     format_sensitive_resource_evidence,
+    format_risk_explanation,
     get_analysis_date,
     get_formatted_attack_paths,
     get_reachable_sensitive_resources,
@@ -37,6 +38,13 @@ def detect_dormant_privileged_accounts(
             external_identity=user.external_user,
             missing_mfa=not user.mfa_enabled,
         )
+        risk_factors = ["Dormant identity", "Privileged access"]
+        if sensitive_resources:
+            risk_factors.append("Sensitive resource access")
+        if user.external_user:
+            risk_factors.append("External identity")
+        if not user.mfa_enabled:
+            risk_factors.append("Missing MFA")
 
         findings.append(
             Finding(
@@ -60,6 +68,8 @@ def detect_dormant_privileged_accounts(
                 recommendation="Review ownership and disable or remove unused privileged access.",
                 attack_paths=get_formatted_attack_paths(graph, user.id, sensitive_resources),
                 created_at=CREATED_AT,
+                risk_factors=risk_factors,
+                risk_explanation=format_risk_explanation(user.name, risk_factors),
             )
         )
 

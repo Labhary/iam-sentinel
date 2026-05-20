@@ -55,6 +55,8 @@ def test_get_findings_returns_deterministic_sorted_findings(client) -> None:
             "created_at": "2026-05-18T00:00:00Z",
         }
     ]
+    assert "risk_factors" in response.get_json()[0]
+    assert "risk_explanation" in response.get_json()[0]
 
 
 def test_get_dashboard_returns_page(client) -> None:
@@ -107,6 +109,9 @@ def test_get_findings_page_returns_workbench(client) -> None:
     assert response.data.count(b'id="bulk-status-button"') == 1
     assert response.data.count(b'id="bulk-owner-button"') == 1
     assert response.data.count(b'id="finding-detail-activity"') == 1
+    assert b'id="finding-risk-explanation-section"' in response.data
+    assert b'id="finding-detail-risk-explanation"' in response.data
+    assert b'id="finding-detail-risk-factors"' in response.data
     assert b"assets/js/iam-sentinel-findings.js" in response.data
     assert b"assets/js/iam-sentinel-dashboard.js" not in response.data
     assert b'id="run-analysis-button"' not in response.data
@@ -206,6 +211,9 @@ def test_get_finding_detail_page_returns_investigation_shell(client) -> None:
     assert b"Identity and resource links" in response.data
     assert b"Open Identity Open Resource" not in response.data
     assert b'id="finding-not-found"' in response.data
+    assert b'id="finding-risk-explanation-section"' in response.data
+    assert b'id="finding-detail-risk-explanation"' in response.data
+    assert b'id="finding-detail-risk-factors"' in response.data
     assert b"assets/js/iam-sentinel-finding-detail.js" in response.data
     assert b"assets/js/iam-sentinel-findings.js" not in response.data
     assert b"assets/js/iam-sentinel-dashboard.js" not in response.data

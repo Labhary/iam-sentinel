@@ -5,6 +5,7 @@ from core.rules.shared import (
     CREATED_AT,
     first_resource_id,
     format_sensitive_resource_evidence,
+    format_risk_explanation,
     get_formatted_attack_paths,
     get_reachable_sensitive_resources,
 )
@@ -31,6 +32,9 @@ def detect_external_identities_with_sensitive_access(
             external_identity=True,
             missing_mfa=not user.mfa_enabled,
         )
+        risk_factors = ["External identity", "Sensitive resource access"]
+        if not user.mfa_enabled:
+            risk_factors.append("Missing MFA")
 
         findings.append(
             Finding(
@@ -49,6 +53,8 @@ def detect_external_identities_with_sensitive_access(
                 recommendation="Limit external access to least privilege and require MFA.",
                 attack_paths=get_formatted_attack_paths(graph, user.id, sensitive_resources),
                 created_at=CREATED_AT,
+                risk_factors=risk_factors,
+                risk_explanation=format_risk_explanation(user.name, risk_factors),
             )
         )
 

@@ -95,12 +95,14 @@
     setText('finding-detail-created-at', finding.created_at);
     setText('finding-detail-updated-at', finding.updated_at);
     setText('finding-detail-description', finding.description);
+    setText('finding-detail-risk-explanation', finding.risk_explanation || 'No risk explanation available.');
     setText('finding-detail-recommendation', finding.recommendation);
     document.getElementById('finding-status-select').value = finding.status;
     document.getElementById('finding-owner-input').value = finding.owner || '';
     document.getElementById('finding-note-input').value = '';
 
     renderList('finding-detail-evidence', finding.evidence);
+    renderList('finding-detail-risk-factors', finding.risk_factors);
     renderList('finding-detail-attack-paths', finding.attack_paths);
     renderList('finding-detail-notes', finding.analyst_notes);
     renderActivityList(finding);

@@ -52,6 +52,36 @@ def test_new_findings_use_default_workflow_fields() -> None:
     assert finding.owner is None
     assert finding.analyst_notes == []
     assert finding.updated_at == finding.created_at
+    assert finding.risk_factors == []
+    assert finding.risk_explanation == ""
+
+
+def test_save_and_load_findings_persists_risk_explanation_fields(tmp_path) -> None:
+    db_path = tmp_path / "findings.db"
+    finding = Finding(
+        id="finding-risk",
+        title="Test finding",
+        severity=Severity.HIGH,
+        score=85,
+        identity_id="user-001",
+        resource_id="res-001",
+        finding_type="test",
+        description="Test description.",
+        evidence=["Test evidence."],
+        recommendation="Test recommendation.",
+        attack_paths=["User -> Role -> Resource"],
+        created_at="2026-05-18T00:00:00Z",
+        risk_factors=["Missing MFA", "Sensitive resource access"],
+        risk_explanation="Maya Chen was rated at this risk level because of missing MFA and sensitive access.",
+    )
+
+    save_findings(db_path, [finding])
+    loaded_finding = load_findings(db_path)[0]
+
+    assert loaded_finding.risk_factors == ["Missing MFA", "Sensitive resource access"]
+    assert loaded_finding.risk_explanation == (
+        "Maya Chen was rated at this risk level because of missing MFA and sensitive access."
+    )
 
 
 def test_save_findings_prevents_duplicate_ids(tmp_path) -> None:

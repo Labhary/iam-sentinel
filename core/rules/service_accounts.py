@@ -5,6 +5,7 @@ from core.rules.shared import (
     CREATED_AT,
     first_resource_id,
     format_sensitive_resource_evidence,
+    format_risk_explanation,
     get_formatted_attack_paths,
     get_reachable_sensitive_resources,
     is_privileged_identity,
@@ -39,6 +40,11 @@ def detect_service_accounts_with_sensitive_access(
         ]
         if is_privileged:
             evidence.append("Service account has privileged admin, manage, or administer capability.")
+        risk_factors = ["Service account", "Sensitive resource access"]
+        if is_privileged:
+            risk_factors.append("Privileged access")
+        if not user.mfa_enabled:
+            risk_factors.append("Missing MFA")
 
         findings.append(
             Finding(
@@ -54,6 +60,8 @@ def detect_service_accounts_with_sensitive_access(
                 recommendation="Review service account ownership and restrict access to required resources.",
                 attack_paths=get_formatted_attack_paths(graph, user.id, sensitive_resources),
                 created_at=CREATED_AT,
+                risk_factors=risk_factors,
+                risk_explanation=format_risk_explanation(user.name, risk_factors),
             )
         )
 

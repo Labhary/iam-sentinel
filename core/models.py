@@ -78,6 +78,8 @@ class Finding:
     owner: Optional[str] = None
     analyst_notes: list[str] = field(default_factory=list)
     updated_at: Optional[str] = None
+    risk_factors: list[str] = field(default_factory=list)
+    risk_explanation: str = ""
 
     def __post_init__(self) -> None:
         if self.updated_at is None:

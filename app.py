@@ -201,6 +201,8 @@ def finding_to_dict(finding: Finding) -> dict:
         "evidence": finding.evidence,
         "recommendation": finding.recommendation,
         "attack_paths": finding.attack_paths,
+        "risk_factors": finding.risk_factors,
+        "risk_explanation": finding.risk_explanation,
         "created_at": finding.created_at,
         "status": finding.status.value,
         "owner": finding.owner,

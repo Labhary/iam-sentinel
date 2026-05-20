@@ -211,12 +211,14 @@
     document.getElementById('finding-detail-created-at').textContent = finding.created_at || '';
     document.getElementById('finding-detail-updated-at').textContent = finding.updated_at || '';
     document.getElementById('finding-detail-description').textContent = finding.description || '';
+    document.getElementById('finding-detail-risk-explanation').textContent = finding.risk_explanation || 'No risk explanation available.';
     document.getElementById('finding-detail-recommendation').textContent = finding.recommendation || '';
     document.getElementById('finding-status-select').value = finding.status;
     document.getElementById('finding-owner-input').value = finding.owner || '';
     document.getElementById('finding-note-input').value = '';
 
     renderList('finding-detail-evidence', finding.evidence);
+    renderList('finding-detail-risk-factors', finding.risk_factors);
     renderList('finding-detail-attack-paths', finding.attack_paths);
     renderList('finding-detail-notes', finding.analyst_notes);
     renderActivityList(finding);

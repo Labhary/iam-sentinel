@@ -5,6 +5,7 @@ from core.rules.shared import (
     CREATED_AT,
     first_resource_id,
     format_sensitive_resource_evidence,
+    format_risk_explanation,
     get_formatted_attack_paths_for_targets,
     get_reachable_permissions,
     get_reachable_sensitive_resources,
@@ -31,6 +32,13 @@ def detect_wildcard_or_admin_permissions(
             external_identity=user.external_user,
             missing_mfa=not user.mfa_enabled,
         )
+        risk_factors = ["Wildcard/admin permission"]
+        if sensitive_resources:
+            risk_factors.append("Sensitive resource access")
+        if user.external_user:
+            risk_factors.append("External identity")
+        if not user.mfa_enabled:
+            risk_factors.append("Missing MFA")
 
         findings.append(
             Finding(
@@ -54,6 +62,8 @@ def detect_wildcard_or_admin_permissions(
                     risky_permissions,
                 ),
                 created_at=CREATED_AT,
+                risk_factors=risk_factors,
+                risk_explanation=format_risk_explanation(user.name, risk_factors),
             )
         )
 

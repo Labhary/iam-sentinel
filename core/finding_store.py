@@ -27,7 +27,9 @@ def initialize_database(db_path: str | Path) -> None:
                 status TEXT NOT NULL,
                 owner TEXT,
                 analyst_notes TEXT NOT NULL,
-                updated_at TEXT NOT NULL
+                updated_at TEXT NOT NULL,
+                risk_factors TEXT NOT NULL DEFAULT '[]',
+                risk_explanation TEXT NOT NULL DEFAULT ''
             )
             """
         )
@@ -46,6 +48,8 @@ def initialize_database(db_path: str | Path) -> None:
         ensure_column(connection, "owner", "TEXT")
         ensure_column(connection, "analyst_notes", "TEXT NOT NULL DEFAULT '[]'")
         ensure_column(connection, "updated_at", "TEXT")
+        ensure_column(connection, "risk_factors", "TEXT NOT NULL DEFAULT '[]'")
+        ensure_column(connection, "risk_explanation", "TEXT NOT NULL DEFAULT ''")
         connection.execute(
             "UPDATE findings SET updated_at = created_at WHERE updated_at IS NULL"
         )
@@ -74,9 +78,11 @@ def save_findings(db_path: str | Path, findings: list[Finding]) -> None:
                     status,
                     owner,
                     analyst_notes,
-                    updated_at
+                    updated_at,
+                    risk_factors,
+                    risk_explanation
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 finding_to_row(finding),
             )
@@ -112,7 +118,9 @@ def load_findings(db_path: str | Path) -> list[Finding]:
                 status,
                 owner,
                 analyst_notes,
-                updated_at
+                updated_at,
+                risk_factors,
+                risk_explanation
             FROM findings
             """
         ).fetchall()
@@ -305,6 +313,8 @@ def finding_to_row(finding: Finding) -> tuple:
         finding.owner,
         json.dumps(finding.analyst_notes),
         finding.updated_at,
+        json.dumps(finding.risk_factors),
+        finding.risk_explanation,
     )
 
 
@@ -326,6 +336,8 @@ def row_to_finding(row: tuple) -> Finding:
         owner=row[13],
         analyst_notes=json.loads(row[14]),
         updated_at=row[15],
+        risk_factors=json.loads(row[16]),
+        risk_explanation=row[17],
     )
 
 

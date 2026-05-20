@@ -5,6 +5,7 @@ from core.rules.shared import (
     CREATED_AT,
     first_resource_id,
     format_sensitive_resource_evidence,
+    format_risk_explanation,
     get_formatted_attack_paths,
     get_reachable_sensitive_resources,
     is_privileged_identity,
@@ -30,6 +31,11 @@ def detect_privileged_accounts_without_mfa(
             external_identity=user.external_user,
             missing_mfa=True,
         )
+        risk_factors = ["Missing MFA", "Privileged access"]
+        if sensitive_resources:
+            risk_factors.append("Sensitive resource access")
+        if user.external_user:
+            risk_factors.append("External identity")
 
         findings.append(
             Finding(
@@ -51,6 +57,8 @@ def detect_privileged_accounts_without_mfa(
                 recommendation="Enable MFA or remove privileged access from the identity.",
                 attack_paths=attack_paths,
                 created_at=CREATED_AT,
+                risk_factors=risk_factors,
+                risk_explanation=format_risk_explanation(user.name, risk_factors),
             )
         )
 

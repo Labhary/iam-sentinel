@@ -56,3 +56,5 @@ def test_finding_object_creation() -> None:
     assert finding.resource_id == "res-role-catalog"
     assert finding.severity == Severity.HIGH
     assert finding.attack_paths[0].startswith("Nadia Flores")
+    assert finding.risk_factors == []
+    assert finding.risk_explanation == ""
