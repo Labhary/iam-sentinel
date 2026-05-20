@@ -1,5 +1,6 @@
 import sqlite3
 import uuid
+import json
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -12,9 +13,12 @@ ACTIVE_REVIEW_STATUSES = {
     AccessReviewStatus.IN_REVIEW.value,
 }
 STALE_REVIEW_DAYS = 7
+DEFAULT_DEMO_REVIEWS_PATH = Path(__file__).resolve().parents[1] / "data" / "sample_access_reviews.json"
+DEFAULT_DEMO_DB_PATH = Path(__file__).resolve().parents[1] / "data" / "findings.db"
 
 
 def initialize_access_review_database(db_path: str | Path) -> None:
+    resolved_db_path = Path(db_path).resolve()
     with connect(db_path) as connection:
         connection.execute(
             """
@@ -31,6 +35,7 @@ def initialize_access_review_database(db_path: str | Path) -> None:
             )
             """
         )
+        seed_demo_access_reviews(connection, resolved_db_path)
 
 
 def create_access_review(
@@ -269,6 +274,47 @@ def parse_timestamp(timestamp: str) -> datetime:
 
 def connect(db_path: str | Path) -> sqlite3.Connection:
     return sqlite3.connect(Path(db_path))
+
+
+def seed_demo_access_reviews(connection: sqlite3.Connection, db_path: Path) -> None:
+    if db_path != DEFAULT_DEMO_DB_PATH:
+        return
+
+    row = connection.execute("SELECT COUNT(*) FROM access_reviews").fetchone()
+    if row is None or row[0] != 0 or not DEFAULT_DEMO_REVIEWS_PATH.exists():
+        return
+
+    with DEFAULT_DEMO_REVIEWS_PATH.open("r", encoding="utf-8") as file:
+        reviews = json.load(file)
+
+    for review in reviews:
+        connection.execute(
+            """
+            INSERT INTO access_reviews (
+                id,
+                identity_id,
+                resource_id,
+                status,
+                reviewer,
+                decision,
+                notes,
+                created_at,
+                updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                review["id"],
+                review["identity_id"],
+                review["resource_id"],
+                review["status"],
+                review.get("reviewer"),
+                review["decision"],
+                review.get("notes", ""),
+                review["created_at"],
+                review["updated_at"],
+            ),
+        )
 
 
 def review_to_row(review: AccessReview) -> tuple:

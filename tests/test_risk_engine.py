@@ -31,9 +31,13 @@ def test_detect_privileged_accounts_without_mfa_generates_finding() -> None:
 
     findings = detect_privileged_accounts_without_mfa(iam_data, graph)
 
-    assert len(findings) == 1
-    finding = findings[0]
-    assert finding.id == "finding-mfa-user-005"
+    assert [finding.id for finding in findings] == [
+        "finding-mfa-user-005",
+        "finding-mfa-user-007",
+        "finding-mfa-user-011",
+    ]
+    findings_by_id = {finding.id: finding for finding in findings}
+    finding = findings_by_id["finding-mfa-user-005"]
     assert finding.identity_id == "user-005"
     assert finding.severity == Severity.HIGH
     assert finding.score == 85
@@ -50,7 +54,10 @@ def test_detect_dormant_privileged_accounts_generates_finding() -> None:
         analysis_date=FIXED_ANALYSIS_DATE,
     )
 
-    assert len(findings) == 1
+    assert [finding.id for finding in findings] == [
+        "finding-dormant-user-005",
+        "finding-dormant-user-010",
+    ]
     finding = findings[0]
     assert finding.id == "finding-dormant-user-005"
     assert finding.identity_id == "user-005"
@@ -64,7 +71,10 @@ def test_detect_external_identities_with_sensitive_access_generates_finding() ->
 
     findings = detect_external_identities_with_sensitive_access(iam_data, graph)
 
-    assert len(findings) == 1
+    assert [finding.id for finding in findings] == [
+        "finding-external-sensitive-user-004",
+        "finding-external-sensitive-user-008",
+    ]
     finding = findings[0]
     assert finding.id == "finding-external-sensitive-user-004"
     assert finding.identity_id == "user-004"
@@ -79,7 +89,10 @@ def test_detect_service_accounts_with_sensitive_access_generates_finding() -> No
 
     findings = detect_service_accounts_with_sensitive_access(iam_data, graph)
 
-    assert len(findings) == 1
+    assert [finding.id for finding in findings] == [
+        "finding-service-sensitive-user-006",
+        "finding-service-sensitive-user-009",
+    ]
     finding = findings[0]
     assert finding.id == "finding-service-sensitive-user-006"
     assert finding.identity_id == "user-006"
@@ -97,8 +110,8 @@ def test_detect_service_accounts_with_sensitive_access_escalates_privileged_acce
 
     findings = detect_service_accounts_with_sensitive_access(iam_data, graph)
 
-    assert len(findings) == 1
-    finding = findings[0]
+    assert len(findings) == 2
+    finding = next(finding for finding in findings if finding.id == "finding-service-sensitive-user-006")
     assert finding.severity == Severity.CRITICAL
     assert finding.score == 100
     assert "Service account has privileged admin, manage, or administer capability." in finding.evidence
@@ -112,6 +125,9 @@ def test_detect_toxic_permission_combinations_generates_findings() -> None:
     assert [finding.id for finding in findings] == [
         "finding-toxic-combo-user-003",
         "finding-toxic-combo-user-005",
+        "finding-toxic-combo-user-007",
+        "finding-toxic-combo-user-010",
+        "finding-toxic-combo-user-011",
     ]
     assert all(finding.finding_type == "toxic_permission_combination" for finding in findings)
     assert "Toxic permission combinations found: read + manage" in findings[0].evidence[0]
@@ -190,18 +206,34 @@ def test_run_all_detections_returns_deterministic_scores() -> None:
 
     assert [finding.id for finding in first_findings] == [
         "finding-mfa-user-005",
+        "finding-mfa-user-007",
+        "finding-mfa-user-011",
         "finding-dormant-user-005",
+        "finding-dormant-user-010",
         "finding-external-sensitive-user-004",
+        "finding-external-sensitive-user-008",
         "finding-service-sensitive-user-006",
+        "finding-service-sensitive-user-009",
         "finding-toxic-combo-user-003",
         "finding-toxic-combo-user-005",
+        "finding-toxic-combo-user-007",
+        "finding-toxic-combo-user-010",
+        "finding-toxic-combo-user-011",
         "finding-wildcard-admin-user-002",
     ]
     assert [finding.score for finding in first_findings] == [
         85,
         85,
+        85,
+        85,
+        80,
         90,
         85,
+        85,
+        85,
+        100,
+        100,
+        100,
         100,
         100,
         100,

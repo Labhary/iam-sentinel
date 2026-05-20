@@ -540,7 +540,7 @@ def test_get_resources_includes_access_and_finding_counts(client) -> None:
 
     assert customer_database["sensitive"] is True
     assert "user-004" in customer_database["accessible_by"]
-    assert customer_database["external_access_count"] == 1
+    assert customer_database["external_access_count"] == 2
     assert payroll_system["service_account_access_count"] == 1
     assert payroll_system["related_findings_count"] == 1
 
@@ -881,11 +881,11 @@ def test_post_analysis_run_executes_and_persists_findings(tmp_path) -> None:
 
     assert response.status_code == 200
     body = response.get_json()
-    assert body["total_findings"] == 7
+    assert body["total_findings"] == 15
     assert body["execution_timestamp"]
-    assert len(body["findings"]) == 7
+    assert len(body["findings"]) == 15
     assert findings_response.status_code == 200
-    assert len(findings_response.get_json()) == 7
+    assert len(findings_response.get_json()) == 15
 
 
 def test_patch_finding_status_updates_status(client) -> None:

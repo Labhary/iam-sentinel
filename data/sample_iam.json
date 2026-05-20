@@ -71,6 +71,78 @@
       "last_login": "2026-05-18",
       "external_user": false,
       "service_account": true
+    },
+    {
+      "id": "user-007",
+      "name": "Sofia Grant",
+      "email": "sofia.grant@company.local",
+      "type": "security_admin",
+      "groups": ["grp-security-operations"],
+      "roles": ["role-security-auditor"],
+      "mfa_enabled": false,
+      "last_login": "2026-05-12",
+      "external_user": false,
+      "service_account": false
+    },
+    {
+      "id": "user-008",
+      "name": "Victor Reed",
+      "email": "victor.reed@partner.example",
+      "type": "external_contractor",
+      "groups": ["grp-data-science"],
+      "roles": ["role-analytics-reader"],
+      "mfa_enabled": true,
+      "last_login": "2026-05-14",
+      "external_user": true,
+      "service_account": false
+    },
+    {
+      "id": "user-009",
+      "name": "ETL Warehouse Loader",
+      "email": "svc-warehouse-loader@company.local",
+      "type": "service_account",
+      "groups": ["grp-data-pipelines"],
+      "roles": ["role-data-pipeline-operator"],
+      "mfa_enabled": false,
+      "last_login": "2026-05-18",
+      "external_user": false,
+      "service_account": true
+    },
+    {
+      "id": "user-010",
+      "name": "Elena Kovac",
+      "email": "elena.kovac@company.local",
+      "type": "dormant_user",
+      "groups": ["grp-security-operations"],
+      "roles": ["role-security-auditor"],
+      "mfa_enabled": true,
+      "last_login": "2025-11-01",
+      "external_user": false,
+      "service_account": false
+    },
+    {
+      "id": "user-011",
+      "name": "Marcus Lee",
+      "email": "marcus.lee@company.local",
+      "type": "developer",
+      "groups": ["grp-engineering"],
+      "roles": ["role-container-admin"],
+      "mfa_enabled": false,
+      "last_login": "2026-05-17",
+      "external_user": false,
+      "service_account": false
+    },
+    {
+      "id": "user-012",
+      "name": "Grace Taylor",
+      "email": "grace.taylor@company.local",
+      "type": "normal_user",
+      "groups": ["grp-hr-readers"],
+      "roles": ["role-hr-viewer"],
+      "mfa_enabled": true,
+      "last_login": "2026-05-09",
+      "external_user": false,
+      "service_account": false
     }
   ],
   "groups": [
@@ -93,6 +165,26 @@
       "id": "grp-payroll-automation",
       "name": "Payroll Automation",
       "roles": ["role-payroll-processor"]
+    },
+    {
+      "id": "grp-security-operations",
+      "name": "Security Operations",
+      "roles": ["role-security-auditor"]
+    },
+    {
+      "id": "grp-data-science",
+      "name": "Data Science",
+      "roles": ["role-analytics-reader"]
+    },
+    {
+      "id": "grp-data-pipelines",
+      "name": "Data Pipelines",
+      "roles": ["role-data-pipeline-operator"]
+    },
+    {
+      "id": "grp-hr-readers",
+      "name": "HR Readers",
+      "roles": ["role-hr-viewer"]
     }
   ],
   "roles": [
@@ -120,6 +212,31 @@
       "id": "role-production-breakglass",
       "name": "Production Breakglass Operator",
       "permissions": ["perm-admin-all-production"]
+    },
+    {
+      "id": "role-security-auditor",
+      "name": "Security Auditor",
+      "permissions": ["perm-read-audit-logs", "perm-manage-incidents"]
+    },
+    {
+      "id": "role-analytics-reader",
+      "name": "Analytics Reader",
+      "permissions": ["perm-read-analytics-warehouse", "perm-read-customer-db"]
+    },
+    {
+      "id": "role-data-pipeline-operator",
+      "name": "Data Pipeline Operator",
+      "permissions": ["perm-read-analytics-warehouse", "perm-write-analytics-warehouse"]
+    },
+    {
+      "id": "role-container-admin",
+      "name": "Container Admin",
+      "permissions": ["perm-admin-containers", "perm-read-secrets"]
+    },
+    {
+      "id": "role-hr-viewer",
+      "name": "HR Viewer",
+      "permissions": ["perm-read-hr-records"]
     }
   ],
   "permissions": [
@@ -167,6 +284,41 @@
       "id": "perm-admin-all-production",
       "action": "*",
       "resource": "res-production-app"
+    },
+    {
+      "id": "perm-read-audit-logs",
+      "action": "read",
+      "resource": "res-audit-log-vault"
+    },
+    {
+      "id": "perm-manage-incidents",
+      "action": "manage",
+      "resource": "res-incident-platform"
+    },
+    {
+      "id": "perm-read-analytics-warehouse",
+      "action": "read",
+      "resource": "res-analytics-warehouse"
+    },
+    {
+      "id": "perm-write-analytics-warehouse",
+      "action": "write",
+      "resource": "res-analytics-warehouse"
+    },
+    {
+      "id": "perm-admin-containers",
+      "action": "administer",
+      "resource": "res-container-platform"
+    },
+    {
+      "id": "perm-read-secrets",
+      "action": "read",
+      "resource": "res-secrets-vault"
+    },
+    {
+      "id": "perm-read-hr-records",
+      "action": "read",
+      "resource": "res-hr-records"
     }
   ],
   "resources": [
@@ -211,6 +363,42 @@
       "name": "Payroll System",
       "type": "business_application",
       "sensitive": true
+    },
+    {
+      "id": "res-audit-log-vault",
+      "name": "Audit Log Vault",
+      "type": "log_archive",
+      "sensitive": true
+    },
+    {
+      "id": "res-incident-platform",
+      "name": "Incident Response Platform",
+      "type": "security_application",
+      "sensitive": true
+    },
+    {
+      "id": "res-analytics-warehouse",
+      "name": "Analytics Warehouse",
+      "type": "data_warehouse",
+      "sensitive": true
+    },
+    {
+      "id": "res-container-platform",
+      "name": "Container Platform",
+      "type": "production_platform",
+      "sensitive": true
+    },
+    {
+      "id": "res-secrets-vault",
+      "name": "Secrets Vault",
+      "type": "secret_store",
+      "sensitive": true
+    },
+    {
+      "id": "res-hr-records",
+      "name": "HR Records",
+      "type": "business_application",
+      "sensitive": true
     }
   ],
   "risk_scenarios": [
@@ -233,6 +421,18 @@
     {
       "id": "scenario-005",
       "description": "Developer has a break-glass production role with wildcard access to a sensitive production application."
+    },
+    {
+      "id": "scenario-006",
+      "description": "Security operations users can manage incident tooling and read audit logs."
+    },
+    {
+      "id": "scenario-007",
+      "description": "External analytics contractor can read customer and warehouse data."
+    },
+    {
+      "id": "scenario-008",
+      "description": "Container administrator can administer production infrastructure and read secrets without MFA."
     }
   ]
 }

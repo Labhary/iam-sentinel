@@ -1,0 +1,57 @@
+[
+  {
+    "id": "review-demo-001",
+    "identity_id": "user-004",
+    "resource_id": "res-customer-database",
+    "status": "IN_REVIEW",
+    "reviewer": "security-reviewer@company.local",
+    "decision": "NEEDS_FOLLOW_UP",
+    "notes": "External contractor still needs customer database access validation with the application owner.",
+    "created_at": "2026-05-01T09:00:00+00:00",
+    "updated_at": "2026-05-05T09:00:00+00:00"
+  },
+  {
+    "id": "review-demo-002",
+    "identity_id": "user-006",
+    "resource_id": "res-payroll-system",
+    "status": "OPEN",
+    "reviewer": "iam-governance@company.local",
+    "decision": "UNDECIDED",
+    "notes": "Payroll automation account requires owner attestation.",
+    "created_at": "2026-05-04T10:30:00+00:00",
+    "updated_at": "2026-05-04T10:30:00+00:00"
+  },
+  {
+    "id": "review-demo-003",
+    "identity_id": "user-011",
+    "resource_id": "res-secrets-vault",
+    "status": "COMPLETED",
+    "reviewer": "platform-lead@company.local",
+    "decision": "REVOKE",
+    "notes": "Secrets vault access is not required for the current container admin duties.",
+    "created_at": "2026-05-06T14:15:00+00:00",
+    "updated_at": "2026-05-09T16:45:00+00:00"
+  },
+  {
+    "id": "review-demo-004",
+    "identity_id": "user-008",
+    "resource_id": "res-analytics-warehouse",
+    "status": "COMPLETED",
+    "reviewer": "data-owner@company.local",
+    "decision": "APPROVE",
+    "notes": "Partner analytics access is approved for the current engagement.",
+    "created_at": "2026-05-10T11:00:00+00:00",
+    "updated_at": "2026-05-12T11:00:00+00:00"
+  },
+  {
+    "id": "review-demo-005",
+    "identity_id": "user-010",
+    "resource_id": "res-audit-log-vault",
+    "status": "IN_REVIEW",
+    "reviewer": "security-reviewer@company.local",
+    "decision": "NEEDS_FOLLOW_UP",
+    "notes": "Dormant security operations access needs manager confirmation.",
+    "created_at": "2026-05-02T08:00:00+00:00",
+    "updated_at": "2026-05-03T08:00:00+00:00"
+  }
+]

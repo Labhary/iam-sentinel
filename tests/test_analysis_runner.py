@@ -20,16 +20,24 @@ def test_run_analysis_executes_and_returns_findings(tmp_path) -> None:
         execution_timestamp=FIXED_EXECUTION_TIMESTAMP,
     )
 
-    assert result["total_findings"] == 7
+    assert result["total_findings"] == 15
     assert result["execution_timestamp"] == FIXED_EXECUTION_TIMESTAMP
     assert [finding.id for finding in result["findings"]] == [
         "finding-toxic-combo-user-003",
         "finding-toxic-combo-user-005",
+        "finding-toxic-combo-user-007",
+        "finding-toxic-combo-user-010",
+        "finding-toxic-combo-user-011",
         "finding-wildcard-admin-user-002",
         "finding-external-sensitive-user-004",
         "finding-dormant-user-005",
+        "finding-external-sensitive-user-008",
         "finding-mfa-user-005",
+        "finding-mfa-user-007",
+        "finding-mfa-user-011",
         "finding-service-sensitive-user-006",
+        "finding-service-sensitive-user-009",
+        "finding-dormant-user-010",
     ]
 
 
@@ -64,4 +72,4 @@ def test_run_analysis_repeated_runs_are_deterministic_and_do_not_duplicate(tmp_p
     )
 
     assert second_result == first_result
-    assert len(load_findings(db_path)) == 7
+    assert len(load_findings(db_path)) == 15
