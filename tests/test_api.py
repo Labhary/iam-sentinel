@@ -165,6 +165,86 @@ def test_dashboard_script_has_single_analysis_flow() -> None:
     assert "timeZone: 'UTC'" in script
 
 
+def test_shared_timestamp_formatter_is_available_and_used_for_finding_detail() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    helper_script = (project_root / "static/assets/js/iam-sentinel-ui.js").read_text()
+    detail_script = (
+        project_root / "static/assets/js/iam-sentinel-finding-detail.js"
+    ).read_text()
+
+    assert "function formatTimestamp(timestamp)" in helper_script
+    assert "new Intl.DateTimeFormat('en-US'" in helper_script
+    assert "timeZone: 'UTC'" in helper_script
+    assert "Number.isNaN(date.getTime())" in helper_script
+    assert "formatTimestamp," in helper_script
+    assert "const formatTimestamp = ui.formatTimestamp || ((timestamp) => timestamp)" in detail_script
+    assert "formatTimestamp(finding.created_at)" in detail_script
+    assert "formatTimestamp(finding.updated_at)" in detail_script
+    assert "formatTimestamp(safeEntry.created_at)" in detail_script
+
+
+def test_finding_detail_script_has_one_clean_render_path() -> None:
+    script = (
+        Path(__file__).resolve().parents[1]
+        / "static/assets/js/iam-sentinel-finding-detail.js"
+    ).read_text()
+
+    required_functions = [
+        "getElement",
+        "escapeHtml",
+        "setText",
+        "setHtml",
+        "setInputValue",
+        "getInputValue",
+        "showAlert",
+        "showLoading",
+        "showNotFound",
+        "fetchJson",
+        "normalizeItems",
+        "renderList",
+        "renderLinks",
+        "renderActivityList",
+        "renderFinding",
+        "refreshFinding",
+        "updateFinding",
+        "wireEvents",
+        "initFindingDetail",
+    ]
+
+    assert script.count("(() => {") == 1
+    assert script.count("})();") == 1
+    assert script.count("const ui = window.IamSentinelUI || {};") == 1
+    assert script.count("const formatTimestamp = ui.formatTimestamp || ((timestamp) => timestamp);") == 1
+    for function_name in required_functions:
+        assert script.count(f"function {function_name}(") == 1
+    assert "function renderSection(" not in script
+    assert "console.error(`Finding detail render failed for ${section}`, error);" not in script
+    assert "function safeTimestamp(" not in script
+    assert "document.getElementById('finding-detail-title').textContent" not in script
+    assert "document.getElementById('finding-detail-created-at').textContent" not in script
+    assert "document.getElementById('finding-status-select').value" not in script
+    assert "document.getElementById('save-status-button').addEventListener" not in script
+
+
+def test_finding_detail_runtime_initialization_contract() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    script = (project_root / "static/assets/js/iam-sentinel-finding-detail.js").read_text()
+    template = (project_root / "templates/finding_detail.html").read_text()
+
+    assert 'id="finding-investigation-page" data-finding-id="{{ finding_id }}"' in template
+    assert "const page = getElement('finding-investigation-page');" in script
+    assert "state.findingId = page.dataset.findingId;" in script
+    assert "} finally {" in script
+    assert "showLoading(false);" in script
+    assert "Array.isArray(findings)" in script
+    assert "findings && findings.value" in script
+    assert "console.error('Finding detail page root is missing.');" in script
+    assert "console.error('Finding detail findingId is missing.');" in script
+    assert "console.error('Finding detail fetch failed.', error);" in script
+    assert "console.error('Finding detail finding not found.', state.findingId);" in script
+    assert "console.error('Finding detail render failed.', error);" in script
+
+
 def test_get_findings_returns_deterministic_sorted_findings(client) -> None:
     response = client.get("/api/findings")
 
@@ -225,11 +305,21 @@ def test_get_findings_page_returns_workbench(client) -> None:
     assert b'id="status-filter"' in response.data
     assert b'id="owner-filter"' in response.data
     assert b'id="findings-sort"' in response.data
+    assert b'id="findings-page-size"' in response.data
+    assert b'<option value="10" selected>10</option>' in response.data
+    assert b'<option value="25">25</option>' in response.data
+    assert b'<option value="50">50</option>' in response.data
+    assert b'id="findings-pagination-summary"' in response.data
+    assert b'id="findings-pagination-controls"' in response.data
+    assert b'id="findings-prev-page"' in response.data
+    assert b'id="findings-next-page"' in response.data
+    assert b"Showing 0 of 0 findings" in response.data
     assert response.data.count(b'id="export-csv-button"') == 1
     assert response.data.count(b'<th scope="col">') == 8
     assert b'colspan="8"' in response.data
     assert b'colspan="7"' not in response.data
-    assert b"Open Investigation" in response.data
+    assert b"Investigate" in response.data
+    assert b"Open Investigation" not in response.data
     assert b'id="finding-identity-link-marker"' in response.data
     assert response.data.count(b'id="finding-detail-links"') == 1
     assert b"Open Identity Open Resource" not in response.data
@@ -238,15 +328,74 @@ def test_get_findings_page_returns_workbench(client) -> None:
     assert response.data.count(b'id="select-all-findings"') == 1
     assert response.data.count(b'id="bulk-status-button"') == 1
     assert response.data.count(b'id="bulk-owner-button"') == 1
-    assert response.data.count(b'id="finding-detail-activity"') == 1
+    assert b"Open Full Investigation" in response.data
+    assert b'id="open-full-investigation-link"' in response.data
+    assert b'id="finding-triage-risk-factors"' in response.data
+    assert b'id="finding-triage-evidence"' in response.data
+    assert b'id="finding-detail-evidence"' not in response.data
+    assert b'id="finding-detail-attack-paths"' not in response.data
+    assert b'id="finding-detail-activity"' not in response.data
+    assert b'id="finding-detail-notes"' not in response.data
     assert b'id="finding-risk-explanation-section"' in response.data
     assert b'id="finding-detail-risk-explanation"' in response.data
-    assert b'id="finding-detail-risk-factors"' in response.data
     assert b"assets/js/iam-sentinel-findings.js" in response.data
     assert b"assets/js/iam-sentinel-dashboard.js" not in response.data
     assert b'id="run-analysis-button"' not in response.data
     assert b'id="severity-distribution-chart"' not in response.data
     assert b'id="status-distribution-chart"' not in response.data
+
+
+def test_findings_workbench_script_keeps_pagination_and_compact_modal_boundaries() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    script = (project_root / "static/assets/js/iam-sentinel-findings.js").read_text()
+
+    assert "pageSize: 10" in script
+    assert "state.filteredFindings.slice" in script
+    assert "state.filteredFindings.map((finding)" in script
+    assert "state.paginatedFindings.forEach" in script
+    assert "findings-page-size" in script
+    assert "findings-prev-page" in script
+    assert "findings-next-page" in script
+    assert "finding-detail-attack-paths" not in script
+    assert "finding-detail-activity" not in script
+    assert "finding-detail-notes" not in script
+
+
+def test_finding_detail_script_required_ids_exist_in_template() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    script = (project_root / "static/assets/js/iam-sentinel-finding-detail.js").read_text()
+    template = (project_root / "templates/finding_detail.html").read_text()
+
+    required_ids = [
+        "finding-detail-title",
+        "finding-detail-meta",
+        "finding-detail-links",
+        "finding-detail-severity",
+        "finding-detail-score",
+        "finding-detail-status",
+        "finding-detail-owner",
+        "finding-detail-created-at",
+        "finding-detail-updated-at",
+        "finding-detail-description",
+        "finding-detail-risk-explanation",
+        "finding-detail-recommendation",
+        "finding-status-select",
+        "finding-owner-input",
+        "finding-note-input",
+        "finding-detail-evidence",
+        "finding-detail-risk-factors",
+        "finding-detail-attack-paths",
+        "finding-detail-notes",
+        "finding-detail-activity",
+        "finding-action-feedback",
+        "finding-detail-loading",
+        "finding-not-found",
+        "finding-detail-content",
+    ]
+
+    for element_id in required_ids:
+        assert element_id in script
+        assert f'id="{element_id}"' in template
 
 
 def test_get_identities_page_returns_workbench(client) -> None:
@@ -403,6 +552,11 @@ def test_get_finding_detail_page_returns_investigation_shell(client) -> None:
     assert b'id="finding-risk-explanation-section"' in response.data
     assert b'id="finding-detail-risk-explanation"' in response.data
     assert b'id="finding-detail-risk-factors"' in response.data
+    assert b'id="finding-detail-evidence"' in response.data
+    assert b'id="finding-detail-attack-paths"' in response.data
+    assert b'id="finding-detail-activity"' in response.data
+    assert b'id="finding-detail-notes"' in response.data
+    assert b"Analyst Actions" in response.data
     assert b"assets/js/iam-sentinel-finding-detail.js" in response.data
     assert b"assets/js/iam-sentinel-findings.js" not in response.data
     assert b"assets/js/iam-sentinel-dashboard.js" not in response.data

@@ -1,4 +1,6 @@
 (() => {
+  const ui = window.IamSentinelUI || {};
+  const formatTimestamp = ui.formatTimestamp || ((timestamp) => timestamp);
   const severityBadgeClasses = {
     CRITICAL: 'badge bg-danger',
     HIGH: 'badge bg-warning text-dark',
@@ -11,6 +13,10 @@
     finding: null
   };
 
+  function getElement(id) {
+    return document.getElementById(id);
+  }
+
   function escapeHtml(value) {
     return String(value ?? '')
       .replaceAll('&', '&amp;')
@@ -21,23 +27,66 @@
   }
 
   function setText(id, value) {
-    document.getElementById(id).textContent = value ?? '';
+    const element = getElement(id);
+    if (!element) {
+      return;
+    }
+
+    element.textContent = value ?? '';
+  }
+
+  function setHtml(id, value) {
+    const element = getElement(id);
+    if (!element) {
+      return;
+    }
+
+    element.innerHTML = value ?? '';
+  }
+
+  function setInputValue(id, value) {
+    const element = getElement(id);
+    if (!element) {
+      return;
+    }
+
+    element.value = value ?? '';
+  }
+
+  function getInputValue(id) {
+    const element = getElement(id);
+    return element ? element.value : '';
   }
 
   function showAlert(id, message, type = 'success') {
-    const alert = document.getElementById(id);
+    const alert = getElement(id);
+    if (!alert) {
+      return;
+    }
+
     alert.textContent = message;
     alert.className = `alert alert-${type}`;
     alert.classList.toggle('d-none', !message);
   }
 
   function showLoading(isLoading) {
-    document.getElementById('finding-detail-loading').classList.toggle('d-none', !isLoading);
+    const loading = getElement('finding-detail-loading');
+    if (!loading) {
+      return;
+    }
+
+    loading.classList.toggle('d-none', !isLoading);
   }
 
   function showNotFound(isNotFound) {
-    document.getElementById('finding-not-found').classList.toggle('d-none', !isNotFound);
-    document.getElementById('finding-detail-content').classList.toggle('d-none', isNotFound);
+    const notFound = getElement('finding-not-found');
+    const content = getElement('finding-detail-content');
+    if (notFound) {
+      notFound.classList.toggle('d-none', !isNotFound);
+    }
+    if (content) {
+      content.classList.toggle('d-none', isNotFound);
+    }
   }
 
   async function fetchJson(url, options = {}) {
@@ -48,35 +97,56 @@
     return response.json();
   }
 
+  function normalizeItems(items) {
+    if (Array.isArray(items)) {
+      return items;
+    }
+    return items ? [items] : [];
+  }
+
   function renderList(id, items) {
-    const list = document.getElementById(id);
-    if (!items || !items.length) {
-      list.innerHTML = '<li class="text-muted">None</li>';
+    const normalizedItems = normalizeItems(items);
+    if (!normalizedItems.length) {
+      setHtml(id, '<li class="text-muted">None</li>');
       return;
     }
 
-    list.innerHTML = items.map((item) => `<li>${escapeHtml(item)}</li>`).join('');
+    setHtml(id, normalizedItems.map((item) => `<li>${escapeHtml(item)}</li>`).join(''));
+  }
+
+  function renderLinks(finding) {
+    setHtml('finding-detail-links', `
+      <a class="btn btn-sm btn-outline-primary" href="/identities/${encodeURIComponent(finding.identity_id)}">Identity ${escapeHtml(finding.identity_id)}</a>
+      ${finding.resource_id ? `<a class="btn btn-sm btn-outline-primary" href="/resources/${encodeURIComponent(finding.resource_id)}">Resource ${escapeHtml(finding.resource_id)}</a>` : ''}
+    `);
   }
 
   function renderActivityList(finding) {
-    const list = document.getElementById('finding-detail-activity');
-    const activity = finding.activity && finding.activity.length
-      ? finding.activity
+    const activityItems = normalizeItems(finding.activity);
+    const activity = activityItems.length
+      ? activityItems
       : [{
         type: 'CREATED',
         message: 'Finding created.',
         created_at: finding.created_at
       }];
 
-    list.innerHTML = activity.map((entry) => `
-      <li class="list-group-item">
-        <div class="d-flex justify-content-between gap-3">
-          <strong>${escapeHtml(entry.type)}</strong>
-          <span class="text-muted small">${escapeHtml(entry.created_at)}</span>
-        </div>
-        <div>${escapeHtml(entry.message)}</div>
-      </li>
-    `).join('');
+    setHtml('finding-detail-activity', activity.map((entry) => {
+      const safeEntry = {
+        type: entry.type || 'ACTIVITY',
+        message: entry.message || '',
+        created_at: entry.created_at || finding.created_at
+      };
+      return `
+        <li class="list-group-item">
+          <div class="d-flex justify-content-between gap-3">
+            <strong>${escapeHtml(safeEntry.type)}</strong>
+            <span class="text-muted small">${escapeHtml(formatTimestamp(safeEntry.created_at))}</span>
+          </div>
+          <div>${escapeHtml(safeEntry.message)}</div>
+        </li>
+      `;
+    }).join(''));
   }
 
   function renderFinding(finding) {
@@ -84,22 +154,19 @@
 
     setText('finding-detail-title', finding.title);
     setText('finding-detail-meta', `${finding.id} | ${finding.identity_id}`);
-    document.getElementById('finding-detail-links').innerHTML = `
-      <a class="btn btn-sm btn-outline-primary" href="/identities/${encodeURIComponent(finding.identity_id)}">Identity ${escapeHtml(finding.identity_id)}</a>
-      ${finding.resource_id ? `<a class="btn btn-sm btn-outline-primary" href="/resources/${encodeURIComponent(finding.resource_id)}">Resource ${escapeHtml(finding.resource_id)}</a>` : ''}
-    `;
-    document.getElementById('finding-detail-severity').innerHTML = `<span class="${severityClass}">${escapeHtml(finding.severity)}</span>`;
+    renderLinks(finding);
+    setHtml('finding-detail-severity', `<span class="${severityClass}">${escapeHtml(finding.severity)}</span>`);
     setText('finding-detail-score', finding.score);
     setText('finding-detail-status', finding.status);
     setText('finding-detail-owner', finding.owner || 'Unassigned');
-    setText('finding-detail-created-at', finding.created_at);
-    setText('finding-detail-updated-at', finding.updated_at);
+    setText('finding-detail-created-at', formatTimestamp(finding.created_at));
+    setText('finding-detail-updated-at', formatTimestamp(finding.updated_at));
     setText('finding-detail-description', finding.description);
     setText('finding-detail-risk-explanation', finding.risk_explanation || 'No risk explanation available.');
     setText('finding-detail-recommendation', finding.recommendation);
-    document.getElementById('finding-status-select').value = finding.status;
-    document.getElementById('finding-owner-input').value = finding.owner || '';
-    document.getElementById('finding-note-input').value = '';
+    setInputValue('finding-status-select', finding.status);
+    setInputValue('finding-owner-input', finding.owner || '');
+    setInputValue('finding-note-input', '');
 
     renderList('finding-detail-evidence', finding.evidence);
     renderList('finding-detail-risk-factors', finding.risk_factors);
@@ -114,15 +181,23 @@
 
     try {
       const findings = await fetchJson('/api/findings');
-      state.finding = findings.find((finding) => finding.id === state.findingId);
+      const findingsList = Array.isArray(findings) ? findings : (findings && findings.value) || [];
+      state.finding = findingsList.find((finding) => finding.id === state.findingId);
       if (!state.finding) {
+        console.error('Finding detail finding not found.', state.findingId);
         showNotFound(true);
         return;
       }
 
       showNotFound(false);
-      renderFinding(state.finding);
+      try {
+        renderFinding(state.finding);
+      } catch (error) {
+        console.error('Finding detail render failed.', error);
+        showAlert('finding-action-feedback', 'Finding data could not be rendered.', 'danger');
+      }
     } catch (error) {
+      console.error('Finding detail fetch failed.', error);
       showAlert('finding-action-feedback', 'Finding data could not be loaded.', 'danger');
     } finally {
       showLoading(false);
@@ -146,7 +221,7 @@
   async function saveFindingStatus() {
     await updateFinding(
       'status',
-      { status: document.getElementById('finding-status-select').value },
+      { status: getInputValue('finding-status-select') },
       'Status updated.'
     );
   }
@@ -154,13 +229,13 @@
   async function saveFindingOwner() {
     await updateFinding(
       'owner',
-      { owner: document.getElementById('finding-owner-input').value },
+      { owner: getInputValue('finding-owner-input') },
       'Owner updated.'
     );
   }
 
   async function addFindingNote() {
-    const note = document.getElementById('finding-note-input').value.trim();
+    const note = getInputValue('finding-note-input').trim();
     if (!note) {
       showAlert('finding-action-feedback', 'Enter a note before adding it.', 'warning');
       return;
@@ -170,14 +245,34 @@
   }
 
   function wireEvents() {
-    document.getElementById('save-status-button').addEventListener('click', saveFindingStatus);
-    document.getElementById('save-owner-button').addEventListener('click', saveFindingOwner);
-    document.getElementById('add-note-button').addEventListener('click', addFindingNote);
+    const saveStatusButton = getElement('save-status-button');
+    const saveOwnerButton = getElement('save-owner-button');
+    const addNoteButton = getElement('add-note-button');
+
+    if (saveStatusButton) {
+      saveStatusButton.addEventListener('click', saveFindingStatus);
+    }
+    if (saveOwnerButton) {
+      saveOwnerButton.addEventListener('click', saveFindingOwner);
+    }
+    if (addNoteButton) {
+      addNoteButton.addEventListener('click', addFindingNote);
+    }
   }
 
   function initFindingDetail() {
-    const page = document.getElementById('finding-investigation-page');
+    const page = getElement('finding-investigation-page');
+    if (!page) {
+      console.error('Finding detail page root is missing.');
+      return;
+    }
+
     state.findingId = page.dataset.findingId;
+    if (!state.findingId) {
+      console.error('Finding detail findingId is missing.');
+      return;
+    }
+
     wireEvents();
     refreshFinding();
   }

@@ -54,9 +54,36 @@ window.IamSentinelUI = (() => {
     return `<span class="${isEnabled ? enabledClass : disabledClass}">${isEnabled ? enabledText : disabledText}</span>`;
   }
 
+  function formatTimestamp(timestamp) {
+    if (!timestamp) {
+      return timestamp;
+    }
+
+    const date = new Date(timestamp);
+    if (Number.isNaN(date.getTime())) {
+      return timestamp;
+    }
+
+    try {
+      return new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+        timeZone: 'UTC',
+        timeZoneName: 'short'
+      }).format(date);
+    } catch (error) {
+      return timestamp;
+    }
+  }
+
   return {
     escapeHtml,
     fetchJson,
+    formatTimestamp,
     setText,
     severityBadgeClass,
     showAlert,

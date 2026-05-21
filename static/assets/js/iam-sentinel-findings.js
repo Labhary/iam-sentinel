@@ -9,6 +9,9 @@
   const state = {
     currentFindings: [],
     filteredFindings: [],
+    paginatedFindings: [],
+    currentPage: 1,
+    pageSize: 10,
     selectedFindingIds: new Set(),
     selectedFindingId: null,
     findingModal: null
@@ -106,12 +109,38 @@
   }
 
   function renderFindingsCount() {
-    document.getElementById('findings-count').textContent = `Showing ${state.filteredFindings.length} of ${state.currentFindings.length} findings`;
+    const total = state.filteredFindings.length;
+    const start = total ? ((state.currentPage - 1) * state.pageSize) + 1 : 0;
+    const end = Math.min(start + state.paginatedFindings.length - 1, total);
+    document.getElementById('findings-count').textContent = `Showing ${start}-${end} of ${total} findings`.replace('-', '–');
     document.getElementById('export-csv-button').disabled = state.filteredFindings.length === 0;
   }
 
+  function getTotalPages() {
+    return Math.max(1, Math.ceil(state.filteredFindings.length / state.pageSize));
+  }
+
+  function clampCurrentPage() {
+    state.currentPage = Math.min(Math.max(state.currentPage, 1), getTotalPages());
+  }
+
+  function getPaginatedFindings() {
+    clampCurrentPage();
+    const start = (state.currentPage - 1) * state.pageSize;
+    return state.filteredFindings.slice(start, start + state.pageSize);
+  }
+
+  function renderPaginationControls() {
+    const totalPages = getTotalPages();
+    document.getElementById('findings-pagination-summary').textContent = state.filteredFindings.length
+      ? `Page ${state.currentPage} of ${totalPages}`
+      : 'Page 0 of 0';
+    document.getElementById('findings-prev-page').disabled = state.currentPage <= 1;
+    document.getElementById('findings-next-page').disabled = state.currentPage >= totalPages;
+  }
+
   function renderSelectionControls() {
-    const visibleIds = state.filteredFindings.map((finding) => finding.id);
+    const visibleIds = state.paginatedFindings.map((finding) => finding.id);
     const selectedVisibleCount = visibleIds.filter((id) => state.selectedFindingIds.has(id)).length;
     const selectAll = document.getElementById('select-all-findings');
 
@@ -141,7 +170,7 @@
             <td>${escapeHtml(finding.status)}</td>
             <td>${escapeHtml(finding.owner || 'Unassigned')}</td>
             <td>
-              <a class="btn btn-sm btn-outline-primary investigation-link" href="/findings/${encodeURIComponent(finding.id)}">Open Investigation</a>
+              <a class="btn btn-sm btn-outline-primary investigation-link" href="/findings/${encodeURIComponent(finding.id)}">Investigate</a>
             </td>
           </tr>
         `;
@@ -152,9 +181,16 @@
 
   function applyFindingControls() {
     state.filteredFindings = getFilteredFindings();
-    renderFindings(state.filteredFindings);
+    state.paginatedFindings = getPaginatedFindings();
+    renderFindings(state.paginatedFindings);
     renderFindingsCount();
+    renderPaginationControls();
     renderSelectionControls();
+  }
+
+  function resetPaginationAndApplyControls() {
+    state.currentPage = 1;
+    applyFindingControls();
   }
 
   function renderList(id, items) {
@@ -165,27 +201,6 @@
     }
 
     list.innerHTML = items.map((item) => `<li>${escapeHtml(item)}</li>`).join('');
-  }
-
-  function renderActivityList(finding) {
-    const list = document.getElementById('finding-detail-activity');
-    const activity = finding.activity && finding.activity.length
-      ? finding.activity
-      : [{
-        type: 'CREATED',
-        message: 'Finding created.',
-        created_at: finding.created_at
-      }];
-
-    list.innerHTML = activity.map((entry) => `
-      <li class="list-group-item">
-        <div class="d-flex justify-content-between gap-3">
-          <strong>${escapeHtml(entry.type)}</strong>
-          <span class="text-muted small">${escapeHtml(entry.created_at)}</span>
-        </div>
-        <div>${escapeHtml(entry.message)}</div>
-      </li>
-    `).join('');
   }
 
   function getSelectedFinding() {
@@ -208,20 +223,15 @@
     document.getElementById('finding-detail-score').textContent = finding.score;
     document.getElementById('finding-detail-status').textContent = finding.status;
     document.getElementById('finding-detail-owner').textContent = finding.owner || 'Unassigned';
-    document.getElementById('finding-detail-created-at').textContent = finding.created_at || '';
-    document.getElementById('finding-detail-updated-at').textContent = finding.updated_at || '';
     document.getElementById('finding-detail-description').textContent = finding.description || '';
     document.getElementById('finding-detail-risk-explanation').textContent = finding.risk_explanation || 'No risk explanation available.';
-    document.getElementById('finding-detail-recommendation').textContent = finding.recommendation || '';
+    document.getElementById('open-full-investigation-link').href = `/findings/${encodeURIComponent(finding.id)}`;
     document.getElementById('finding-status-select').value = finding.status;
     document.getElementById('finding-owner-input').value = finding.owner || '';
     document.getElementById('finding-note-input').value = '';
 
-    renderList('finding-detail-evidence', finding.evidence);
-    renderList('finding-detail-risk-factors', finding.risk_factors);
-    renderList('finding-detail-attack-paths', finding.attack_paths);
-    renderList('finding-detail-notes', finding.analyst_notes);
-    renderActivityList(finding);
+    renderList('finding-triage-risk-factors', (finding.risk_factors || []).slice(0, 3));
+    renderList('finding-triage-evidence', (finding.evidence || []).slice(0, 3));
   }
 
   function openFindingDetail(findingId) {
@@ -348,15 +358,25 @@
   }
 
   function toggleVisibleFindingsSelection(isSelected) {
-    state.filteredFindings.forEach((finding) => {
+    state.paginatedFindings.forEach((finding) => {
       if (isSelected) {
         state.selectedFindingIds.add(finding.id);
       } else {
         state.selectedFindingIds.delete(finding.id);
       }
     });
-    renderFindings(state.filteredFindings);
+    renderFindings(state.paginatedFindings);
     renderSelectionControls();
+  }
+
+  function changePage(delta) {
+    state.currentPage += delta;
+    applyFindingControls();
+  }
+
+  function changePageSize() {
+    state.pageSize = Number.parseInt(document.getElementById('findings-page-size').value, 10) || 10;
+    resetPaginationAndApplyControls();
   }
 
   async function applyBulkAction(endpointSuffix, payload, successMessage) {
@@ -397,11 +417,14 @@
   }
 
   function wireEvents() {
-    document.getElementById('findings-search').addEventListener('input', applyFindingControls);
-    document.getElementById('severity-filter').addEventListener('change', applyFindingControls);
-    document.getElementById('status-filter').addEventListener('change', applyFindingControls);
-    document.getElementById('owner-filter').addEventListener('change', applyFindingControls);
-    document.getElementById('findings-sort').addEventListener('change', applyFindingControls);
+    document.getElementById('findings-search').addEventListener('input', resetPaginationAndApplyControls);
+    document.getElementById('severity-filter').addEventListener('change', resetPaginationAndApplyControls);
+    document.getElementById('status-filter').addEventListener('change', resetPaginationAndApplyControls);
+    document.getElementById('owner-filter').addEventListener('change', resetPaginationAndApplyControls);
+    document.getElementById('findings-sort').addEventListener('change', resetPaginationAndApplyControls);
+    document.getElementById('findings-page-size').addEventListener('change', changePageSize);
+    document.getElementById('findings-prev-page').addEventListener('click', () => changePage(-1));
+    document.getElementById('findings-next-page').addEventListener('click', () => changePage(1));
     document.getElementById('export-csv-button').addEventListener('click', exportFilteredFindings);
     document.getElementById('select-all-findings').addEventListener('change', (event) => {
       toggleVisibleFindingsSelection(event.target.checked);
