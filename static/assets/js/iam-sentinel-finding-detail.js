@@ -1,6 +1,7 @@
 (() => {
   const ui = window.IamSentinelUI || {};
   const formatTimestamp = ui.formatTimestamp || ((timestamp) => timestamp);
+  const formatStatus = ui.formatStatus || ((status) => status);
   const severityBadgeClasses = {
     CRITICAL: 'badge bg-danger',
     HIGH: 'badge bg-warning text-dark',
@@ -157,7 +158,7 @@
     renderLinks(finding);
     setHtml('finding-detail-severity', `<span class="${severityClass}">${escapeHtml(finding.severity)}</span>`);
     setText('finding-detail-score', finding.score);
-    setText('finding-detail-status', finding.status);
+    setText('finding-detail-status', formatStatus(finding.status));
     setText('finding-detail-owner', finding.owner || 'Unassigned');
     setText('finding-detail-created-at', formatTimestamp(finding.created_at));
     setText('finding-detail-updated-at', formatTimestamp(finding.updated_at));

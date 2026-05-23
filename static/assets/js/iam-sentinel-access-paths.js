@@ -1,7 +1,8 @@
 (() => {
   const state = {
     accessPaths: [],
-    filteredAccessPaths: []
+    filteredAccessPaths: [],
+    pager: null
   };
 
   function escapeHtml(value) {
@@ -92,10 +93,6 @@
     setText('service-account-paths', state.accessPaths.filter((path) => path.identity_service_account).length);
   }
 
-  function renderAccessPathsCount() {
-    document.getElementById('access-paths-count').textContent = `Showing ${state.filteredAccessPaths.length} of ${state.accessPaths.length} paths`;
-  }
-
   function sensitiveBadge(isSensitive) {
     const badgeClass = isSensitive ? 'badge bg-danger' : 'badge bg-success';
     return `<span class="${badgeClass}">${isSensitive ? 'Sensitive' : 'Not Sensitive'}</span>`;
@@ -104,30 +101,43 @@
   function renderAccessPaths(accessPaths) {
     const tableBody = document.getElementById('access-paths-table-body');
     const rows = accessPaths.length
-      ? accessPaths.map((accessPath) => `
-        <tr>
-          <td>${escapeHtml(accessPath.identity_name)}<div class="text-muted small">${escapeHtml(accessPath.identity_id)}</div></td>
-          <td>${escapeHtml(accessPath.resource_name)}<div class="text-muted small">${escapeHtml(accessPath.resource_id)}</div></td>
+      ? accessPaths.map((accessPath) => {
+        const pathDisplay = escapeHtml(accessPath.path_display);
+        return `
+        <tr class="access-path-row">
+          <td>
+            <div class="access-path-name">${escapeHtml(accessPath.identity_name)}</div>
+            <div class="access-path-id">${escapeHtml(accessPath.identity_id)}</div>
+          </td>
+          <td>
+            <div class="access-path-name">${escapeHtml(accessPath.resource_name)}</div>
+            <div class="access-path-id">${escapeHtml(accessPath.resource_id)}</div>
+          </td>
           <td>${sensitiveBadge(accessPath.resource_sensitive)}</td>
           <td>${escapeHtml(accessPath.path_length)}</td>
-          <td>${escapeHtml(accessPath.path_display)}</td>
+          <td><span class="table-truncate access-path-display" title="${pathDisplay}">${pathDisplay}</span></td>
           <td>
-            <div class="btn-group btn-group-sm" role="group" aria-label="Access path actions">
-              <a class="btn btn-outline-primary" href="/identities/${encodeURIComponent(accessPath.identity_id)}">Identity</a>
+            <div class="btn-group btn-group-sm access-path-actions" role="group" aria-label="Access path actions">
+              <a class="btn btn-outline-secondary access-path-action-button" href="/identities/${encodeURIComponent(accessPath.identity_id)}">Identity</a>
               <a class="btn btn-outline-secondary" href="/resources/${encodeURIComponent(accessPath.resource_id)}">Resource</a>
-              <button class="btn btn-outline-success create-review-button" type="button" data-identity-id="${escapeHtml(accessPath.identity_id)}" data-resource-id="${escapeHtml(accessPath.resource_id)}">Create Review</button>
+              <button class="btn btn-outline-secondary create-review-button" type="button" data-identity-id="${escapeHtml(accessPath.identity_id)}" data-resource-id="${escapeHtml(accessPath.resource_id)}">Create Review</button>
             </div>
           </td>
         </tr>
-      `).join('')
+      `;
+      }).join('')
       : '<tr><td colspan="6" class="text-muted">No access paths match the current filters.</td></tr>';
     tableBody.innerHTML = rows;
   }
 
   function applyAccessPathSearch() {
     state.filteredAccessPaths = getFilteredAccessPaths();
-    renderAccessPaths(state.filteredAccessPaths);
-    renderAccessPathsCount();
+    renderAccessPaths(state.pager.paginate(state.filteredAccessPaths));
+  }
+
+  function resetPaginationAndApplySearch() {
+    state.pager.resetPage();
+    applyAccessPathSearch();
   }
 
   async function refreshAccessPathsWorkbench() {
@@ -146,11 +156,17 @@
   }
 
   function wireEvents() {
-    document.getElementById('access-paths-search').addEventListener('input', applyAccessPathSearch);
-    document.getElementById('access-path-identity-filter').addEventListener('input', refreshAccessPathsWorkbench);
-    document.getElementById('access-path-resource-filter').addEventListener('input', refreshAccessPathsWorkbench);
-    document.getElementById('access-path-sensitive-only').addEventListener('change', refreshAccessPathsWorkbench);
+    state.pager.wireEvents(applyAccessPathSearch);
+    document.getElementById('access-paths-search').addEventListener('input', resetPaginationAndApplySearch);
+    document.getElementById('access-path-identity-filter').addEventListener('input', resetPaginationAndRefreshWorkbench);
+    document.getElementById('access-path-resource-filter').addEventListener('input', resetPaginationAndRefreshWorkbench);
+    document.getElementById('access-path-sensitive-only').addEventListener('change', resetPaginationAndRefreshWorkbench);
     document.getElementById('access-paths-table-body').addEventListener('click', handleAccessPathAction);
+  }
+
+  function resetPaginationAndRefreshWorkbench() {
+    state.pager.resetPage();
+    refreshAccessPathsWorkbench();
   }
 
   async function handleAccessPathAction(event) {
@@ -176,6 +192,14 @@
   }
 
   function initAccessPathsWorkbench() {
+    state.pager = window.IamSentinelPagination.createTablePager({
+      countId: 'access-paths-count',
+      summaryId: 'access-paths-pagination-summary',
+      pageSizeId: 'access-paths-page-size',
+      prevButtonId: 'access-paths-prev-page',
+      nextButtonId: 'access-paths-next-page',
+      itemLabel: 'paths'
+    });
     wireEvents();
     refreshAccessPathsWorkbench();
   }

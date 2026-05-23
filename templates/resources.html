@@ -57,7 +57,15 @@
         <div class="card-body">
           <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
             <h5 class="card-title mb-0">Resource Workbench</h5>
-            <span id="resources-count" class="text-muted small">Showing 0 of 0 resources</span>
+            <div class="d-flex flex-wrap align-items-center gap-3">
+              <label for="resources-page-size" class="form-label small text-muted mb-0">Rows</label>
+              <select id="resources-page-size" class="form-select form-select-sm w-auto">
+                <option value="10" selected>10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+              </select>
+              <span id="resources-count" class="text-muted small">Showing 0 of 0 resources</span>
+            </div>
           </div>
 
           <div class="row g-2 align-items-end mb-3">
@@ -110,11 +118,19 @@
             </table>
             <span id="resource-detail-link-marker" class="visually-hidden">Resource detail links</span>
           </div>
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3">
+            <span id="resources-pagination-summary" class="text-muted small">Page 0 of 0</span>
+            <div id="resources-pagination-controls" class="btn-group" role="group" aria-label="Resources pagination">
+              <button id="resources-prev-page" type="button" class="btn btn-outline-secondary btn-sm" disabled>Previous</button>
+              <button id="resources-next-page" type="button" class="btn btn-outline-secondary btn-sm" disabled>Next</button>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 {% endblock %}
 
 {% block scripts %}
+  <script src="{{ url_for('static', filename='assets/js/iam-sentinel-pagination.js') }}"></script>
   <script src="{{ url_for('static', filename='assets/js/iam-sentinel-resources.js') }}"></script>
 {% endblock %}

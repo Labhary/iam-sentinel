@@ -1,4 +1,6 @@
 (() => {
+  const ui = window.IamSentinelUI || {};
+  const formatStatus = ui.formatStatus || ((status) => status);
   const severityBadgeClasses = {
     CRITICAL: 'badge bg-danger',
     HIGH: 'badge bg-warning text-dark',
@@ -79,10 +81,10 @@
           <td><span class="${severityClass}">${escapeHtml(finding.severity)}</span></td>
           <td><a href="/findings/${encodeURIComponent(finding.id)}">${escapeHtml(finding.title)}</a></td>
           <td>${escapeHtml(finding.score)}</td>
-          <td>${escapeHtml(finding.status)}</td>
+          <td>${escapeHtml(formatStatus(finding.status))}</td>
           <td>${escapeHtml(finding.owner || 'Unassigned')}</td>
           <td>
-            <a class="btn btn-sm btn-outline-primary" href="/findings/${encodeURIComponent(finding.id)}">${escapeHtml(finding.id)}</a>
+            <a class="btn btn-sm btn-outline-primary" href="/findings/${encodeURIComponent(finding.id)}">Open Investigation</a>
           </td>
         </tr>
       `;

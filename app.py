@@ -7,8 +7,10 @@ from flask import Flask, Response, jsonify, render_template, request
 
 from core.access_review_store import (
     build_access_review_metrics,
+    complete_access_review_remediation,
     create_access_review,
     is_access_review_stale,
+    load_access_review_history,
     load_access_reviews,
     update_access_review,
 )
@@ -31,6 +33,7 @@ from core.graph_builder import (
 from core.loader import load_iam_data
 from core.models import (
     AccessReview,
+    AccessReviewHistoryEvent,
     AccessReviewDecision,
     AccessReviewStatus,
     Finding,
@@ -158,6 +161,14 @@ def get_access_review_metrics():
     return jsonify(build_access_review_metrics(load_access_reviews(get_db_path())))
 
 
+@app.get("/api/access-reviews/<review_id>/history")
+def get_access_review_history(review_id: str):
+    return jsonify([
+        access_review_history_to_dict(event)
+        for event in load_access_review_history(get_db_path(), review_id)
+    ])
+
+
 @app.get("/api/reports/governance-summary")
 def get_governance_summary_report():
     report = build_governance_summary_report()
@@ -200,6 +211,21 @@ def patch_access_review(review_id: str):
         reviewer=payload.get("reviewer") if "reviewer" in payload else None,
         decision=decision,
         notes=payload.get("notes") if "notes" in payload else None,
+        actor=payload.get("actor"),
+    )
+    if review is None:
+        return error_response("Access review not found.", 404)
+
+    return jsonify(access_review_to_dict(review))
+
+
+@app.patch("/api/access-reviews/<review_id>/remediation")
+def patch_access_review_remediation(review_id: str):
+    payload = request.get_json(silent=True) or {}
+    review = complete_access_review_remediation(
+        get_db_path(),
+        review_id,
+        actor=payload.get("actor"),
     )
     if review is None:
         return error_response("Access review not found.", 404)
@@ -453,10 +479,22 @@ def access_review_to_dict(review: AccessReview) -> dict:
         "status": review.status.value,
         "reviewer": review.reviewer,
         "decision": review.decision.value,
+        "remediation_status": review.remediation_status.value,
         "notes": review.notes,
         "created_at": review.created_at,
         "updated_at": review.updated_at,
         "stale": is_access_review_stale(review),
+    }
+
+
+def access_review_history_to_dict(event: AccessReviewHistoryEvent) -> dict:
+    return {
+        "review_id": event.review_id,
+        "actor": event.actor,
+        "timestamp": event.timestamp,
+        "changed_field": event.changed_field,
+        "old_value": event.old_value,
+        "new_value": event.new_value,
     }
 
 

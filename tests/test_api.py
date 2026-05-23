@@ -1,11 +1,20 @@
 from pathlib import Path
+import re
 import sqlite3
 
 import pytest
 
-from app import app
+from app import app, access_review_to_dict
+from core.access_review_store import row_to_review
 from core.finding_store import save_findings
-from core.models import Finding, Severity
+from core.models import (
+    AccessReview,
+    AccessReviewDecision,
+    AccessReviewRemediationStatus,
+    AccessReviewStatus,
+    Finding,
+    Severity,
+)
 
 
 @pytest.fixture
@@ -410,6 +419,14 @@ def test_get_identities_page_returns_workbench(client) -> None:
     assert b'id="mfa-filter"' in response.data
     assert b'id="external-filter"' in response.data
     assert b'id="service-account-filter"' in response.data
+    assert b'id="identities-page-size"' in response.data
+    assert b'<option value="10" selected>10</option>' in response.data
+    assert b'<option value="25">25</option>' in response.data
+    assert b'<option value="50">50</option>' in response.data
+    assert b'id="identities-pagination-summary"' in response.data
+    assert b'id="identities-pagination-controls"' in response.data
+    assert b'id="identities-prev-page"' in response.data
+    assert b'id="identities-next-page"' in response.data
     assert b'id="total-identities"' in response.data
     assert b'id="external-identities"' in response.data
     assert b'id="service-accounts"' in response.data
@@ -418,7 +435,9 @@ def test_get_identities_page_returns_workbench(client) -> None:
     assert response.data.count(b'<th scope="col">') == 9
     assert b'colspan="9"' in response.data
     assert b'id="identity-detail-link-marker"' in response.data
+    assert b"assets/js/iam-sentinel-pagination.js" in response.data
     assert b"assets/js/iam-sentinel-identities.js" in response.data
+    assert response.data.index(b"assets/js/iam-sentinel-pagination.js") < response.data.index(b"assets/js/iam-sentinel-identities.js")
     assert b"assets/js/iam-sentinel-findings.js" not in response.data
     assert b"assets/js/iam-sentinel-dashboard.js" not in response.data
 
@@ -435,6 +454,14 @@ def test_get_resources_page_returns_workbench(client) -> None:
     assert b'id="sensitive-filter"' in response.data
     assert b'id="external-access-filter"' in response.data
     assert b'id="service-account-access-filter"' in response.data
+    assert b'id="resources-page-size"' in response.data
+    assert b'<option value="10" selected>10</option>' in response.data
+    assert b'<option value="25">25</option>' in response.data
+    assert b'<option value="50">50</option>' in response.data
+    assert b'id="resources-pagination-summary"' in response.data
+    assert b'id="resources-pagination-controls"' in response.data
+    assert b'id="resources-prev-page"' in response.data
+    assert b'id="resources-next-page"' in response.data
     assert b'id="total-resources"' in response.data
     assert b'id="sensitive-resources"' in response.data
     assert b'id="resources-with-external-access"' in response.data
@@ -443,7 +470,9 @@ def test_get_resources_page_returns_workbench(client) -> None:
     assert response.data.count(b'<th scope="col">') == 8
     assert b'colspan="8"' in response.data
     assert b'id="resource-detail-link-marker"' in response.data
+    assert b"assets/js/iam-sentinel-pagination.js" in response.data
     assert b"assets/js/iam-sentinel-resources.js" in response.data
+    assert response.data.index(b"assets/js/iam-sentinel-pagination.js") < response.data.index(b"assets/js/iam-sentinel-resources.js")
     assert b"assets/js/iam-sentinel-identities.js" not in response.data
     assert b"assets/js/iam-sentinel-findings.js" not in response.data
 
@@ -461,6 +490,16 @@ def test_get_access_paths_page_returns_workbench(client) -> None:
     assert b'id="access-path-sensitive-only"' in response.data
     assert b'id="access-path-identity-filter"' in response.data
     assert b'id="access-path-resource-filter"' in response.data
+    assert b'id="access-paths-page-size"' in response.data
+    assert b'<option value="5" selected>5</option>' in response.data
+    assert b'<option value="10" selected>10</option>' not in response.data
+    assert b'<option value="10">10</option>' in response.data
+    assert b'<option value="25">25</option>' in response.data
+    assert b'<option value="50">50</option>' in response.data
+    assert b'id="access-paths-pagination-summary"' in response.data
+    assert b'id="access-paths-pagination-controls"' in response.data
+    assert b'id="access-paths-prev-page"' in response.data
+    assert b'id="access-paths-next-page"' in response.data
     assert b'id="total-access-paths"' in response.data
     assert b'id="sensitive-resource-paths"' in response.data
     assert b'id="external-identity-paths"' in response.data
@@ -468,11 +507,261 @@ def test_get_access_paths_page_returns_workbench(client) -> None:
     assert b'id="access-paths-table-body"' in response.data
     assert response.data.count(b'<th scope="col">') == 6
     assert b'colspan="6"' in response.data
+    assert b'table table-sm table-hover align-middle access-paths-table' in response.data
     assert b'id="access-path-detail-links"' in response.data
+    assert b"assets/js/iam-sentinel-pagination.js" in response.data
     assert b"assets/js/iam-sentinel-access-paths.js" in response.data
+    assert response.data.index(b"assets/js/iam-sentinel-pagination.js") < response.data.index(b"assets/js/iam-sentinel-access-paths.js")
     assert b"assets/js/iam-sentinel-resources.js" not in response.data
     assert b"Access Paths" in response.data
     assert b'href="/access-paths"' in response.data
+
+
+@pytest.mark.parametrize(
+    ("script_path", "page_size_id", "prev_id", "next_id"),
+    [
+        ("static/assets/js/iam-sentinel-identities.js", "identities-page-size", "identities-prev-page", "identities-next-page"),
+        ("static/assets/js/iam-sentinel-resources.js", "resources-page-size", "resources-prev-page", "resources-next-page"),
+        ("static/assets/js/iam-sentinel-access-paths.js", "access-paths-page-size", "access-paths-prev-page", "access-paths-next-page"),
+    ],
+)
+def test_workbench_scripts_use_shared_table_pagination(script_path, page_size_id, prev_id, next_id) -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    script = (project_root / script_path).read_text()
+    helper = (project_root / "static/assets/js/iam-sentinel-pagination.js").read_text()
+
+    assert "window.IamSentinelPagination.createTablePager" in script
+    assert ".paginate(state.filtered" in script
+    assert ".resetPage();" in script
+    assert ".wireEvents(" in script
+    assert page_size_id in script
+    assert prev_id in script
+    assert next_id in script
+    assert "function createTablePager(options)" in helper
+    assert "items.slice(start, start + state.pageSize)" in helper
+    assert "Showing ${start}\\u2013${end} of ${state.totalItems}" in helper
+
+
+def test_shared_ui_formats_backend_status_labels() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    helper = (project_root / "static/assets/js/iam-sentinel-ui.js").read_text()
+
+    for raw_status, label in {
+        "IN_PROGRESS": "In Progress",
+        "OPEN": "Open",
+        "RESOLVED": "Resolved",
+        "CLOSED": "Closed",
+    }.items():
+        assert f"{raw_status}: '{label}'" in helper
+
+    assert "function formatStatus(status)" in helper
+    assert ".split('_')" in helper
+    assert "formatStatus," in helper
+
+
+def test_finding_status_dropdowns_keep_values_but_use_readable_labels() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    template_paths = [
+        project_root / "templates/findings.html",
+        project_root / "templates/finding_detail.html",
+    ]
+    templates_text = "\n".join(path.read_text() for path in template_paths)
+
+    for value, label in {
+        "OPEN": "Open",
+        "IN_PROGRESS": "In Progress",
+        "RESOLVED": "Resolved",
+        "SUPPRESSED": "Suppressed",
+    }.items():
+        assert f'<option value="{value}">{label}</option>' in templates_text
+        assert f'<option value="{value}">{value}</option>' not in templates_text
+
+    for template_path in template_paths:
+        template = template_path.read_text()
+        assert '<option value="OPEN">OPEN</option>' not in template
+        assert '<option value="RESOLVED">RESOLVED</option>' not in template
+        assert '<option value="SUPPRESSED">SUPPRESSED</option>' not in template
+
+
+def test_finding_status_dropdowns_do_not_duplicate_status_options() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    expected_options = [
+        ('OPEN', 'Open'),
+        ('IN_PROGRESS', 'In Progress'),
+        ('RESOLVED', 'Resolved'),
+        ('SUPPRESSED', 'Suppressed'),
+    ]
+
+    for relative_path in [
+        "templates/findings.html",
+        "templates/finding_detail.html",
+    ]:
+        template = (project_root / relative_path).read_text()
+        status_selects = re.findall(
+            r'<select[^>]*id="(?:status-filter|bulk-status-select|finding-status-select)"[^>]*>(.*?)</select>',
+            template,
+            flags=re.DOTALL,
+        )
+
+        assert status_selects
+        for select_markup in status_selects:
+            for value, label in expected_options:
+                assert select_markup.count(f'<option value="{value}">{label}</option>') == 1
+                assert f'<option value="{value}">{value}</option>' not in select_markup
+
+
+@pytest.mark.parametrize(
+    ("script_path", "expected_usage"),
+    [
+        ("static/assets/js/iam-sentinel-findings.js", "formatStatus(finding.status)"),
+        ("static/assets/js/iam-sentinel-finding-detail.js", "formatStatus(finding.status)"),
+        ("static/assets/js/iam-sentinel-identity-detail.js", "formatStatus(finding.status)"),
+        ("static/assets/js/iam-sentinel-resource-detail.js", "formatStatus(finding.status)"),
+    ],
+)
+def test_finding_status_render_paths_use_readable_status_labels(script_path, expected_usage) -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    script = (project_root / script_path).read_text()
+
+    assert "const formatStatus = ui.formatStatus || ((status) => status);" in script
+    assert expected_usage in script
+    assert "${escapeHtml(finding.status)}</td>" not in script
+    assert "textContent = finding.status" not in script
+    assert "setText('finding-detail-status', finding.status);" not in script
+
+
+def test_access_paths_workbench_uses_compact_analyst_table_polish() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    script = (project_root / "static/assets/js/iam-sentinel-access-paths.js").read_text()
+    styles = (project_root / "static/assets/css/iam-sentinel-polish.css").read_text()
+
+    assert 'class="access-path-row"' in script
+    assert 'class="access-path-name"' in script
+    assert 'class="access-path-id"' in script
+    assert 'class="table-truncate access-path-display" title="${pathDisplay}"' in script
+    assert 'btn-group btn-group-sm access-path-actions' in script
+    assert "btn-outline-success create-review-button" not in script
+    assert "btn-outline-secondary create-review-button" in script
+    assert "data-identity-id" in script
+    assert "data-resource-id" in script
+    assert ".access-paths-table .access-path-actions" in styles
+    assert "flex-wrap: nowrap;" in styles
+    assert "opacity: 0.82;" in styles
+    assert "font-size: 0.76rem;" in styles
+    assert ".access-paths-table .access-path-display" in styles
+
+
+def test_access_paths_row_template_has_one_of_each_action() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    script = (project_root / "static/assets/js/iam-sentinel-access-paths.js").read_text()
+    action_match = re.search(
+        r'<div class="btn-group btn-group-sm access-path-actions"[^>]*>(.*?)</div>',
+        script,
+        flags=re.DOTALL,
+    )
+
+    assert action_match
+    action_markup = action_match.group(1)
+    assert action_markup.count('>Identity</a>') == 1
+    assert action_markup.count('>Resource</a>') == 1
+    assert action_markup.count('>Create Review</button>') == 1
+    assert action_markup.count('href="/identities/${encodeURIComponent(accessPath.identity_id)}"') == 1
+    assert action_markup.count('href="/resources/${encodeURIComponent(accessPath.resource_id)}"') == 1
+    assert action_markup.count('class="btn btn-outline-secondary create-review-button"') == 1
+    assert action_markup.count('create-review-button') == 1
+    assert action_markup.count('/identities/${encodeURIComponent(accessPath.identity_id)}') == 1
+
+
+def test_identity_workbench_uses_readable_table_labels_and_truncation() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    script = (project_root / "static/assets/js/iam-sentinel-identities.js").read_text()
+    styles = (project_root / "static/assets/css/iam-sentinel-polish.css").read_text()
+
+    for raw_type, label in {
+        "normal_user": "Normal User",
+        "external_contractor": "External Contractor",
+        "service_account": "Service Account",
+        "dormant_user": "Dormant User",
+        "admin": "Admin",
+        "developer": "Developer",
+        "security_admin": "Security Admin",
+    }.items():
+        assert f"{raw_type}: '{label}'" in script
+
+    assert "formatIdentityType(identity.type)" in script
+    assert 'class="table-truncate table-email" title="${email}"' in script
+    assert 'class="table-nowrap"' in script
+    assert 'href="/identities/${encodeURIComponent(identity.id)}">View</a>' in script
+    assert '>${escapeHtml(identity.id)}</a>' not in script
+    assert ".table .table-truncate" in styles
+    assert "text-overflow: ellipsis;" in styles
+    assert ".table .table-nowrap" in styles
+
+
+def test_identity_detail_related_findings_use_investigation_action_label() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    script = (project_root / "static/assets/js/iam-sentinel-identity-detail.js").read_text()
+
+    assert 'href="/findings/${encodeURIComponent(finding.id)}">Open Investigation</a>' in script
+    assert '>${escapeHtml(finding.id)}</a>' not in script
+
+
+def test_resource_workbench_uses_readable_type_labels_and_view_actions() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    script = (project_root / "static/assets/js/iam-sentinel-resources.js").read_text()
+
+    for raw_type, label in {
+        "document_store": "Document Store",
+        "code_repository": "Code Repository",
+        "application": "Application",
+        "database": "Database",
+        "identity_store": "Identity Store",
+        "iam_configuration": "IAM Configuration",
+        "business_application": "Business Application",
+        "log_archive": "Log Archive",
+        "security_application": "Security Application",
+        "data_warehouse": "Data Warehouse",
+    }.items():
+        assert f"{raw_type}: '{label}'" in script
+
+    assert "function formatResourceType(type)" in script
+    assert "formatResourceType(resource.type)" in script
+    assert ".split('_')" in script
+    assert 'class="table-nowrap"' in script
+    assert 'href="/resources/${encodeURIComponent(resource.id)}">View</a>' in script
+    assert '>${escapeHtml(resource.id)}</a>' not in script
+
+
+def test_resource_detail_related_findings_use_investigation_action_label() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    script = (project_root / "static/assets/js/iam-sentinel-resource-detail.js").read_text()
+
+    assert 'href="/findings/${encodeURIComponent(finding.id)}">Open Investigation</a>' in script
+    assert '>${escapeHtml(finding.id)}</a>' not in script
+
+
+def test_resource_detail_uses_readable_type_labels() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    script = (project_root / "static/assets/js/iam-sentinel-resource-detail.js").read_text()
+
+    for raw_type, label in {
+        "document_store": "Document Store",
+        "code_repository": "Code Repository",
+        "application": "Application",
+        "database": "Database",
+        "identity_store": "Identity Store",
+        "iam_configuration": "IAM Configuration",
+        "business_application": "Business Application",
+        "log_archive": "Log Archive",
+        "security_application": "Security Application",
+        "data_warehouse": "Data Warehouse",
+    }.items():
+        assert f"{raw_type}: '{label}'" in script
+
+    assert "function formatResourceType(type)" in script
+    assert "setText('resource-detail-type', formatResourceType(resource.type));" in script
+    assert "setText('resource-detail-type', resource.type);" not in script
+    assert ".split('_')" in script
 
 
 def test_get_access_reviews_page_returns_workbench(client) -> None:
@@ -482,6 +771,11 @@ def test_get_access_reviews_page_returns_workbench(client) -> None:
     assert b"IAM Sentinel Access Reviews" in response.data
     assert response.data.count(b'<main id="main" class="main">') == 1
     assert b'id="access-reviews-workbench"' in response.data
+    assert response.data.count(b'access-review-metric-card') == 10
+    assert response.data.count(b'id="access-review-decision-chart"') == 1
+    assert response.data.count(b'id="access-review-status-chart"') == 1
+    assert response.data.count(b'id="access-reviews-count"') == 1
+    assert response.data.count(b'class="table table-sm table-hover align-middle access-reviews-table"') == 1
     assert b'id="total-access-reviews"' in response.data
     assert b'id="open-access-reviews"' in response.data
     assert b'id="completed-access-reviews"' in response.data
@@ -491,20 +785,379 @@ def test_get_access_reviews_page_returns_workbench(client) -> None:
     assert b'id="stale-access-reviews"' in response.data
     assert b'id="needs-follow-up-access-reviews"' in response.data
     assert b'id="unique-access-reviewers"' in response.data
+    assert b'id="pending-remediations"' in response.data
+    assert b'id="completed-remediations"' in response.data
     assert b'id="access-review-analytics"' in response.data
     assert b'id="access-review-decision-chart"' in response.data
+    assert b'id="access-review-decision-summary"' in response.data
     assert b'id="access-review-status-chart"' in response.data
+    assert b'id="access-review-status-summary"' in response.data
     assert b'id="access-review-analytics-tables"' in response.data
     assert b'id="top-reviewed-resources-table"' in response.data
     assert b'id="top-reviewed-identities-table"' in response.data
     assert b'id="reviewer-workload-table"' in response.data
+    assert b'id="access-reviews-page-size"' in response.data
+    assert b'id="access-review-current-analyst"' in response.data
+    assert b'<option value="5" selected>5</option>' in response.data
+    assert b'<option value="10">10</option>' in response.data
+    assert b'<option value="25">25</option>' in response.data
+    assert b'id="access-reviews-pagination-summary"' in response.data
+    assert b'id="access-reviews-pagination-controls"' in response.data
+    assert b'id="access-reviews-prev-page"' in response.data
+    assert b'id="access-reviews-next-page"' in response.data
     assert b'id="access-reviews-table-body"' in response.data
-    assert response.data.count(b'<th scope="col">') == 7
-    assert b'colspan="7"' in response.data
+    assert response.data.count(b'<th scope="col">') == 9
+    assert b'colspan="9"' in response.data
+    assert b'colspan="8"' not in response.data
+    assert b'Identity' in response.data
+    assert b'Resource' in response.data
+    assert b'Status' in response.data
+    assert b'Reviewer' in response.data
+    assert b'Decision' in response.data
+    assert b'Remediation' in response.data
+    assert b'Updated' in response.data
+    assert b'Notes' in response.data
+    assert b'Actions' in response.data
+    assert b'table table-sm table-hover align-middle access-reviews-table' in response.data
     assert b'id="access-review-actions-marker"' in response.data
+    assert b'id="access-review-history-modal"' in response.data
+    assert b'id="access-review-history-table"' in response.data
     assert b"assets/js/iam-sentinel-access-reviews.js" in response.data
     assert b"Access Reviews" in response.data
     assert b'href="/access-reviews"' in response.data
+
+
+def test_access_review_store_insert_statements_have_one_values_clause_and_matching_placeholders() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    source = (project_root / "core/access_review_store.py").read_text()
+    insert_statements = re.findall(
+        r"INSERT INTO\s+\w+\s*\((.*?)\)\s*VALUES\s*\((.*?)\)",
+        source,
+        flags=re.DOTALL,
+    )
+
+    assert len(insert_statements) == source.count("INSERT INTO")
+    for columns_sql, placeholders_sql in insert_statements:
+        statement_start = source.index(columns_sql) + len(columns_sql)
+        statement_tail = source[statement_start:source.index('"""', statement_start)]
+        assert statement_tail.count("VALUES") == 1
+
+        columns = [
+            column.strip()
+            for column in columns_sql.split(",")
+            if column.strip()
+        ]
+        placeholders = re.findall(r"\?", placeholders_sql)
+        assert len(placeholders) == len(columns)
+
+
+def test_access_review_store_has_single_remediation_column_schema_path() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    source = (project_root / "core/access_review_store.py").read_text()
+    create_table_match = re.search(
+        r"CREATE TABLE IF NOT EXISTS access_reviews \((.*?)\)",
+        source,
+        flags=re.DOTALL,
+    )
+
+    assert create_table_match
+    assert create_table_match.group(1).count("remediation_status TEXT NOT NULL") == 1
+    assert source.count("ALTER TABLE access_reviews ADD COLUMN remediation_status") == 1
+
+
+def test_access_review_row_to_review_maps_selected_columns_in_order() -> None:
+    review = row_to_review((
+        "review-123",
+        "user-001",
+        "res-payroll-system",
+        "IN_REVIEW",
+        "analyst@example.local",
+        "REVOKE",
+        "PENDING",
+        "Remove stale access.",
+        "2026-05-01T00:00:00+00:00",
+        "2026-05-02T00:00:00+00:00",
+    ))
+
+    assert review.id == "review-123"
+    assert review.identity_id == "user-001"
+    assert review.resource_id == "res-payroll-system"
+    assert review.status == AccessReviewStatus.IN_REVIEW
+    assert review.reviewer == "analyst@example.local"
+    assert review.decision == AccessReviewDecision.REVOKE
+    assert review.remediation_status == AccessReviewRemediationStatus.PENDING
+    assert review.notes == "Remove stale access."
+    assert review.created_at == "2026-05-01T00:00:00+00:00"
+    assert review.updated_at == "2026-05-02T00:00:00+00:00"
+
+
+def test_access_review_serialization_includes_remediation_status() -> None:
+    review = AccessReview(
+        id="review-123",
+        identity_id="user-001",
+        resource_id="res-payroll-system",
+        status=AccessReviewStatus.COMPLETED,
+        reviewer="analyst@example.local",
+        decision=AccessReviewDecision.REVOKE,
+        remediation_status=AccessReviewRemediationStatus.COMPLETED,
+        notes="Access removed.",
+        created_at="2026-05-01T00:00:00+00:00",
+        updated_at="2026-05-02T00:00:00+00:00",
+    )
+
+    assert access_review_to_dict(review)["remediation_status"] == "COMPLETED"
+
+
+def test_access_reviews_template_has_no_duplicate_metric_card_wrappers() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    template = (project_root / "templates/access_reviews.html").read_text()
+
+    assert template.count('<div class="card info-card access-review-metric-card">') == 10
+    assert template.count('colspan="9"') == 1
+    assert 'colspan="8"' not in template
+    assert '<div class="card info-card">\n          <div class="card info-card access-review-metric-card">' not in template
+    assert '<div class="card info-card access-review-metric-card">\n          <div class="card info-card">' not in template
+
+
+def test_access_reviews_script_uses_compact_charts_pagination_and_readable_labels() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    script = (project_root / "static/assets/js/iam-sentinel-access-reviews.js").read_text()
+    styles = (project_root / "static/assets/css/iam-sentinel-polish.css").read_text()
+
+    assert "pageSize: 5" in script
+    assert script.count("statusChart: null") == 1
+    assert "getPaginatedReviews()" in script
+    assert "renderPaginationControls(visibleReviews)" in script
+    assert "access-reviews-page-size" in script
+    assert "access-reviews-prev-page" in script
+    assert "access-reviews-next-page" in script
+    assert "Showing ${start}\\u2013${end} of ${totalReviews} reviews" in script
+    assert "maintainAspectRatio: false" in script
+    assert "cutout: '68%'" in script
+    assert "access-review-decision-summary" in script
+    assert "access-review-status-summary" in script
+    assert "ui.formatTimestamp(review.updated_at)" in script
+    assert "state.reviews.map" not in script
+    assert "review.updated_at}</" not in script
+    assert "${ui.escapeHtml(review.updated_at)}" not in script
+    assert "<textarea" not in script
+    assert "const notesStateClass = review.notes ? 'access-review-notes-filled' : 'access-review-notes-empty';" in script
+    assert script.count('class="form-control form-control-sm table-truncate access-review-notes ${notesStateClass} review-notes"') == 1
+    assert script.count("row.querySelector('.review-notes').value") == 1
+    assert script.count('class="form-control form-control-sm table-truncate access-review-reviewer review-reviewer"') == 1
+    assert script.count("row.querySelector('.review-reviewer').value") == 1
+    assert "const statusOptions = ['OPEN', 'IN_REVIEW', 'COMPLETED'];" in script
+    assert "const decisionOptions = ['UNDECIDED', 'APPROVE', 'REVOKE', 'NEEDS_FOLLOW_UP'];" in script
+    assert "statusOptions.map((status) => option(status, review.status, formatReviewStatus(status))).join('')" in script
+    assert "decisionOptions.map((decision) => option(decision, review.decision, formatReviewDecision(decision))).join('')" in script
+    assert "formatReviewStatus(status)" in script
+    assert "formatReviewDecision(decision)" in script
+    assert "function formatRemediationStatus(status)" in script
+    assert "NOT_REQUIRED: 'Not Required'" in script
+    assert "PENDING: 'Pending'" in script
+    assert "formatRemediationStatus(review.remediation_status)" in script
+    assert "complete-remediation-button" in script
+    assert script.count("event.target.closest('.complete-remediation-button')") == 1
+    assert script.count("completeRemediation(row);") == 1
+    assert "function completeRemediation(row)" in script
+    assert "ui.fetchJson(`/api/access-reviews/${encodeURIComponent(reviewId)}/remediation`" in script
+    assert "pending-remediations" in script
+    assert "completed-remediations" in script
+    assert "review-history-button" in script
+    assert "const analystStorageKey = 'iamSentinelAccessReviewAnalyst';" in script
+    assert "function getCurrentAnalyst()" in script
+    assert "function loadCurrentAnalyst()" in script
+    assert "function saveCurrentAnalyst()" in script
+    assert "localStorage.getItem(analystStorageKey)" in script
+    assert "localStorage.setItem(analystStorageKey, getCurrentAnalyst())" in script
+    assert "actor: getCurrentAnalyst()" in script
+    assert "function showReviewHistory(row)" in script
+    assert "ui.fetchJson(`/api/access-reviews/${encodeURIComponent(reviewId)}/history`)" in script
+    assert "ui.formatTimestamp(event.timestamp)" in script
+    assert "event.actor || 'Unassigned Analyst'" in script
+    assert "formatHistoryValue(event.changed_field, event.old_value)" in script
+    assert "formatHistoryValue(event.changed_field, event.new_value)" in script
+    assert "remediation_status: 'Remediation'" in script
+    assert "remediation_completed: 'Remediation Completed'" in script
+    assert "IN_REVIEW: 'In Review'" in script
+    assert "COMPLETED: 'Completed'" in script
+    assert "COMPLET: 'Completed'" in script
+    assert "UNDECIDED: 'Undecided'" in script
+    assert "NEEDS_FOLLOW_UP: 'Needs Follow-up'" in script
+    assert "NEEDS_FOLLOW: 'Needs Follow-up'" in script
+    for hardcoded_status_option in [
+        "option('OPEN', review.status, formatReviewStatus('OPEN'))",
+        "option('IN_REVIEW', review.status, formatReviewStatus('IN_REVIEW'))",
+        "option('COMPLETED', review.status, formatReviewStatus('COMPLETED'))",
+    ]:
+        assert hardcoded_status_option not in script
+    for hardcoded_decision_option in [
+        "option('UNDECIDED', review.decision, formatReviewDecision('UNDECIDED'))",
+        "option('APPROVE', review.decision, formatReviewDecision('APPROVE'))",
+        "option('REVOKE', review.decision, formatReviewDecision('REVOKE'))",
+        "option('NEEDS_FOLLOW_UP', review.decision, formatReviewDecision('NEEDS_FOLLOW_UP'))",
+    ]:
+        assert hardcoded_decision_option not in script
+    assert ".access-review-chart-card" in styles
+    assert ".access-review-chart-summary" in styles
+    assert ".access-reviews-table .save-review-button" in styles
+    assert ".access-review-metric-card .card-body" in styles
+    assert "min-height: 92px;" in styles
+    assert ".reviewer-workload-label" in styles
+    assert ".reviewer-workload-count" in styles
+    assert "id === 'reviewer-workload-table'" in script
+    assert 'class="table-truncate reviewer-workload-label" title="${label}"' in script
+    assert 'class="text-end reviewer-workload-count"' in script
+    assert ".access-reviews-table .access-review-notes-empty" in styles
+    assert ".access-reviews-table .access-review-notes-filled" in styles
+    assert script.count('colspan="9"') == 1
+    assert 'colspan="8"' not in script
+
+
+def test_access_reviews_row_template_renders_one_notes_input() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    script = (project_root / "static/assets/js/iam-sentinel-access-reviews.js").read_text()
+    row_match = re.search(
+        r'<tr data-review-id="\$\{ui\.escapeHtml\(review\.id\)\}">(.*?)</tr>',
+        script,
+        flags=re.DOTALL,
+    )
+
+    assert row_match
+    row_template = row_match.group(1)
+    assert row_template.count('review-notes"') == 1
+    assert row_template.count('access-review-notes ${notesStateClass} review-notes') == 1
+    assert '<textarea' not in row_template
+    assert '${notesStateClass}' in row_template
+
+
+def test_access_review_history_events_append_for_changed_fields(client) -> None:
+    create_response = client.post(
+        "/api/access-reviews",
+        json={
+            "identity_id": "user-004",
+            "resource_id": "res-customer-database",
+        },
+    )
+    review_id = create_response.get_json()["id"]
+
+    response = client.patch(
+        f"/api/access-reviews/{review_id}",
+        json={
+            "status": "COMPLETED",
+            "reviewer": "analyst@example.local",
+            "decision": "REVOKE",
+            "notes": "Removed stale access.",
+            "actor": "Maya Analyst <maya@example.local>",
+        },
+    )
+    history_response = client.get(f"/api/access-reviews/{review_id}/history")
+
+    assert response.status_code == 200
+    assert history_response.status_code == 200
+    history = history_response.get_json()
+    assert len(history) == 5
+    assert {event["changed_field"] for event in history} == {
+        "status",
+        "reviewer",
+        "decision",
+        "remediation_status",
+        "notes",
+    }
+    assert all(event["review_id"] == review_id for event in history)
+    assert all(event["actor"] == "Maya Analyst <maya@example.local>" for event in history)
+    assert all(event["timestamp"] for event in history)
+    events_by_field = {
+        event["changed_field"]: event
+        for event in history
+    }
+    assert events_by_field["status"]["old_value"] == "OPEN"
+    assert events_by_field["status"]["new_value"] == "COMPLETED"
+    assert events_by_field["reviewer"]["old_value"] is None
+    assert events_by_field["reviewer"]["new_value"] == "analyst@example.local"
+    assert events_by_field["decision"]["old_value"] == "UNDECIDED"
+    assert events_by_field["decision"]["new_value"] == "REVOKE"
+    assert events_by_field["remediation_status"]["old_value"] == "NOT_REQUIRED"
+    assert events_by_field["remediation_status"]["new_value"] == "PENDING"
+    assert events_by_field["notes"]["old_value"] == ""
+    assert events_by_field["notes"]["new_value"] == "Removed stale access."
+
+    second_response = client.patch(
+        f"/api/access-reviews/{review_id}",
+        json={
+            "status": "COMPLETED",
+            "reviewer": "analyst@example.local",
+            "decision": "REVOKE",
+            "notes": "Confirmed with owner.",
+            "actor": "Maya Analyst <maya@example.local>",
+        },
+    )
+    second_history_response = client.get(f"/api/access-reviews/{review_id}/history")
+
+    assert second_response.status_code == 200
+    second_history = second_history_response.get_json()
+    assert len(second_history) == 6
+    assert second_history[0]["changed_field"] == "notes"
+    assert second_history[0]["actor"] == "Maya Analyst <maya@example.local>"
+    assert second_history[0]["old_value"] == "Removed stale access."
+    assert second_history[0]["new_value"] == "Confirmed with owner."
+
+
+def test_access_review_remediation_completion_flow(client) -> None:
+    create_response = client.post(
+        "/api/access-reviews",
+        json={
+            "identity_id": "user-004",
+            "resource_id": "res-customer-database",
+        },
+    )
+    review_id = create_response.get_json()["id"]
+
+    revoke_response = client.patch(
+        f"/api/access-reviews/{review_id}",
+        json={
+            "decision": "REVOKE",
+            "actor": "Maya Analyst <maya@example.local>",
+        },
+    )
+    metrics_after_revoke = client.get("/api/access-review-metrics").get_json()
+
+    assert revoke_response.status_code == 200
+    assert revoke_response.get_json()["decision"] == "REVOKE"
+    assert revoke_response.get_json()["remediation_status"] == "PENDING"
+    assert metrics_after_revoke["pending_remediations"] == 1
+    assert metrics_after_revoke["completed_remediations"] == 0
+
+    complete_response = client.patch(
+        f"/api/access-reviews/{review_id}/remediation",
+        json={"actor": "Maya Analyst <maya@example.local>"},
+    )
+    history_response = client.get(f"/api/access-reviews/{review_id}/history")
+    metrics_after_complete = client.get("/api/access-review-metrics").get_json()
+
+    assert complete_response.status_code == 200
+    assert complete_response.get_json()["remediation_status"] == "COMPLETED"
+    assert metrics_after_complete["pending_remediations"] == 0
+    assert metrics_after_complete["completed_remediations"] == 1
+
+    history = history_response.get_json()
+    assert history[0]["changed_field"] == "remediation_completed"
+    assert history[0]["old_value"] == "PENDING"
+    assert history[0]["new_value"] == "COMPLETED"
+    assert history[0]["actor"] == "Maya Analyst <maya@example.local>"
+    remediation_status_events = [
+        event
+        for event in history
+        if event["changed_field"] == "remediation_status"
+    ]
+    assert any(
+        event["old_value"] == "NOT_REQUIRED" and event["new_value"] == "PENDING"
+        for event in remediation_status_events
+    )
+    assert any(
+        event["old_value"] == "PENDING" and event["new_value"] == "COMPLETED"
+        for event in remediation_status_events
+    )
 
 
 def test_get_reports_page_returns_workbench(client) -> None:
@@ -868,6 +1521,7 @@ def test_list_access_reviews(client) -> None:
         "status",
         "reviewer",
         "decision",
+        "remediation_status",
         "notes",
         "created_at",
         "updated_at",
@@ -896,6 +1550,8 @@ def test_access_review_metrics_returns_expected_fields(client) -> None:
         "revoke_decisions",
         "needs_follow_up_decisions",
         "undecided_reviews",
+        "pending_remediations",
+        "completed_remediations",
         "stale_open_reviews",
         "unique_reviewers",
         "reviews_per_reviewer",
@@ -905,6 +1561,8 @@ def test_access_review_metrics_returns_expected_fields(client) -> None:
     assert metrics["total_reviews"] == 1
     assert metrics["open_reviews"] == 1
     assert metrics["undecided_reviews"] == 1
+    assert metrics["pending_remediations"] == 0
+    assert metrics["completed_remediations"] == 0
 
 
 def test_access_review_metrics_calculates_stale_reviews(client) -> None:

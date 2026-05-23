@@ -21,7 +21,7 @@
 
       <div class="row">
         <div class="col-lg-3 col-md-6">
-          <div class="card info-card">
+          <div class="card info-card access-review-metric-card">
             <div class="card-body">
               <h5 class="card-title">Total Reviews</h5>
               <h6 id="total-access-reviews">0</h6>
@@ -29,7 +29,7 @@
           </div>
         </div>
         <div class="col-lg-3 col-md-6">
-          <div class="card info-card">
+          <div class="card info-card access-review-metric-card">
             <div class="card-body">
               <h5 class="card-title">Open Reviews</h5>
               <h6 id="open-access-reviews">0</h6>
@@ -37,7 +37,7 @@
           </div>
         </div>
         <div class="col-lg-3 col-md-6">
-          <div class="card info-card">
+          <div class="card info-card access-review-metric-card">
             <div class="card-body">
               <h5 class="card-title">Completed Reviews</h5>
               <h6 id="completed-access-reviews">0</h6>
@@ -45,7 +45,7 @@
           </div>
         </div>
         <div class="col-lg-3 col-md-6">
-          <div class="card info-card">
+          <div class="card info-card access-review-metric-card">
             <div class="card-body">
               <h5 class="card-title">Revoke Decisions</h5>
               <h6 id="revoke-access-reviews">0</h6>
@@ -56,7 +56,7 @@
 
       <div class="row" id="access-review-analytics-cards">
         <div class="col-lg-3 col-md-6">
-          <div class="card info-card">
+          <div class="card info-card access-review-metric-card">
             <div class="card-body">
               <h5 class="card-title">In Review</h5>
               <h6 id="in-review-access-reviews">0</h6>
@@ -64,7 +64,7 @@
           </div>
         </div>
         <div class="col-lg-3 col-md-6">
-          <div class="card info-card">
+          <div class="card info-card access-review-metric-card">
             <div class="card-body">
               <h5 class="card-title">Stale Reviews</h5>
               <h6 id="stale-access-reviews">0</h6>
@@ -72,7 +72,7 @@
           </div>
         </div>
         <div class="col-lg-3 col-md-6">
-          <div class="card info-card">
+          <div class="card info-card access-review-metric-card">
             <div class="card-body">
               <h5 class="card-title">Needs Follow-up</h5>
               <h6 id="needs-follow-up-access-reviews">0</h6>
@@ -80,10 +80,26 @@
           </div>
         </div>
         <div class="col-lg-3 col-md-6">
-          <div class="card info-card">
+          <div class="card info-card access-review-metric-card">
             <div class="card-body">
               <h5 class="card-title">Unique Reviewers</h5>
               <h6 id="unique-access-reviewers">0</h6>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card access-review-metric-card">
+            <div class="card-body">
+              <h5 class="card-title">Pending Remediations</h5>
+              <h6 id="pending-remediations">0</h6>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card access-review-metric-card">
+            <div class="card-body">
+              <h5 class="card-title">Completed Remediations</h5>
+              <h6 id="completed-remediations">0</h6>
             </div>
           </div>
         </div>
@@ -91,18 +107,24 @@
 
       <div class="row" id="access-review-analytics">
         <div class="col-lg-6">
-          <div class="card">
+          <div class="card access-review-chart-card">
             <div class="card-body">
               <h5 class="card-title">Decision Distribution</h5>
-              <canvas id="access-review-decision-chart"></canvas>
+              <div class="access-review-chart-wrap">
+                <canvas id="access-review-decision-chart"></canvas>
+                <div id="access-review-decision-summary" class="access-review-chart-summary">0 reviews</div>
+              </div>
             </div>
           </div>
         </div>
         <div class="col-lg-6">
-          <div class="card">
+          <div class="card access-review-chart-card">
             <div class="card-body">
               <h5 class="card-title">Review Status Distribution</h5>
-              <canvas id="access-review-status-chart"></canvas>
+              <div class="access-review-chart-wrap">
+                <canvas id="access-review-status-chart"></canvas>
+                <div id="access-review-status-summary" class="access-review-chart-summary">0 active</div>
+              </div>
             </div>
           </div>
         </div>
@@ -151,33 +173,84 @@
         <div class="card-body">
           <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
             <h5 class="card-title mb-0">Access Review Workbench</h5>
-            <span id="access-reviews-count" class="text-muted small">Showing 0 reviews</span>
+            <div class="d-flex flex-wrap align-items-center gap-3">
+              <label for="access-review-current-analyst" class="form-label small text-muted mb-0">Current Analyst</label>
+              <input id="access-review-current-analyst" class="form-control form-control-sm w-auto" type="text" value="Unassigned Analyst" aria-label="Current Analyst">
+              <label for="access-reviews-page-size" class="form-label small text-muted mb-0">Rows</label>
+              <select id="access-reviews-page-size" class="form-select form-select-sm w-auto">
+                <option value="5" selected>5</option>
+                <option value="10">10</option>
+                <option value="25">25</option>
+              </select>
+              <span id="access-reviews-count" class="text-muted small">Showing 0-0 of 0 reviews</span>
+            </div>
           </div>
 
           <div class="table-responsive">
-            <table class="table table-hover align-middle">
+            <table class="table table-sm table-hover align-middle access-reviews-table">
               <thead>
                 <tr>
-                  <th scope="col">identity_id</th>
-                  <th scope="col">resource_id</th>
-                  <th scope="col">status</th>
-                  <th scope="col">reviewer</th>
-                  <th scope="col">decision</th>
-                  <th scope="col">updated_at</th>
-                  <th scope="col">actions</th>
+                  <th scope="col">Identity</th>
+                  <th scope="col">Resource</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Reviewer</th>
+                  <th scope="col">Decision</th>
+                  <th scope="col">Remediation</th>
+                  <th scope="col">Updated</th>
+                  <th scope="col">Notes</th>
+                  <th scope="col">Actions</th>
                 </tr>
               </thead>
               <tbody id="access-reviews-table-body">
                 <tr>
-                  <td colspan="7" class="text-muted">Preparing access reviews table...</td>
+                  <td colspan="9" class="text-muted">Preparing access reviews table...</td>
                 </tr>
               </tbody>
             </table>
             <span id="access-review-actions-marker" class="visually-hidden">Access review actions</span>
           </div>
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3">
+            <span id="access-reviews-pagination-summary" class="text-muted small">Page 0 of 0</span>
+            <div id="access-reviews-pagination-controls" class="btn-group" role="group" aria-label="Access reviews pagination">
+              <button id="access-reviews-prev-page" type="button" class="btn btn-outline-secondary btn-sm" disabled>Previous</button>
+              <button id="access-reviews-next-page" type="button" class="btn btn-outline-secondary btn-sm" disabled>Next</button>
+            </div>
+          </div>
         </div>
       </div>
     </section>
+{% endblock %}
+
+{% block after_main %}
+  <div class="modal fade" id="access-review-history-modal" tabindex="-1" aria-labelledby="access-review-history-title" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div>
+            <h5 class="modal-title" id="access-review-history-title">Access Review History</h5>
+            <div id="access-review-history-meta" class="small text-muted"></div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="access-review-history-loading" class="alert alert-info d-none">Loading history...</div>
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Actor</th>
+                <th>Field</th>
+                <th>Before → After</th>
+              </tr>
+            </thead>
+            <tbody id="access-review-history-table">
+              <tr><td colspan="4" class="text-muted">No history loaded.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
 {% endblock %}
 
 {% block scripts %}

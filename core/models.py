@@ -30,6 +30,12 @@ class AccessReviewDecision(Enum):
     NEEDS_FOLLOW_UP = "NEEDS_FOLLOW_UP"
 
 
+class AccessReviewRemediationStatus(Enum):
+    NOT_REQUIRED = "NOT_REQUIRED"
+    PENDING = "PENDING"
+    COMPLETED = "COMPLETED"
+
+
 @dataclass(frozen=True)
 class User:
     id: str
@@ -121,6 +127,17 @@ class AccessReview:
     status: AccessReviewStatus
     reviewer: Optional[str]
     decision: AccessReviewDecision
+    remediation_status: AccessReviewRemediationStatus
     notes: str
     created_at: str
     updated_at: str
+
+
+@dataclass(frozen=True)
+class AccessReviewHistoryEvent:
+    review_id: str
+    actor: str
+    timestamp: str
+    changed_field: str
+    old_value: Optional[str]
+    new_value: Optional[str]

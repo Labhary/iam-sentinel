@@ -51,6 +51,156 @@
   overflow-wrap: anywhere;
 }
 
+.table .table-nowrap {
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+.table .table-truncate {
+  display: block;
+  max-width: 18rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+.table .table-email {
+  max-width: 20rem;
+}
+
+.access-paths-table td,
+.access-paths-table th {
+  padding-top: 0.45rem;
+  padding-bottom: 0.45rem;
+}
+
+.access-paths-table .access-path-name {
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.access-paths-table .access-path-id {
+  color: #6c757d;
+  font-size: 0.78rem;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.access-paths-table .access-path-display {
+  max-width: 26rem;
+}
+
+.access-paths-table .access-path-actions {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  opacity: 0.82;
+}
+
+.access-paths-table .access-path-actions .btn {
+  border-color: #d5dce7;
+  color: #5f6f82;
+  font-size: 0.76rem;
+  font-weight: 500;
+  line-height: 1.15;
+  padding: 0.2rem 0.35rem;
+}
+
+.access-paths-table .access-path-actions .btn:hover,
+.access-paths-table .access-path-actions .btn:focus {
+  opacity: 1;
+}
+
+.access-review-metric-card {
+  margin-bottom: 16px;
+}
+
+.access-review-metric-card .card-body {
+  min-height: 92px;
+  padding-top: 14px;
+  padding-bottom: 12px;
+}
+
+.access-review-metric-card .card-title {
+  padding: 0 0 8px;
+}
+
+.access-review-metric-card h6 {
+  margin-bottom: 0;
+}
+
+.access-review-chart-card .card-body {
+  min-height: 260px;
+}
+
+.access-review-chart-wrap {
+  position: relative;
+  height: 190px;
+}
+
+.access-review-chart-wrap canvas {
+  max-height: 190px;
+}
+
+.access-review-chart-summary {
+  color: #415166;
+  font-size: 0.9rem;
+  font-weight: 700;
+  left: 50%;
+  line-height: 1.1;
+  pointer-events: none;
+  position: absolute;
+  text-align: center;
+  top: 45%;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+}
+
+.access-reviews-table td,
+.access-reviews-table th {
+  padding-top: 0.45rem;
+  padding-bottom: 0.45rem;
+}
+
+.access-reviews-table .form-select-sm,
+.access-reviews-table .form-control-sm {
+  font-size: 0.8rem;
+  min-width: 8rem;
+}
+
+.access-reviews-table .access-review-reviewer,
+.access-reviews-table .access-review-notes {
+  max-width: 13rem;
+}
+
+.access-reviews-table .access-review-notes-empty {
+  background-color: #f8fafc;
+  border-style: dashed;
+  color: #8a97a8;
+  font-style: italic;
+}
+
+.access-reviews-table .access-review-notes-filled {
+  background-color: #fff;
+  color: #29384d;
+}
+
+.access-reviews-table .save-review-button {
+  border-color: #d5dce7;
+  color: #5f6f82;
+  font-size: 0.78rem;
+  padding: 0.2rem 0.45rem;
+}
+
+.reviewer-workload-label {
+  max-width: 12rem;
+}
+
+.reviewer-workload-count {
+  min-width: 2.5rem;
+  white-space: nowrap;
+}
+
 .table .btn,
 .btn-group-sm > .btn,
 .btn-sm {

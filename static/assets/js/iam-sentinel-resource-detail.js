@@ -1,4 +1,6 @@
 (() => {
+  const ui = window.IamSentinelUI || {};
+  const formatStatus = ui.formatStatus || ((status) => status);
   const severityBadgeClasses = {
     CRITICAL: 'badge bg-danger',
     HIGH: 'badge bg-warning text-dark',
@@ -54,6 +56,31 @@
     return `<span class="${badgeClass}">${isEnabled ? enabledText : disabledText}</span>`;
   }
 
+  function formatResourceType(type) {
+    const typeLabels = {
+      document_store: 'Document Store',
+      code_repository: 'Code Repository',
+      application: 'Application',
+      database: 'Database',
+      identity_store: 'Identity Store',
+      iam_configuration: 'IAM Configuration',
+      business_application: 'Business Application',
+      log_archive: 'Log Archive',
+      security_application: 'Security Application',
+      data_warehouse: 'Data Warehouse'
+    };
+
+    if (typeLabels[type]) {
+      return typeLabels[type];
+    }
+
+    return String(type ?? '')
+      .split('_')
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+      .join(' ');
+  }
+
   function renderIdentityList(id, identities) {
     const list = document.getElementById(id);
     if (!identities.length) {
@@ -91,9 +118,9 @@
           <td><a href="/findings/${encodeURIComponent(finding.id)}">${escapeHtml(finding.title)}</a></td>
           <td>${escapeHtml(finding.identity_id)}</td>
           <td>${escapeHtml(finding.score)}</td>
-          <td>${escapeHtml(finding.status)}</td>
+          <td>${escapeHtml(formatStatus(finding.status))}</td>
           <td>
-            <a class="btn btn-sm btn-outline-primary" href="/findings/${encodeURIComponent(finding.id)}">${escapeHtml(finding.id)}</a>
+            <a class="btn btn-sm btn-outline-primary" href="/findings/${encodeURIComponent(finding.id)}">Open Investigation</a>
           </td>
         </tr>
       `;
@@ -105,7 +132,7 @@
 
     setText('resource-detail-name', resource.name);
     setText('resource-detail-meta', resource.id);
-    setText('resource-detail-type', resource.type);
+    setText('resource-detail-type', formatResourceType(resource.type));
     document.getElementById('resource-detail-sensitive').innerHTML = statusBadge(resource.sensitive, 'Sensitive', 'Not Sensitive');
     setText('resource-detail-accessible-count', resource.accessible_by_count);
     setText('resource-detail-related-findings-count', resource.related_findings_count);

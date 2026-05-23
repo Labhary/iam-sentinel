@@ -1,4 +1,6 @@
 (() => {
+  const ui = window.IamSentinelUI || {};
+  const formatStatus = ui.formatStatus || ((status) => status);
   const severityBadgeClasses = {
     CRITICAL: 'badge bg-danger',
     HIGH: 'badge bg-warning text-dark',
@@ -167,7 +169,7 @@
             <td>${escapeHtml(finding.title)}</td>
             <td><a class="identity-link" href="/identities/${encodeURIComponent(finding.identity_id)}">${escapeHtml(finding.identity_id)}</a></td>
             <td>${escapeHtml(finding.score)}</td>
-            <td>${escapeHtml(finding.status)}</td>
+            <td>${escapeHtml(formatStatus(finding.status))}</td>
             <td>${escapeHtml(finding.owner || 'Unassigned')}</td>
             <td>
               <a class="btn btn-sm btn-outline-primary investigation-link" href="/findings/${encodeURIComponent(finding.id)}">Investigate</a>
@@ -221,7 +223,7 @@
     `;
     document.getElementById('finding-detail-severity').innerHTML = `<span class="${severityClass}">${escapeHtml(finding.severity)}</span>`;
     document.getElementById('finding-detail-score').textContent = finding.score;
-    document.getElementById('finding-detail-status').textContent = finding.status;
+    document.getElementById('finding-detail-status').textContent = formatStatus(finding.status);
     document.getElementById('finding-detail-owner').textContent = finding.owner || 'Unassigned';
     document.getElementById('finding-detail-description').textContent = finding.description || '';
     document.getElementById('finding-detail-risk-explanation').textContent = finding.risk_explanation || 'No risk explanation available.';

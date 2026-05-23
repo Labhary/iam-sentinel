@@ -1,7 +1,8 @@
 (() => {
   const state = {
     resources: [],
-    filteredResources: []
+    filteredResources: [],
+    pager: null
   };
 
   function escapeHtml(value) {
@@ -39,6 +40,31 @@
     return document.getElementById(id).value;
   }
 
+  function formatResourceType(type) {
+    const typeLabels = {
+      document_store: 'Document Store',
+      code_repository: 'Code Repository',
+      application: 'Application',
+      database: 'Database',
+      identity_store: 'Identity Store',
+      iam_configuration: 'IAM Configuration',
+      business_application: 'Business Application',
+      log_archive: 'Log Archive',
+      security_application: 'Security Application',
+      data_warehouse: 'Data Warehouse'
+    };
+
+    if (typeLabels[type]) {
+      return typeLabels[type];
+    }
+
+    return String(type ?? '')
+      .split('_')
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+      .join(' ');
+  }
+
   function matchesSearch(resource, searchTerm) {
     if (!searchTerm) {
       return true;
@@ -47,7 +73,8 @@
     return [
       resource.id,
       resource.name,
-      resource.type
+      resource.type,
+      formatResourceType(resource.type)
     ].some((value) => String(value ?? '').toLowerCase().includes(searchTerm));
   }
 
@@ -72,10 +99,6 @@
     setText('resources-with-service-account-access', state.resources.filter((resource) => resource.service_account_access_count > 0).length);
   }
 
-  function renderResourcesCount() {
-    document.getElementById('resources-count').textContent = `Showing ${state.filteredResources.length} of ${state.resources.length} resources`;
-  }
-
   function statusBadge(isEnabled, enabledText, disabledText) {
     const badgeClass = isEnabled ? 'badge bg-danger' : 'badge bg-success';
     return `<span class="${badgeClass}">${isEnabled ? enabledText : disabledText}</span>`;
@@ -87,14 +110,14 @@
       ? resources.map((resource) => `
         <tr>
           <td>${escapeHtml(resource.name)}</td>
-          <td>${escapeHtml(resource.type)}</td>
+          <td><span class="table-nowrap">${escapeHtml(formatResourceType(resource.type))}</span></td>
           <td>${statusBadge(resource.sensitive, 'Sensitive', 'Not Sensitive')}</td>
           <td>${escapeHtml(resource.accessible_by_count)}</td>
           <td>${escapeHtml(resource.external_access_count)}</td>
           <td>${escapeHtml(resource.service_account_access_count)}</td>
           <td>${escapeHtml(resource.related_findings_count)}</td>
           <td>
-            <a class="btn btn-sm btn-outline-primary" href="/resources/${encodeURIComponent(resource.id)}">${escapeHtml(resource.id)}</a>
+            <a class="btn btn-sm btn-outline-primary" href="/resources/${encodeURIComponent(resource.id)}">View</a>
           </td>
         </tr>
       `).join('')
@@ -104,8 +127,12 @@
 
   function applyResourceControls() {
     state.filteredResources = getFilteredResources();
-    renderResources(state.filteredResources);
-    renderResourcesCount();
+    renderResources(state.pager.paginate(state.filteredResources));
+  }
+
+  function resetPaginationAndApplyControls() {
+    state.pager.resetPage();
+    applyResourceControls();
   }
 
   async function refreshResourcesWorkbench() {
@@ -124,13 +151,22 @@
   }
 
   function wireEvents() {
-    document.getElementById('resources-search').addEventListener('input', applyResourceControls);
-    document.getElementById('sensitive-filter').addEventListener('change', applyResourceControls);
-    document.getElementById('external-access-filter').addEventListener('change', applyResourceControls);
-    document.getElementById('service-account-access-filter').addEventListener('change', applyResourceControls);
+    state.pager.wireEvents(applyResourceControls);
+    document.getElementById('resources-search').addEventListener('input', resetPaginationAndApplyControls);
+    document.getElementById('sensitive-filter').addEventListener('change', resetPaginationAndApplyControls);
+    document.getElementById('external-access-filter').addEventListener('change', resetPaginationAndApplyControls);
+    document.getElementById('service-account-access-filter').addEventListener('change', resetPaginationAndApplyControls);
   }
 
   function initResourcesWorkbench() {
+    state.pager = window.IamSentinelPagination.createTablePager({
+      countId: 'resources-count',
+      summaryId: 'resources-pagination-summary',
+      pageSizeId: 'resources-page-size',
+      prevButtonId: 'resources-prev-page',
+      nextButtonId: 'resources-next-page',
+      itemLabel: 'resources'
+    });
     wireEvents();
     refreshResourcesWorkbench();
   }

@@ -58,7 +58,16 @@
         <div class="card-body">
           <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
             <h5 class="card-title mb-0">Access Path Workbench</h5>
-            <span id="access-paths-count" class="text-muted small">Showing 0 of 0 paths</span>
+            <div class="d-flex flex-wrap align-items-center gap-3">
+              <label for="access-paths-page-size" class="form-label small text-muted mb-0">Rows</label>
+              <select id="access-paths-page-size" class="form-select form-select-sm w-auto">
+                <option value="5" selected>5</option>
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+              </select>
+              <span id="access-paths-count" class="text-muted small">Showing 0 of 0 paths</span>
+            </div>
           </div>
 
           <div class="row g-2 align-items-end mb-3">
@@ -83,7 +92,7 @@
           </div>
 
           <div class="table-responsive">
-            <table class="table table-hover align-middle">
+            <table class="table table-sm table-hover align-middle access-paths-table">
               <thead>
                 <tr>
                   <th scope="col">Identity</th>
@@ -102,11 +111,19 @@
             </table>
             <span id="access-path-detail-links" class="visually-hidden">Access path detail links</span>
           </div>
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3">
+            <span id="access-paths-pagination-summary" class="text-muted small">Page 0 of 0</span>
+            <div id="access-paths-pagination-controls" class="btn-group" role="group" aria-label="Access paths pagination">
+              <button id="access-paths-prev-page" type="button" class="btn btn-outline-secondary btn-sm" disabled>Previous</button>
+              <button id="access-paths-next-page" type="button" class="btn btn-outline-secondary btn-sm" disabled>Next</button>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 {% endblock %}
 
 {% block scripts %}
+  <script src="{{ url_for('static', filename='assets/js/iam-sentinel-pagination.js') }}"></script>
   <script src="{{ url_for('static', filename='assets/js/iam-sentinel-access-paths.js') }}"></script>
 {% endblock %}

@@ -54,6 +54,25 @@ window.IamSentinelUI = (() => {
     return `<span class="${isEnabled ? enabledClass : disabledClass}">${isEnabled ? enabledText : disabledText}</span>`;
   }
 
+  function formatStatus(status) {
+    const statusLabels = {
+      IN_PROGRESS: 'In Progress',
+      OPEN: 'Open',
+      RESOLVED: 'Resolved',
+      CLOSED: 'Closed'
+    };
+
+    if (statusLabels[status]) {
+      return statusLabels[status];
+    }
+
+    return String(status ?? '')
+      .split('_')
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+      .join(' ');
+  }
+
   function formatTimestamp(timestamp) {
     if (!timestamp) {
       return timestamp;
@@ -83,6 +102,7 @@ window.IamSentinelUI = (() => {
   return {
     escapeHtml,
     fetchJson,
+    formatStatus,
     formatTimestamp,
     setText,
     severityBadgeClass,
