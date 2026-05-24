@@ -162,15 +162,89 @@
   padding-bottom: 0.45rem;
 }
 
-.access-reviews-table .form-select-sm,
-.access-reviews-table .form-control-sm {
-  font-size: 0.8rem;
-  min-width: 8rem;
+.access-reviews-table {
+  table-layout: fixed;
+  width: 100%;
 }
 
-.access-reviews-table .access-review-reviewer,
+.access-reviews-table td {
+  overflow-wrap: normal;
+}
+
+.access-reviews-table th:nth-child(1) {
+  width: 8%;
+}
+
+.access-reviews-table th:nth-child(2) {
+  width: 10%;
+}
+
+.access-reviews-table th:nth-child(3) {
+  width: 8%;
+}
+
+.access-reviews-table th:nth-child(4) {
+  width: 12%;
+}
+
+.access-reviews-table th:nth-child(5) {
+  width: 12%;
+}
+
+.access-reviews-table th:nth-child(6) {
+  width: 15%;
+}
+
+.access-reviews-table th:nth-child(7) {
+  width: 11%;
+}
+
+.access-reviews-table th:nth-child(8) {
+  width: 14%;
+}
+
+.access-reviews-table th:nth-child(9) {
+  width: 10%;
+}
+
+.access-reviews-table .form-select-sm,
+.access-reviews-table .form-control-sm {
+  font-size: 0.76rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.access-reviews-table .review-status {
+  min-width: min(5.75rem, 100%);
+}
+
+.access-reviews-table .review-decision {
+  min-width: min(8rem, 100%);
+}
+
+.access-reviews-table .access-review-reviewer {
+  max-width: 100%;
+  min-width: min(7rem, 100%);
+}
+
 .access-reviews-table .access-review-notes {
-  max-width: 13rem;
+  max-width: 100%;
+  min-width: min(7rem, 100%);
+}
+
+.access-reviews-table .access-review-identity,
+.access-reviews-table .access-review-resource {
+  max-width: 100%;
+}
+
+.access-reviews-table td:nth-child(6),
+.access-reviews-table td:nth-child(9) {
+  white-space: nowrap;
+}
+
+.access-reviews-table td:nth-child(7) .table-nowrap {
+  line-height: 1.2;
+  white-space: normal;
 }
 
 .access-reviews-table .access-review-notes-empty {
@@ -188,8 +262,24 @@
 .access-reviews-table .save-review-button {
   border-color: #d5dce7;
   color: #5f6f82;
-  font-size: 0.78rem;
-  padding: 0.2rem 0.45rem;
+  font-size: 0.72rem;
+  padding: 0.15rem 0.25rem;
+}
+
+.access-reviews-table .review-history-button {
+  font-size: 0.72rem;
+  padding: 0.15rem 0.15rem;
+  text-decoration: none;
+}
+
+.access-reviews-table .access-review-actions {
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.access-reviews-table .complete-remediation-button {
+  font-size: 0.7rem;
+  padding: 0.12rem 0.25rem;
 }
 
 .reviewer-workload-label {

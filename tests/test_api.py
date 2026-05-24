@@ -908,6 +908,39 @@ def test_access_review_serialization_includes_remediation_status() -> None:
     assert access_review_to_dict(review)["remediation_status"] == "COMPLETED"
 
 
+def test_access_review_load_backfills_stored_remediation_status(client) -> None:
+    revoke_review = client.post(
+        "/api/access-reviews",
+        json={"identity_id": "user-004", "resource_id": "res-customer-database"},
+    ).get_json()
+    follow_up_review = client.post(
+        "/api/access-reviews",
+        json={"identity_id": "user-006", "resource_id": "res-payroll-system"},
+    ).get_json()
+
+    with sqlite3.connect(app.config["FINDINGS_DB_PATH"]) as connection:
+        connection.execute(
+            "UPDATE access_reviews SET decision = ?, remediation_status = ? WHERE id = ?",
+            ("REVOKE", "NOT_REQUIRED", revoke_review["id"]),
+        )
+        connection.execute(
+            "UPDATE access_reviews SET decision = ?, remediation_status = ? WHERE id = ?",
+            ("NEEDS_FOLLOW_UP", "NOT_REQUIRED", follow_up_review["id"]),
+        )
+
+    response = client.get("/api/access-reviews")
+
+    assert response.status_code == 200
+    reviews_by_id = {
+        review["id"]: review
+        for review in response.get_json()
+    }
+    assert reviews_by_id[revoke_review["id"]]["decision"] == "REVOKE"
+    assert reviews_by_id[revoke_review["id"]]["remediation_status"] == "PENDING"
+    assert reviews_by_id[follow_up_review["id"]]["decision"] == "NEEDS_FOLLOW_UP"
+    assert reviews_by_id[follow_up_review["id"]]["remediation_status"] == "PENDING"
+
+
 def test_access_reviews_template_has_no_duplicate_metric_card_wrappers() -> None:
     project_root = Path(__file__).resolve().parents[1]
     template = (project_root / "templates/access_reviews.html").read_text()
@@ -957,6 +990,14 @@ def test_access_reviews_script_uses_compact_charts_pagination_and_readable_label
     assert "PENDING: 'Pending'" in script
     assert "formatRemediationStatus(review.remediation_status)" in script
     assert "complete-remediation-button" in script
+    assert 'class="table-truncate access-review-identity"' in script
+    assert 'title="${identityId}"' in script
+    assert '>${identityId}</a>' in script
+    assert '>${ui.escapeHtml(review.identity_id)}</a>' not in script
+    assert 'class="table-truncate access-review-resource"' in script
+    assert 'title="${resourceId}"' in script
+    assert '>${resourceId}</a>' in script
+    assert '>${ui.escapeHtml(review.resource_id)}</a>' not in script
     assert script.count("event.target.closest('.complete-remediation-button')") == 1
     assert script.count("completeRemediation(row);") == 1
     assert "function completeRemediation(row)" in script
@@ -972,13 +1013,29 @@ def test_access_reviews_script_uses_compact_charts_pagination_and_readable_label
     assert "localStorage.setItem(analystStorageKey, getCurrentAnalyst())" in script
     assert "actor: getCurrentAnalyst()" in script
     assert "function showReviewHistory(row)" in script
+    assert "const identity = row.querySelector('.access-review-identity')?.getAttribute('title') || '';" in script
+    assert "const resource = row.querySelector('.access-review-resource')?.getAttribute('title') || '';" in script
+    assert "historyMeta.innerHTML" in script
+    assert "${ui.escapeHtml(identity)} &rarr; ${ui.escapeHtml(resource)}" in script
+    assert "Review ID: ${ui.escapeHtml(reviewId)}" in script
     assert "ui.fetchJson(`/api/access-reviews/${encodeURIComponent(reviewId)}/history`)" in script
     assert "ui.formatTimestamp(event.timestamp)" in script
     assert "event.actor || 'Unassigned Analyst'" in script
     assert "formatHistoryValue(event.changed_field, event.old_value)" in script
     assert "formatHistoryValue(event.changed_field, event.new_value)" in script
-    assert "remediation_status: 'Remediation'" in script
-    assert "remediation_completed: 'Remediation Completed'" in script
+    history_field_match = re.search(
+        r"function formatHistoryField\(field\) \{\s+return \{(.*?)\s+\}\[field\]",
+        script,
+        flags=re.DOTALL,
+    )
+    assert history_field_match
+    history_field_map = history_field_match.group(1)
+    assert history_field_map.count("remediation_status:") == 1
+    assert history_field_map.count("remediation_completed:") == 1
+    assert "remediation_status: 'Remediation Status'" in history_field_map
+    assert "remediation_completed: 'Remediation Completion'" in history_field_map
+    assert "remediation_status: 'Remediation'," not in history_field_map
+    assert "remediation_completed: 'Remediation Completed'" not in history_field_map
     assert "IN_REVIEW: 'In Review'" in script
     assert "COMPLETED: 'Completed'" in script
     assert "COMPLET: 'Completed'" in script
@@ -1000,7 +1057,31 @@ def test_access_reviews_script_uses_compact_charts_pagination_and_readable_label
         assert hardcoded_decision_option not in script
     assert ".access-review-chart-card" in styles
     assert ".access-review-chart-summary" in styles
+    assert ".access-reviews-table {\n  table-layout: fixed;\n  width: 100%;" in styles
+    assert ".access-reviews-table .review-decision" in styles
+    assert "min-width: min(8rem, 100%);" in styles
+    assert ".access-reviews-table td:nth-child(6)" in styles
+    assert ".access-reviews-table td:nth-child(7) .table-nowrap" in styles
     assert ".access-reviews-table .save-review-button" in styles
+    assert ".access-reviews-table .access-review-identity" in styles
+    assert ".access-reviews-table .access-review-resource" in styles
+    assert "max-width: 100%;" in styles
+    assert 'btn-link text-secondary review-history-button' in script
+    assert "access-review-actions" in script
+    assert ".access-reviews-table .access-review-actions" in styles
+    assert ".access-reviews-table .review-history-button" in styles
+    assert "text-decoration: none;" in styles
+    assert styles.count("{") == styles.count("}")
+    for selector, body in re.findall(r"([^{}]+)\{([^{}]+)\}", styles):
+        if ".access-reviews-table" not in selector:
+            continue
+        properties = [
+            line.split(":", 1)[0].strip()
+            for line in body.splitlines()
+            if ":" in line
+        ]
+        for property_name in ["min-width", "max-width", "font-size", "padding"]:
+            assert properties.count(property_name) <= 1
     assert ".access-review-metric-card .card-body" in styles
     assert "min-height: 92px;" in styles
     assert ".reviewer-workload-label" in styles
@@ -1025,6 +1106,22 @@ def test_access_reviews_row_template_renders_one_notes_input() -> None:
 
     assert row_match
     row_template = row_match.group(1)
+    assert row_template.count('href="/identities/${encodeURIComponent(review.identity_id)}"') == 1
+    assert row_template.count('access-review-identity') == 1
+    assert row_template.count('title="${identityId}"') == 1
+    assert row_template.count('>${identityId}</a>') == 1
+    assert '<td><a href="/identities/${encodeURIComponent(review.identity_id)}">${ui.escapeHtml(review.identity_id)}</a></td>' not in row_template
+    assert row_template.count('href="/resources/${encodeURIComponent(review.resource_id)}"') == 1
+    assert row_template.count('access-review-resource') == 1
+    assert row_template.count('title="${resourceId}"') == 1
+    assert row_template.count('>${resourceId}</a>') == 1
+    assert '<td><a href="/resources/${encodeURIComponent(review.resource_id)}">${ui.escapeHtml(review.resource_id)}</a></td>' not in row_template
+    assert row_template.count('save-review-button') == 1
+    assert row_template.count('review-history-button') == 1
+    assert row_template.count('<div class="d-inline-flex gap-1 access-review-actions">') == 1
+    assert '<div class="d-inline-flex gap-1">' not in row_template
+    assert 'btn btn-sm btn-outline-secondary review-history-button' not in row_template
+    assert 'btn btn-sm btn-link text-secondary review-history-button' in row_template
     assert row_template.count('review-notes"') == 1
     assert row_template.count('access-review-notes ${notesStateClass} review-notes') == 1
     assert '<textarea' not in row_template

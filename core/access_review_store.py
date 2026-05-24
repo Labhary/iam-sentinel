@@ -43,6 +43,7 @@ def initialize_access_review_database(db_path: str | Path) -> None:
             """
         )
         ensure_access_reviews_remediation_column(connection)
+        sync_access_reviews_remediation_status(connection)
         connection.execute(
             """
             CREATE TABLE IF NOT EXISTS access_review_history (
@@ -355,6 +356,23 @@ def ensure_access_reviews_remediation_column(connection: sqlite3.Connection) -> 
         connection.execute(
             "ALTER TABLE access_reviews ADD COLUMN remediation_status TEXT NOT NULL DEFAULT 'NOT_REQUIRED'"
         )
+
+
+def sync_access_reviews_remediation_status(connection: sqlite3.Connection) -> None:
+    connection.execute(
+        """
+        UPDATE access_reviews
+        SET remediation_status = CASE
+            WHEN decision IN ('REVOKE', 'NEEDS_FOLLOW_UP') THEN 'PENDING'
+            ELSE 'NOT_REQUIRED'
+        END
+        WHERE remediation_status != 'COMPLETED'
+          AND remediation_status != CASE
+              WHEN decision IN ('REVOKE', 'NEEDS_FOLLOW_UP') THEN 'PENDING'
+              ELSE 'NOT_REQUIRED'
+          END
+        """
+    )
 
 
 def normalize_history_actor(actor: str | None) -> str:

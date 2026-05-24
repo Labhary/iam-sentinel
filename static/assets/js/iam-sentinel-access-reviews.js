@@ -67,8 +67,8 @@
     return {
       status: 'Status',
       decision: 'Decision',
-      remediation_status: 'Remediation',
-      remediation_completed: 'Remediation Completed',
+      remediation_status: 'Remediation Status',
+      remediation_completed: 'Remediation Completion',
       reviewer: 'Reviewer',
       notes: 'Notes'
     }[field] || field;
@@ -140,14 +140,16 @@
     const visibleReviews = getPaginatedReviews();
     const rows = visibleReviews.length
       ? visibleReviews.map((review) => {
+        const identityId = ui.escapeHtml(review.identity_id);
         const reviewer = ui.escapeHtml(review.reviewer || '');
+        const resourceId = ui.escapeHtml(review.resource_id);
         const notes = ui.escapeHtml(review.notes || '');
         const notesStateClass = review.notes ? 'access-review-notes-filled' : 'access-review-notes-empty';
         const updatedAt = ui.escapeHtml(ui.formatTimestamp(review.updated_at));
         return `
         <tr data-review-id="${ui.escapeHtml(review.id)}">
-          <td><a href="/identities/${encodeURIComponent(review.identity_id)}">${ui.escapeHtml(review.identity_id)}</a></td>
-          <td><a href="/resources/${encodeURIComponent(review.resource_id)}">${ui.escapeHtml(review.resource_id)}</a></td>
+          <td><a class="table-truncate access-review-identity" href="/identities/${encodeURIComponent(review.identity_id)}" title="${identityId}">${identityId}</a></td>
+          <td><a class="table-truncate access-review-resource" href="/resources/${encodeURIComponent(review.resource_id)}" title="${resourceId}">${resourceId}</a></td>
           <td>
             <select class="form-select form-select-sm review-status">
               ${statusOptions.map((status) => option(status, review.status, formatReviewStatus(status))).join('')}
@@ -173,9 +175,9 @@
             <input class="form-control form-control-sm table-truncate access-review-notes ${notesStateClass} review-notes" type="text" value="${notes}" title="${notes}" placeholder="No notes">
           </td>
           <td>
-            <div class="d-inline-flex gap-1">
+            <div class="d-inline-flex gap-1 access-review-actions">
               <button class="btn btn-sm btn-outline-secondary save-review-button" type="button">Save</button>
-              <button class="btn btn-sm btn-outline-secondary review-history-button" type="button">History</button>
+              <button class="btn btn-sm btn-link text-secondary review-history-button" type="button">History</button>
             </div>
           </td>
         </tr>
@@ -352,10 +354,16 @@
 
   async function showReviewHistory(row) {
     const reviewId = row.dataset.reviewId;
+    const identity = row.querySelector('.access-review-identity')?.getAttribute('title') || '';
+    const resource = row.querySelector('.access-review-resource')?.getAttribute('title') || '';
     const historyTable = document.getElementById('access-review-history-table');
     const loading = document.getElementById('access-review-history-loading');
+    const historyMeta = document.getElementById('access-review-history-meta');
 
-    ui.setText('access-review-history-meta', reviewId, '');
+    historyMeta.innerHTML = `
+      <span class="text-body">${ui.escapeHtml(identity)} &rarr; ${ui.escapeHtml(resource)}</span>
+      <span class="ms-2">Review ID: ${ui.escapeHtml(reviewId)}</span>
+    `;
     loading.classList.remove('d-none');
     historyTable.innerHTML = '<tr><td colspan="4" class="text-muted">Loading history...</td></tr>';
     state.historyModal.show();
