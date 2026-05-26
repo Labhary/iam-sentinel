@@ -39,6 +39,13 @@
     error.classList.toggle('d-none', !message);
   }
 
+  function setText(id, value) {
+    const element = document.getElementById(id);
+    if (element) {
+      element.textContent = value ?? '0';
+    }
+  }
+
   async function fetchGraph() {
     if (ui.fetchJson) {
       return ui.fetchJson('/api/attack-graph');
@@ -135,6 +142,39 @@
     return state.graph.edges.filter((edge) => visibleEdgeIds.has(edge.id));
   }
 
+  function isCriticalHigh(severity) {
+    return ['CRITICAL', 'HIGH'].includes(severity);
+  }
+
+  function severityBadge(severity) {
+    const badgeClass = severity === 'CRITICAL'
+      ? 'badge bg-danger'
+      : severity === 'HIGH'
+        ? 'badge bg-warning text-dark'
+        : 'badge bg-light text-dark border';
+    return `<span class="${badgeClass}">${escapeHtml(severity)}</span>`;
+  }
+
+  function sensitivityBadge(isSensitive) {
+    return isSensitive
+      ? '<span class="badge bg-danger">Sensitive</span>'
+      : '<span class="badge bg-success">Not Sensitive</span>';
+  }
+
+  function neutralBadge(label) {
+    return `<span class="badge bg-light text-dark border">${escapeHtml(label)}</span>`;
+  }
+
+  function renderSummary() {
+    const paths = state.graph.paths || [];
+    const criticalHighPaths = paths.filter((path) => isCriticalHigh(path.finding_severity));
+    const criticalHighIdentities = new Set(criticalHighPaths.map((path) => path.identity_id));
+    setText('attack-graph-total-paths', paths.length);
+    setText('attack-graph-critical-high-paths', criticalHighPaths.length);
+    setText('attack-graph-sensitive-paths', paths.filter((path) => path.resource_sensitive).length);
+    setText('attack-graph-critical-high-identities', criticalHighIdentities.size);
+  }
+
   function getPathSeverityClass(severity) {
     if (severity === 'CRITICAL') {
       return 'attack-graph-path-critical';
@@ -220,41 +260,92 @@
       return;
     }
     list.innerHTML = state.filteredPaths.slice(0, 12).map((path) => `
-      <button class="list-group-item list-group-item-action attack-graph-path-item ${getPathSeverityClass(path.finding_severity)}${path.id === state.selectedPathId ? ' active' : ''}" type="button" data-path-id="${escapeHtml(path.id)}">
-        <span class="attack-graph-path-title">${escapeHtml(formatIdentityLabel(path.identity_name, path.identity_id))} to ${escapeHtml(formatResourceLabel(path.resource_name, path.resource_id))}</span>
-        <span class="attack-graph-path-meta">${escapeHtml(path.finding_severity)} &middot; Length ${escapeHtml(path.path_length)} &middot; ${escapeHtml(path.related_finding_count)} findings</span>
+      <button class="list-group-item list-group-item-action attack-graph-path-item ${getPathSeverityClass(path.finding_severity)}${path.id === state.selectedPathId ? ' active' : ''}" type="button" data-path-id="${escapeHtml(path.id)}" aria-current="${path.id === state.selectedPathId ? 'true' : 'false'}">
+        <span class="attack-graph-path-title">${escapeHtml(formatIdentityLabel(path.identity_name, path.identity_id))}</span>
+        <span class="attack-graph-path-meta">${severityBadge(path.finding_severity)} ${neutralBadge(`Length ${path.path_length}`)} ${escapeHtml(formatResourceLabel(path.resource_name, path.resource_id))}</span>
       </button>
     `).join('');
+  }
+
+  function actionLink(href, label) {
+    return `<a class="btn btn-sm btn-outline-primary" href="${href}">${escapeHtml(label)}</a>`;
+  }
+
+  function pathActionLinks(path) {
+    const links = [
+      actionLink(`/identities/${encodeURIComponent(path.identity_id)}`, 'View Identity')
+    ];
+    if (path.resource_id) {
+      links.push(actionLink(`/resources/${encodeURIComponent(path.resource_id)}`, 'View Resource'));
+    }
+    const accessPathUrl = `/access-paths?identity_id=${encodeURIComponent(path.identity_id)}${path.resource_id ? `&resource_id=${encodeURIComponent(path.resource_id)}` : ''}`;
+    links.push(actionLink(accessPathUrl, 'View Related Access Paths'));
+    links.push(actionLink(`/findings?search=${encodeURIComponent(path.identity_id)}`, 'View Related Findings'));
+    return `<div class="d-flex flex-wrap gap-2 mt-3">${links.join('')}</div>`;
+  }
+
+  function findPathsForNode(node) {
+    return state.graph.paths.filter((path) => (path.path_nodes || []).includes(node.id));
+  }
+
+  function nodeActionLinks(node) {
+    const links = [];
+    if (node.type === 'user') {
+      links.push(actionLink(`/identities/${encodeURIComponent(node.id)}`, 'View Identity'));
+      links.push(actionLink(`/access-paths?identity_id=${encodeURIComponent(node.id)}`, 'View Access Paths'));
+      links.push(actionLink(`/findings?search=${encodeURIComponent(node.id)}`, 'View Findings'));
+    } else if (node.type === 'resource') {
+      links.push(actionLink(`/resources/${encodeURIComponent(node.id)}`, 'View Resource'));
+      links.push(actionLink(`/access-paths?resource_id=${encodeURIComponent(node.id)}`, 'View Access Paths'));
+      links.push(actionLink(`/findings?search=${encodeURIComponent(node.id)}`, 'View Findings'));
+    } else {
+      links.push(actionLink('/access-paths', 'View Access Paths'));
+    }
+    return `<div class="d-flex flex-wrap gap-2 mt-3">${links.join('')}</div>`;
+  }
+
+  function whyPathMatters(path) {
+    const severity = isCriticalHigh(path.finding_severity)
+      ? `${path.finding_severity.toLowerCase()} severity`
+      : 'related';
+    const sensitivity = path.resource_sensitive ? 'sensitive resource' : 'reachable resource';
+    return `This ${severity} path shows ${formatIdentityLabel(path.identity_name, path.identity_id)} can reach a ${sensitivity}. Review the path before remediation or access review decisions.`;
   }
 
   function renderDetails() {
     const detail = document.getElementById('attack-graph-detail');
     const selectedPath = getSelectedPath();
     const selectedNode = getSelectedNode();
+    detail.classList.remove('text-muted');
 
     if (selectedPath) {
       detail.innerHTML = `
         <dl class="row mb-0 attack-graph-detail-list">
           <dt class="col-5">Identity</dt><dd class="col-7">${escapeHtml(formatIdentityLabel(selectedPath.identity_name, selectedPath.identity_id))}</dd>
           <dt class="col-5">Resource</dt><dd class="col-7">${escapeHtml(formatResourceLabel(selectedPath.resource_name, selectedPath.resource_id))}</dd>
-          <dt class="col-5">Path Length</dt><dd class="col-7">${escapeHtml(selectedPath.path_length)}</dd>
-          <dt class="col-5">Severity</dt><dd class="col-7">${escapeHtml(selectedPath.finding_severity)}</dd>
-          <dt class="col-5">Sensitivity</dt><dd class="col-7">${selectedPath.resource_sensitive ? 'Sensitive' : 'Not sensitive'}</dd>
+          <dt class="col-5">Severity</dt><dd class="col-7">${severityBadge(selectedPath.finding_severity)}</dd>
+          <dt class="col-5">Sensitivity</dt><dd class="col-7">${sensitivityBadge(selectedPath.resource_sensitive)}</dd>
+          <dt class="col-5">Path Length</dt><dd class="col-7">${neutralBadge(`Length ${selectedPath.path_length}`)}</dd>
           <dt class="col-5">Findings</dt><dd class="col-7">${escapeHtml(selectedPath.related_finding_count)}</dd>
+          <dt class="col-12">Why this matters</dt><dd class="col-12">${escapeHtml(whyPathMatters(selectedPath))}</dd>
         </dl>
+        ${pathActionLinks(selectedPath)}
       `;
       return;
     }
 
     if (selectedNode) {
+      const relatedPaths = findPathsForNode(selectedNode);
       detail.innerHTML = `
         <dl class="row mb-0 attack-graph-detail-list">
           <dt class="col-5">Label</dt><dd class="col-7">${escapeHtml(selectedNode.label)}</dd>
           <dt class="col-5">Type</dt><dd class="col-7">${escapeHtml(formatNodeType(selectedNode.type))}</dd>
           <dt class="col-5">Findings</dt><dd class="col-7">${escapeHtml(selectedNode.related_finding_count)}</dd>
+          <dt class="col-5">Paths</dt><dd class="col-7">${escapeHtml(relatedPaths.length)}</dd>
           <dt class="col-5">Sensitivity</dt><dd class="col-7">${selectedNode.sensitive_resource ? 'Sensitive resource' : 'N/A'}</dd>
           <dt class="col-5">Risk Flags</dt><dd class="col-7">${escapeHtml(formatRiskFlags(selectedNode))}</dd>
         </dl>
+        ${nodeActionLinks(selectedNode)}
       `;
       return;
     }
@@ -316,6 +407,7 @@
       state.selectedNodeId = null;
     }
     renderGraph();
+    renderSummary();
     renderPathList();
     renderDetails();
   }

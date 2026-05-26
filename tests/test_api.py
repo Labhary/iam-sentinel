@@ -414,6 +414,20 @@ def test_findings_workbench_script_keeps_pagination_and_compact_modal_boundaries
     assert "finding-detail-notes" not in script
 
 
+def test_findings_script_initializes_search_from_url_before_first_refresh() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    script = (project_root / "static/assets/js/iam-sentinel-findings.js").read_text()
+
+    assert "function initializeSearchFromUrl()" in script
+    assert "new URLSearchParams(window.location.search)" in script
+    assert "params.get('search')" in script
+    assert "document.getElementById('findings-search').value = search;" in script
+    assert "finding.resource_id" in script
+    assert "finding.resource_name" in script
+    init_body = extract_js_function_body(script, "initFindingsWorkbench")
+    assert init_body.index("initializeSearchFromUrl();") < init_body.index("refreshFindingsWorkbench();")
+
+
 def test_finding_detail_script_required_ids_exist_in_template() -> None:
     project_root = Path(__file__).resolve().parents[1]
     script = (project_root / "static/assets/js/iam-sentinel-finding-detail.js").read_text()
@@ -580,6 +594,11 @@ def test_get_attack_graph_page_returns_workbench(client) -> None:
     assert b'id="attack-graph-svg"' in response.data
     assert b'id="attack-graph-detail"' in response.data
     assert b'id="attack-graph-path-list"' in response.data
+    assert b'id="attack-graph-summary"' in response.data
+    assert b'id="attack-graph-total-paths"' in response.data
+    assert b'id="attack-graph-critical-high-paths"' in response.data
+    assert b'id="attack-graph-sensitive-paths"' in response.data
+    assert b'id="attack-graph-critical-high-identities"' in response.data
     assert b'id="attack-graph-filter-controls"' in response.data
     assert b'data-filter-mode="all"' in response.data
     assert b'data-filter-mode="critical-high"' in response.data
@@ -653,6 +672,42 @@ def test_attack_graph_readability_classes_and_filter_logic_exist() -> None:
     assert ".attack-graph-path-critical path" in styles
     assert ".attack-graph-path-high path" in styles
     assert ".attack-graph-path-neutral path" in styles
+
+
+def test_attack_graph_js_renders_investigation_workflow() -> None:
+    script = (
+        Path(__file__).resolve().parents[1]
+        / "static"
+        / "assets"
+        / "js"
+        / "iam-sentinel-attack-graph.js"
+    ).read_text()
+
+    assert "function renderSummary()" in script
+    assert "attack-graph-total-paths" in script
+    assert "attack-graph-critical-high-paths" in script
+    assert "attack-graph-sensitive-paths" in script
+    assert "attack-graph-critical-high-identities" in script
+    assert "function severityBadge(severity)" in script
+    assert "function sensitivityBadge(isSensitive)" in script
+    assert "function pathActionLinks(path)" in script
+    assert "function nodeActionLinks(node)" in script
+    assert "function whyPathMatters(path)" in script
+    assert "Why this matters" in script
+    assert "View Identity" in script
+    assert "View Resource" in script
+    assert "View Related Access Paths" in script
+    assert "View Related Findings" in script
+    assert "View Access Paths" in script
+    assert "View Findings" in script
+    assert "`/access-paths?identity_id=${encodeURIComponent(path.identity_id)}" in script
+    assert "`/access-paths?identity_id=${encodeURIComponent(node.id)}`" in script
+    assert "`/access-paths?resource_id=${encodeURIComponent(node.id)}`" in script
+    assert "`/findings?search=${encodeURIComponent(path.identity_id)}`" in script
+    assert "`/findings?search=${encodeURIComponent(node.id)}`" in script
+    assert "aria-current=\"${path.id === state.selectedPathId ? 'true' : 'false'}\"" in script
+    refresh_body = extract_js_function_body(script, "refreshFilteredGraph")
+    assert "renderSummary();" in refresh_body
 
 
 def test_attack_graph_js_has_single_state_and_selection_paths() -> None:

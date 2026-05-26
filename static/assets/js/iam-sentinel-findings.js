@@ -76,6 +76,8 @@
       finding.title,
       finding.identity_id,
       finding.identity_name,
+      finding.resource_id,
+      finding.resource_name,
       finding.finding_type,
       finding.owner
     ].some((value) => String(value ?? '').toLowerCase().includes(searchTerm));
@@ -513,9 +515,18 @@
     }
   }
 
+  function initializeSearchFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const search = params.get('search');
+    if (search !== null) {
+      document.getElementById('findings-search').value = search;
+    }
+  }
+
   function initFindingsWorkbench() {
     state.findingModal = new bootstrap.Modal(document.getElementById('finding-detail-modal'));
     wireEvents();
+    initializeSearchFromUrl();
     refreshFindingsWorkbench();
   }
 

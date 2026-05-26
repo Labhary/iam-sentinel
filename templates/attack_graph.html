@@ -18,6 +18,41 @@
       <div id="attack-graph-error" class="alert alert-danger d-none" role="alert"></div>
       <div id="attack-graph-loading" class="alert alert-info" role="status">Loading attack graph...</div>
 
+      <div class="row g-3 mb-3" id="attack-graph-summary">
+        <div class="col-md-3 col-6">
+          <div class="card mb-0">
+            <div class="card-body py-3">
+              <span class="text-muted small d-block">Total Paths</span>
+              <strong id="attack-graph-total-paths">0</strong>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 col-6">
+          <div class="card mb-0">
+            <div class="card-body py-3">
+              <span class="text-muted small d-block">Critical/High Paths</span>
+              <strong id="attack-graph-critical-high-paths">0</strong>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 col-6">
+          <div class="card mb-0">
+            <div class="card-body py-3">
+              <span class="text-muted small d-block">Sensitive Resource Paths</span>
+              <strong id="attack-graph-sensitive-paths">0</strong>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 col-6">
+          <div class="card mb-0">
+            <div class="card-body py-3">
+              <span class="text-muted small d-block">Critical/High Identities</span>
+              <strong id="attack-graph-critical-high-identities">0</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="row">
         <div class="col-xl-9">
           <div class="card attack-graph-card">
