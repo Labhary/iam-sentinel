@@ -7,6 +7,7 @@
     filteredPaths: [],
     selectedNodeId: null,
     selectedPathId: null,
+    focusResourceId: null,
     filterMode: 'all'
   };
   const columns = {
@@ -101,6 +102,9 @@
 
   function getFilteredPaths() {
     return state.graph.paths.filter((path) => {
+      if (state.focusResourceId && path.resource_id !== state.focusResourceId) {
+        return false;
+      }
       if (state.filterMode === 'critical-high') {
         return ['CRITICAL', 'HIGH'].includes(path.finding_severity);
       }
@@ -400,6 +404,9 @@
 
   function refreshFilteredGraph() {
     state.filteredPaths = getFilteredPaths();
+    if (state.focusResourceId && !state.selectedPathId && state.filteredPaths.length) {
+      state.selectedPathId = state.filteredPaths[0].id;
+    }
     if (state.selectedPathId && !state.filteredPaths.some((path) => path.id === state.selectedPathId)) {
       state.selectedPathId = null;
     }
@@ -437,11 +444,33 @@
     });
   }
 
+  function initializeFocusFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    state.focusResourceId = params.get('resource_id');
+  }
+
+  function initializeFocusedResourceFilter() {
+    if (!state.focusResourceId) {
+      return;
+    }
+    const focusedPaths = state.graph.paths.filter((path) => path.resource_id === state.focusResourceId);
+    if (focusedPaths.some((path) => path.resource_sensitive)) {
+      state.filterMode = 'sensitive';
+    }
+    const preferredPath = focusedPaths.find((path) => state.filterMode !== 'sensitive' || path.resource_sensitive) || focusedPaths[0];
+    state.selectedPathId = preferredPath ? preferredPath.id : null;
+    document.querySelectorAll('[data-filter-mode]').forEach((control) => {
+      control.classList.toggle('active', control.dataset.filterMode === state.filterMode);
+    });
+  }
+
   async function initAttackGraph() {
     setLoading(true);
     showError('');
     try {
+      initializeFocusFromUrl();
       state.graph = await fetchGraph();
+      initializeFocusedResourceFilter();
       refreshFilteredGraph();
     } catch (error) {
       showError('Attack graph data could not be loaded.');

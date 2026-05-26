@@ -706,6 +706,15 @@ def test_attack_graph_js_renders_investigation_workflow() -> None:
     assert "`/findings?search=${encodeURIComponent(path.identity_id)}`" in script
     assert "`/findings?search=${encodeURIComponent(node.id)}`" in script
     assert "aria-current=\"${path.id === state.selectedPathId ? 'true' : 'false'}\"" in script
+    assert "focusResourceId: null" in script
+    assert "function initializeFocusFromUrl()" in script
+    assert "params.get('resource_id')" in script
+    assert "path.resource_id !== state.focusResourceId" in script
+    assert "function initializeFocusedResourceFilter()" in script
+    assert "state.filterMode = 'sensitive';" in script
+    assert "state.selectedPathId = preferredPath ? preferredPath.id : null;" in script
+    assert "initializeFocusFromUrl();" in script
+    assert "initializeFocusedResourceFilter();" in script
     refresh_body = extract_js_function_body(script, "refreshFilteredGraph")
     assert "renderSummary();" in refresh_body
 
@@ -1320,8 +1329,34 @@ def test_resource_detail_related_findings_use_investigation_action_label() -> No
     project_root = Path(__file__).resolve().parents[1]
     script = (project_root / "static/assets/js/iam-sentinel-resource-detail.js").read_text()
 
-    assert 'href="/findings/${encodeURIComponent(finding.id)}">Open Investigation</a>' in script
+    assert 'href="/findings/${encodeURIComponent(finding.id)}">Investigate</a>' in script
+    assert "Open Investigation" not in script
     assert '>${escapeHtml(finding.id)}</a>' not in script
+
+
+def test_resource_detail_js_renders_investigation_workflow() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    script = (project_root / "static/assets/js/iam-sentinel-resource-detail.js").read_text()
+
+    assert "const formatResourceLabel = ui.formatResourceLabel" in script
+    assert "function renderInvestigationActions()" in script
+    assert "function renderInvestigationSummary(accessibleIdentities)" in script
+    assert "function renderWhyThisResourceMatters(resource)" in script
+    assert "function renderRelatedIdentities(identities)" in script
+    assert "function renderRelatedAccessPaths()" in script
+    assert "async function createAccessReview()" in script
+    assert "fetchJson(`/api/access-paths?resource_id=${encodeURIComponent(state.resourceId)}`)" in script
+    assert "`/attack-graph?resource_id=${encodeURIComponent(state.resourceId)}`" in script
+    assert "`/access-paths?resource_id=${encodeURIComponent(state.resourceId)}`" in script
+    assert "`/findings?search=${encodeURIComponent(state.resourceId)}`" in script
+    assert "resource-summary-identities" in script
+    assert "resource-summary-critical-high-identities" in script
+    assert "resource-summary-access-paths" in script
+    assert "resource-summary-related-findings" in script
+    assert "resource-related-identities" in script
+    assert "resource-related-access-paths" in script
+    assert "resource-matters-summary" in script
+    assert "Open Path" in script
 
 
 def test_resource_detail_uses_readable_type_labels() -> None:
@@ -2059,6 +2094,22 @@ def test_get_resource_detail_page_returns_resource_shell(client) -> None:
     assert b'id="resource-accessible-identities"' in response.data
     assert b'id="resource-external-identities"' in response.data
     assert b'id="resource-service-accounts"' in response.data
+    assert b'id="resource-detail-feedback"' in response.data
+    assert b"Investigation Actions" in response.data
+    assert b'id="resource-view-attack-graph-link"' in response.data
+    assert b'id="resource-view-access-paths-link"' in response.data
+    assert b'id="resource-view-findings-link"' in response.data
+    assert b'id="resource-create-access-review"' in response.data
+    assert b"Resource Investigation Summary" in response.data
+    assert b'id="resource-summary-identities"' in response.data
+    assert b'id="resource-summary-critical-high-identities"' in response.data
+    assert b'id="resource-summary-access-paths"' in response.data
+    assert b'id="resource-summary-related-findings"' in response.data
+    assert b"Why This Resource Matters" in response.data
+    assert b'id="resource-matters-badges"' in response.data
+    assert b'id="resource-matters-summary"' in response.data
+    assert b'id="resource-related-identities"' in response.data
+    assert b'id="resource-related-access-paths"' in response.data
     assert b'id="resource-related-findings"' in response.data
     assert b'id="resource-identity-link-marker"' in response.data
     assert b'id="resource-finding-link-marker"' in response.data
