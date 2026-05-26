@@ -1,9 +1,13 @@
 {
+  "organization": {
+    "name": "Atlas Harbor Cooperative",
+    "description": "Fictional regional fintech and logistics cooperative used for IAM Sentinel demos."
+  },
   "users": [
     {
       "id": "user-001",
-      "name": "Maya Chen",
-      "email": "maya.chen@company.local",
+      "name": "Salma Benali",
+      "email": "salma.benali@atlas-harbor.local",
       "type": "normal_user",
       "groups": ["grp-finance-readers"],
       "roles": ["role-finance-viewer"],
@@ -15,7 +19,7 @@
     {
       "id": "user-002",
       "name": "Omar Haddad",
-      "email": "omar.haddad@company.local",
+      "email": "omar.haddad@atlas-harbor.local",
       "type": "developer",
       "groups": ["grp-engineering"],
       "roles": ["role-dev-deployer", "role-production-breakglass"],
@@ -26,8 +30,8 @@
     },
     {
       "id": "user-003",
-      "name": "Priya Nair",
-      "email": "priya.nair@company.local",
+      "name": "Ananya Rao",
+      "email": "ananya.rao@atlas-harbor.local",
       "type": "admin",
       "groups": ["grp-admins"],
       "roles": ["role-platform-admin"],
@@ -38,8 +42,8 @@
     },
     {
       "id": "user-004",
-      "name": "Leo Martin",
-      "email": "leo.martin@contractor.example",
+      "name": "Lucas Meyer",
+      "email": "lucas.meyer@northbridge-partners.example",
       "type": "external_contractor",
       "groups": ["grp-engineering"],
       "roles": ["role-dev-deployer"],
@@ -50,8 +54,8 @@
     },
     {
       "id": "user-005",
-      "name": "Nadia Flores",
-      "email": "nadia.flores@company.local",
+      "name": "Nadia El Fassi",
+      "email": "nadia.el.fassi@atlas-harbor.local",
       "type": "dormant_user",
       "groups": ["grp-admins"],
       "roles": ["role-platform-admin"],
@@ -62,8 +66,8 @@
     },
     {
       "id": "user-006",
-      "name": "Payroll Automation",
-      "email": "svc-payroll@company.local",
+      "name": "Payroll Reconciliation Bot",
+      "email": "svc-payroll-recon@atlas-harbor.local",
       "type": "service_account",
       "groups": ["grp-payroll-automation"],
       "roles": ["role-payroll-processor"],
@@ -74,8 +78,8 @@
     },
     {
       "id": "user-007",
-      "name": "Sofia Grant",
-      "email": "sofia.grant@company.local",
+      "name": "Youssef Amrani",
+      "email": "youssef.amrani@atlas-harbor.local",
       "type": "security_admin",
       "groups": ["grp-security-operations"],
       "roles": ["role-security-auditor"],
@@ -86,8 +90,8 @@
     },
     {
       "id": "user-008",
-      "name": "Victor Reed",
-      "email": "victor.reed@partner.example",
+      "name": "Elena Kovac",
+      "email": "elena.kovac@metricsforge.example",
       "type": "external_contractor",
       "groups": ["grp-data-science"],
       "roles": ["role-analytics-reader"],
@@ -98,8 +102,8 @@
     },
     {
       "id": "user-009",
-      "name": "ETL Warehouse Loader",
-      "email": "svc-warehouse-loader@company.local",
+      "name": "Warehouse Sync Service",
+      "email": "svc-warehouse-sync@atlas-harbor.local",
       "type": "service_account",
       "groups": ["grp-data-pipelines"],
       "roles": ["role-data-pipeline-operator"],
@@ -110,8 +114,8 @@
     },
     {
       "id": "user-010",
-      "name": "Elena Kovac",
-      "email": "elena.kovac@company.local",
+      "name": "Rachel Morgan",
+      "email": "rachel.morgan@atlas-harbor.local",
       "type": "dormant_user",
       "groups": ["grp-security-operations"],
       "roles": ["role-security-auditor"],
@@ -122,8 +126,8 @@
     },
     {
       "id": "user-011",
-      "name": "Marcus Lee",
-      "email": "marcus.lee@company.local",
+      "name": "Arjun Patel",
+      "email": "arjun.patel@atlas-harbor.local",
       "type": "developer",
       "groups": ["grp-engineering"],
       "roles": ["role-container-admin"],
@@ -134,8 +138,8 @@
     },
     {
       "id": "user-012",
-      "name": "Grace Taylor",
-      "email": "grace.taylor@company.local",
+      "name": "Grace Miller",
+      "email": "grace.miller@atlas-harbor.local",
       "type": "normal_user",
       "groups": ["grp-hr-readers"],
       "roles": ["role-hr-viewer"],
@@ -148,17 +152,17 @@
   "groups": [
     {
       "id": "grp-finance-readers",
-      "name": "Finance Readers",
+      "name": "Finance Close Readers",
       "roles": ["role-finance-viewer"]
     },
     {
       "id": "grp-engineering",
-      "name": "Engineering",
+      "name": "Cloud Engineering",
       "roles": ["role-dev-deployer"]
     },
     {
       "id": "grp-admins",
-      "name": "Platform Administrators",
+      "name": "Identity Platform Administrators",
       "roles": ["role-platform-admin"]
     },
     {
@@ -173,34 +177,34 @@
     },
     {
       "id": "grp-data-science",
-      "name": "Data Science",
+      "name": "Data Science Partner Access",
       "roles": ["role-analytics-reader"]
     },
     {
       "id": "grp-data-pipelines",
-      "name": "Data Pipelines",
+      "name": "Data Pipeline Services",
       "roles": ["role-data-pipeline-operator"]
     },
     {
       "id": "grp-hr-readers",
-      "name": "HR Readers",
+      "name": "People Operations Readers",
       "roles": ["role-hr-viewer"]
     }
   ],
   "roles": [
     {
       "id": "role-finance-viewer",
-      "name": "Finance Viewer",
+      "name": "Finance Close Viewer",
       "permissions": ["perm-read-finance"]
     },
     {
       "id": "role-dev-deployer",
-      "name": "Developer Deployer",
+      "name": "Cloud Application Deployer",
       "permissions": ["perm-read-source", "perm-deploy-app", "perm-read-customer-db"]
     },
     {
       "id": "role-platform-admin",
-      "name": "Platform Admin",
+      "name": "Identity Platform Admin",
       "permissions": ["perm-admin-users", "perm-manage-roles", "perm-read-customer-db", "perm-read-payroll"]
     },
     {
@@ -220,22 +224,22 @@
     },
     {
       "id": "role-analytics-reader",
-      "name": "Analytics Reader",
+      "name": "Customer Analytics Reader",
       "permissions": ["perm-read-analytics-warehouse", "perm-read-customer-db"]
     },
     {
       "id": "role-data-pipeline-operator",
-      "name": "Data Pipeline Operator",
+      "name": "Warehouse Pipeline Operator",
       "permissions": ["perm-read-analytics-warehouse", "perm-write-analytics-warehouse"]
     },
     {
       "id": "role-container-admin",
-      "name": "Container Admin",
+      "name": "Cloud Container Admin",
       "permissions": ["perm-admin-containers", "perm-read-secrets"]
     },
     {
       "id": "role-hr-viewer",
-      "name": "HR Viewer",
+      "name": "People Records Viewer",
       "permissions": ["perm-read-hr-records"]
     }
   ],
@@ -324,79 +328,79 @@
   "resources": [
     {
       "id": "res-finance-reports",
-      "name": "Finance Reports",
+      "name": "Finance Close Repository",
       "type": "document_store",
       "sensitive": true
     },
     {
       "id": "res-source-repositories",
-      "name": "Source Repositories",
+      "name": "GitForge Source Control",
       "type": "code_repository",
       "sensitive": false
     },
     {
       "id": "res-production-app",
-      "name": "Production Application",
+      "name": "AtlasPay Production Portal",
       "type": "application",
       "sensitive": true
     },
     {
       "id": "res-customer-database",
-      "name": "Customer Database",
+      "name": "Customer 360 Database",
       "type": "database",
       "sensitive": true
     },
     {
       "id": "res-identity-directory",
-      "name": "Identity Directory",
+      "name": "Workforce Identity Directory",
       "type": "identity_store",
       "sensitive": true
     },
     {
       "id": "res-role-catalog",
-      "name": "Role Catalog",
+      "name": "IAM Role Catalog",
       "type": "iam_configuration",
       "sensitive": true
     },
     {
       "id": "res-payroll-system",
-      "name": "Payroll System",
+      "name": "Payroll Ledger System",
       "type": "business_application",
       "sensitive": true
     },
     {
       "id": "res-audit-log-vault",
-      "name": "Audit Log Vault",
+      "name": "Security Audit Log Vault",
       "type": "log_archive",
       "sensitive": true
     },
     {
       "id": "res-incident-platform",
-      "name": "Incident Response Platform",
+      "name": "Incident Response Console",
       "type": "security_application",
       "sensitive": true
     },
     {
       "id": "res-analytics-warehouse",
-      "name": "Analytics Warehouse",
+      "name": "Customer Analytics Warehouse",
       "type": "data_warehouse",
       "sensitive": true
     },
     {
       "id": "res-container-platform",
-      "name": "Container Platform",
+      "name": "Cloud Container Platform",
       "type": "production_platform",
       "sensitive": true
     },
     {
       "id": "res-secrets-vault",
-      "name": "Secrets Vault",
+      "name": "Production Secrets Vault",
       "type": "secret_store",
       "sensitive": true
     },
     {
       "id": "res-hr-records",
-      "name": "HR Records",
+      "name": "People Records System",
       "type": "business_application",
       "sensitive": true
     }
@@ -404,35 +408,35 @@
   "risk_scenarios": [
     {
       "id": "scenario-001",
-      "description": "External contractor has deployment access and customer database read access without MFA."
+      "description": "Lucas Meyer is an external cloud contractor without MFA who inherits production deploy and customer database read access."
     },
     {
       "id": "scenario-002",
-      "description": "Dormant user retains platform administrator privileges without MFA."
+      "description": "Nadia El Fassi is a dormant identity that still retains identity platform administrator privileges without MFA."
     },
     {
       "id": "scenario-003",
-      "description": "Service account can read and write payroll data while MFA is disabled."
+      "description": "Payroll Reconciliation Bot can read and write payroll ledger data as a non-human account."
     },
     {
       "id": "scenario-004",
-      "description": "Admin role combines user administration, role management, and sensitive data read access."
+      "description": "Identity Platform Admin combines user administration, role management, customer data, and payroll read permissions."
     },
     {
       "id": "scenario-005",
-      "description": "Developer has a break-glass production role with wildcard access to a sensitive production application."
+      "description": "Omar Haddad has production break-glass access with a wildcard permission on the AtlasPay production portal."
     },
     {
       "id": "scenario-006",
-      "description": "Security operations users can manage incident tooling and read audit logs."
+      "description": "Youssef Amrani can read audit logs and manage incident tooling without MFA."
     },
     {
       "id": "scenario-007",
-      "description": "External analytics contractor can read customer and warehouse data."
+      "description": "Elena Kovac is an external analytics consultant with customer and warehouse data access."
     },
     {
       "id": "scenario-008",
-      "description": "Container administrator can administer production infrastructure and read secrets without MFA."
+      "description": "Arjun Patel can administer cloud containers and read production secrets without MFA."
     }
   ]
 }

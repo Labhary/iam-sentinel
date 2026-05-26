@@ -1,5 +1,7 @@
 (() => {
   const ui = window.IamSentinelUI || {};
+  const formatIdentityLabel = ui.formatIdentityLabel || ((name, id) => name || id || '');
+  const formatResourceLabel = ui.formatResourceLabel || ((name, id) => name || id || '');
   const state = {
     graph: { nodes: [], edges: [], paths: [] },
     filteredPaths: [],
@@ -198,7 +200,7 @@
       return `
         <g class="${nodeClass(node)}" data-node-id="${escapeHtml(node.id)}" tabindex="0" role="button" aria-label="${escapeHtml(node.label)}">
           <rect x="${position.x - 62}" y="${position.y - 24}" width="124" height="48" rx="6"></rect>
-          <text class="attack-graph-node-label" x="${position.x}" y="${position.y - 4}">${escapeHtml(truncateLabel(node.label, 18))}</text>
+          <text class="attack-graph-node-label" x="${position.x}" y="${position.y - 4}">${escapeHtml(truncateLabel(node.label, 20))}</text>
           <text class="attack-graph-node-type" x="${position.x}" y="${position.y + 13}">${escapeHtml(formatNodeType(node.type))}</text>
         </g>
       `;
@@ -219,7 +221,7 @@
     }
     list.innerHTML = state.filteredPaths.slice(0, 12).map((path) => `
       <button class="list-group-item list-group-item-action attack-graph-path-item ${getPathSeverityClass(path.finding_severity)}${path.id === state.selectedPathId ? ' active' : ''}" type="button" data-path-id="${escapeHtml(path.id)}">
-        <span class="attack-graph-path-title">${escapeHtml(path.identity_name)} to ${escapeHtml(path.resource_name)}</span>
+        <span class="attack-graph-path-title">${escapeHtml(formatIdentityLabel(path.identity_name, path.identity_id))} to ${escapeHtml(formatResourceLabel(path.resource_name, path.resource_id))}</span>
         <span class="attack-graph-path-meta">${escapeHtml(path.finding_severity)} &middot; Length ${escapeHtml(path.path_length)} &middot; ${escapeHtml(path.related_finding_count)} findings</span>
       </button>
     `).join('');
@@ -233,9 +235,9 @@
     if (selectedPath) {
       detail.innerHTML = `
         <dl class="row mb-0 attack-graph-detail-list">
-          <dt class="col-5">Identity</dt><dd class="col-7">${escapeHtml(selectedPath.identity_name)}</dd>
-          <dt class="col-5">Resource</dt><dd class="col-7">${escapeHtml(selectedPath.resource_name)}</dd>
-          <dt class="col-5">Path length</dt><dd class="col-7">${escapeHtml(selectedPath.path_length)}</dd>
+          <dt class="col-5">Identity</dt><dd class="col-7">${escapeHtml(formatIdentityLabel(selectedPath.identity_name, selectedPath.identity_id))}</dd>
+          <dt class="col-5">Resource</dt><dd class="col-7">${escapeHtml(formatResourceLabel(selectedPath.resource_name, selectedPath.resource_id))}</dd>
+          <dt class="col-5">Path Length</dt><dd class="col-7">${escapeHtml(selectedPath.path_length)}</dd>
           <dt class="col-5">Severity</dt><dd class="col-7">${escapeHtml(selectedPath.finding_severity)}</dd>
           <dt class="col-5">Sensitivity</dt><dd class="col-7">${selectedPath.resource_sensitive ? 'Sensitive' : 'Not sensitive'}</dd>
           <dt class="col-5">Findings</dt><dd class="col-7">${escapeHtml(selectedPath.related_finding_count)}</dd>
@@ -251,7 +253,7 @@
           <dt class="col-5">Type</dt><dd class="col-7">${escapeHtml(formatNodeType(selectedNode.type))}</dd>
           <dt class="col-5">Findings</dt><dd class="col-7">${escapeHtml(selectedNode.related_finding_count)}</dd>
           <dt class="col-5">Sensitivity</dt><dd class="col-7">${selectedNode.sensitive_resource ? 'Sensitive resource' : 'N/A'}</dd>
-          <dt class="col-5">Risk flags</dt><dd class="col-7">${escapeHtml(formatRiskFlags(selectedNode))}</dd>
+          <dt class="col-5">Risk Flags</dt><dd class="col-7">${escapeHtml(formatRiskFlags(selectedNode))}</dd>
         </dl>
       `;
       return;

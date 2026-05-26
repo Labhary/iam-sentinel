@@ -2,6 +2,8 @@
   const ui = window.IamSentinelUI || {};
   const formatTimestamp = ui.formatTimestamp || ((timestamp) => timestamp);
   const formatStatus = ui.formatStatus || ((status) => status);
+  const formatIdentityLabel = ui.formatIdentityLabel || ((name, id) => name || id || '');
+  const formatResourceLabel = ui.formatResourceLabel || ((name, id) => name || id || '');
   const severityBadgeClasses = {
     CRITICAL: 'badge bg-danger',
     HIGH: 'badge bg-warning text-dark',
@@ -117,8 +119,8 @@
 
   function renderLinks(finding) {
     setHtml('finding-detail-links', `
-      <a class="btn btn-sm btn-outline-primary" href="/identities/${encodeURIComponent(finding.identity_id)}">Identity ${escapeHtml(finding.identity_id)}</a>
-      ${finding.resource_id ? `<a class="btn btn-sm btn-outline-primary" href="/resources/${encodeURIComponent(finding.resource_id)}">Resource ${escapeHtml(finding.resource_id)}</a>` : ''}
+      <a class="btn btn-sm btn-outline-primary" href="/identities/${encodeURIComponent(finding.identity_id)}">Identity ${escapeHtml(formatIdentityLabel(finding.identity_name, finding.identity_id))}</a>
+      ${finding.resource_id ? `<a class="btn btn-sm btn-outline-primary" href="/resources/${encodeURIComponent(finding.resource_id)}">Resource ${escapeHtml(formatResourceLabel(finding.resource_name, finding.resource_id))}</a>` : ''}
     `);
   }
 
@@ -171,7 +173,7 @@
     const severityClass = severityBadgeClasses[finding.severity] || 'badge bg-secondary';
 
     setText('finding-detail-title', finding.title);
-    setText('finding-detail-meta', `${finding.id} | ${finding.identity_id}`);
+    setText('finding-detail-meta', `${finding.id} | ${formatIdentityLabel(finding.identity_name, finding.identity_id)}`);
     renderLinks(finding);
     setHtml('finding-detail-severity', `<span class="${severityClass}">${escapeHtml(finding.severity)}</span>`);
     setText('finding-detail-score', finding.score);

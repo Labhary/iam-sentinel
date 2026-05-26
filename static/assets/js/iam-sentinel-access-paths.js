@@ -1,4 +1,7 @@
 (() => {
+  const ui = window.IamSentinelUI || {};
+  const formatIdentityLabel = ui.formatIdentityLabel || ((name, id) => name || id || '');
+  const formatResourceLabel = ui.formatResourceLabel || ((name, id) => name || id || '');
   const state = {
     accessPaths: [],
     filteredAccessPaths: [],
@@ -106,12 +109,10 @@
         return `
         <tr class="access-path-row">
           <td>
-            <div class="access-path-name">${escapeHtml(accessPath.identity_name)}</div>
-            <div class="access-path-id">${escapeHtml(accessPath.identity_id)}</div>
+            <div class="access-path-name">${escapeHtml(formatIdentityLabel(accessPath.identity_name, accessPath.identity_id))}</div>
           </td>
           <td>
-            <div class="access-path-name">${escapeHtml(accessPath.resource_name)}</div>
-            <div class="access-path-id">${escapeHtml(accessPath.resource_id)}</div>
+            <div class="access-path-name">${escapeHtml(formatResourceLabel(accessPath.resource_name, accessPath.resource_id))}</div>
           </td>
           <td>${sensitiveBadge(accessPath.resource_sensitive)}</td>
           <td>${escapeHtml(accessPath.path_length)}</td>

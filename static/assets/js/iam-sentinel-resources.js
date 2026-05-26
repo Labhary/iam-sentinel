@@ -1,4 +1,6 @@
 (() => {
+  const ui = window.IamSentinelUI || {};
+  const formatResourceLabel = ui.formatResourceLabel || ((name, id) => name || id || '');
   const state = {
     resources: [],
     filteredResources: [],
@@ -109,7 +111,7 @@
     const rows = resources.length
       ? resources.map((resource) => `
         <tr>
-          <td>${escapeHtml(resource.name)}</td>
+          <td>${escapeHtml(resource.label || formatResourceLabel(resource.name, resource.id))}</td>
           <td><span class="table-nowrap">${escapeHtml(formatResourceType(resource.type))}</span></td>
           <td>${statusBadge(resource.sensitive, 'Sensitive', 'Not Sensitive')}</td>
           <td>${escapeHtml(resource.accessible_by_count)}</td>

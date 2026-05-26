@@ -16,7 +16,7 @@ def test_build_identity_graph_creates_nodes_with_metadata() -> None:
     graph = build_identity_graph(load_iam_data(SAMPLE_DATA_PATH))
 
     assert graph.nodes["user-003"]["node_type"] == "user"
-    assert graph.nodes["user-003"]["display_name"] == "Priya Nair"
+    assert graph.nodes["user-003"]["display_name"] == "Ananya Rao"
     assert graph.nodes["grp-admins"]["node_type"] == "group"
     assert graph.nodes["role-platform-admin"]["node_type"] == "role"
     assert graph.nodes["perm-read-payroll"]["node_type"] == "permission"
@@ -70,8 +70,8 @@ def test_format_attack_path_uses_display_names() -> None:
     )
 
     assert formatted_path == (
-        "Nadia Flores -> Platform Administrators -> "
-        "Platform Admin -> Manage Roles -> Role Catalog"
+        "Nadia El Fassi -> Identity Platform Administrators -> "
+        "Identity Platform Admin -> Manage Roles -> IAM Role Catalog"
     )
 
 
@@ -84,4 +84,4 @@ def test_format_attack_path_falls_back_to_node_id_when_display_name_is_missing()
         ["user-005", "grp-admins", "role-platform-admin"],
     )
 
-    assert formatted_path == "Nadia Flores -> Platform Administrators -> role-platform-admin"
+    assert formatted_path == "Nadia El Fassi -> Identity Platform Administrators -> role-platform-admin"

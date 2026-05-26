@@ -435,6 +435,8 @@ def get_finding_or_none(finding_id: str) -> Finding:
 
 def finding_to_dict(finding: Finding, users_by_id: dict[str, User] | None = None) -> dict:
     user = users_by_id.get(finding.identity_id) if users_by_id else None
+    iam_data = load_effective_iam_data()
+    resource = iam_data.resources_by_id.get(finding.resource_id) if finding.resource_id else None
     return {
         "id": finding.id,
         "title": finding.title,
@@ -442,7 +444,10 @@ def finding_to_dict(finding: Finding, users_by_id: dict[str, User] | None = None
         "score": finding.score,
         "identity_id": finding.identity_id,
         "identity_name": user.name if user else finding.identity_id,
+        "identity_label": format_identity_label(user.name if user else None, finding.identity_id),
         "resource_id": finding.resource_id,
+        "resource_name": resource.name if resource else finding.resource_id,
+        "resource_label": format_resource_label(resource.name if resource else None, finding.resource_id),
         "finding_type": finding.finding_type,
         "description": finding.description,
         "evidence": finding.evidence,
@@ -464,6 +469,7 @@ def identity_to_dict(user: User, iam_data=None) -> dict:
     row = {
         "id": user.id,
         "name": user.name,
+        "label": format_identity_label(user.name, user.id),
         "email": user.email,
         "type": user.type,
         "mfa_enabled": user.mfa_enabled,
@@ -1027,7 +1033,7 @@ def identity_display_name(iam_data, identity_id: str | None) -> str:
     user = iam_data.users_by_id.get(identity_id)
     if user is None:
         return identity_id
-    return f"{user.name} ({user.id})"
+    return format_identity_label(user.name, user.id)
 
 
 def resource_display_name(iam_data, resource_id: str | None) -> str:
@@ -1036,7 +1042,23 @@ def resource_display_name(iam_data, resource_id: str | None) -> str:
     resource = iam_data.resources_by_id.get(resource_id)
     if resource is None:
         return resource_id
-    return f"{resource.name} ({resource.id})"
+    return format_resource_label(resource.name, resource.id)
+
+
+def format_identity_label(display_name: str | None, identity_id: str | None) -> str:
+    return format_entity_label(display_name, identity_id)
+
+
+def format_resource_label(display_name: str | None, resource_id: str | None) -> str:
+    return format_entity_label(display_name, resource_id)
+
+
+def format_entity_label(display_name: str | None, entity_id: str | None) -> str:
+    if not entity_id:
+        return display_name or "N/A"
+    if display_name and display_name != entity_id:
+        return f"{display_name} ({entity_id})"
+    return entity_id
 
 
 def build_remediation_statistics(
@@ -1106,8 +1128,10 @@ def build_attack_graph_data() -> dict:
                 "id": f"path-{index + 1}",
                 "identity_id": access_path["identity_id"],
                 "identity_name": access_path["identity_name"],
+                "identity_label": access_path["identity_label"],
                 "resource_id": access_path["resource_id"],
                 "resource_name": access_path["resource_name"],
+                "resource_label": access_path["resource_label"],
                 "resource_sensitive": access_path["resource_sensitive"],
                 "path_nodes": access_path["path_nodes"],
                 "path_display": access_path["path_display"],
@@ -1682,10 +1706,13 @@ def format_top_list_for_csv(rows: list[dict], id_key: str) -> str:
 
 
 def access_review_to_dict(review: AccessReview) -> dict:
+    iam_data = load_effective_iam_data()
     return {
         "id": review.id,
         "identity_id": review.identity_id,
+        "identity_label": identity_display_name(iam_data, review.identity_id),
         "resource_id": review.resource_id,
+        "resource_label": resource_display_name(iam_data, review.resource_id),
         "status": review.status.value,
         "reviewer": review.reviewer,
         "decision": review.decision.value,
@@ -1765,10 +1792,12 @@ def build_access_paths(
                 access_paths.append({
                     "identity_id": user.id,
                     "identity_name": user.name,
+                    "identity_label": format_identity_label(user.name, user.id),
                     "identity_external_user": user.external_user,
                     "identity_service_account": user.service_account,
                     "resource_id": resource.id,
                     "resource_name": resource.name,
+                    "resource_label": format_resource_label(resource.name, resource.id),
                     "resource_sensitive": resource.sensitive,
                     "path_nodes": path_nodes,
                     "path_display": path_display,
@@ -1796,6 +1825,7 @@ def resource_to_dict(
     return {
         "id": resource.id,
         "name": resource.name,
+        "label": format_resource_label(resource.name, resource.id),
         "type": resource.type,
         "sensitive": resource.sensitive,
         "accessible_by": accessible_by,

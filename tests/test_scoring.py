@@ -47,7 +47,7 @@ def test_finding_object_creation() -> None:
         evidence=["Last login is older than 90 days.", "Identity has admin role."],
         recommendation="Review the identity and remove unnecessary privileged access.",
         attack_paths=[
-            "Nadia Flores -> Platform Administrators -> Platform Admin -> Manage Roles -> Role Catalog"
+            "Nadia El Fassi -> Identity Platform Administrators -> Identity Platform Admin -> Manage Roles -> IAM Role Catalog"
         ],
         created_at="2026-05-18T00:00:00Z",
     )
@@ -55,6 +55,6 @@ def test_finding_object_creation() -> None:
     assert finding.identity_id == "user-005"
     assert finding.resource_id == "res-role-catalog"
     assert finding.severity == Severity.HIGH
-    assert finding.attack_paths[0].startswith("Nadia Flores")
+    assert finding.attack_paths[0].startswith("Nadia El Fassi")
     assert finding.risk_factors == []
     assert finding.risk_explanation == ""

@@ -42,7 +42,7 @@ def test_detect_privileged_accounts_without_mfa_generates_finding() -> None:
     assert finding.severity == Severity.HIGH
     assert finding.score == 85
     assert "MFA is disabled." in finding.evidence
-    assert any("Nadia Flores" in path for path in finding.attack_paths)
+    assert any("Nadia El Fassi" in path for path in finding.attack_paths)
 
 
 def test_detect_dormant_privileged_accounts_generates_finding() -> None:
@@ -81,7 +81,7 @@ def test_detect_external_identities_with_sensitive_access_generates_finding() ->
     assert finding.score == 90
     assert finding.resource_id == "res-customer-database"
     assert "Identity is marked as external." in finding.evidence
-    assert any("Leo Martin" in path for path in finding.attack_paths)
+    assert any("Lucas Meyer" in path for path in finding.attack_paths)
 
 
 def test_detect_service_accounts_with_sensitive_access_generates_finding() -> None:
@@ -100,8 +100,8 @@ def test_detect_service_accounts_with_sensitive_access_generates_finding() -> No
     assert finding.severity == Severity.HIGH
     assert finding.score == 85
     assert "Identity is marked as a service account." in finding.evidence
-    assert any("Payroll Automation" in path for path in finding.attack_paths)
-    assert any("Payroll System" in path for path in finding.attack_paths)
+    assert any("Payroll Reconciliation Bot" in path for path in finding.attack_paths)
+    assert any("Payroll Ledger System" in path for path in finding.attack_paths)
 
 
 def test_detect_service_accounts_with_sensitive_access_escalates_privileged_access() -> None:
@@ -152,8 +152,8 @@ def test_detect_toxic_permission_combinations_includes_attack_paths() -> None:
     finding = findings[0]
 
     assert finding.attack_paths
-    assert any("Priya Nair" in path for path in finding.attack_paths)
-    assert any("Customer Database" in path for path in finding.attack_paths)
+    assert any("Ananya Rao" in path for path in finding.attack_paths)
+    assert any("Customer 360 Database" in path for path in finding.attack_paths)
 
 
 def test_detect_wildcard_or_admin_permissions_generates_findings() -> None:
@@ -163,7 +163,7 @@ def test_detect_wildcard_or_admin_permissions_generates_findings() -> None:
 
     assert [finding.id for finding in findings] == ["finding-wildcard-admin-user-002"]
     assert findings[0].finding_type == "wildcard_or_admin_permission"
-    assert "perm-admin-all-production action=* resource=Production Application" in findings[0].evidence[0]
+    assert "perm-admin-all-production action=* resource=AtlasPay Production Portal" in findings[0].evidence[0]
 
 
 def test_detect_wildcard_or_admin_permissions_escalates_sensitive_access() -> None:
@@ -187,7 +187,7 @@ def test_detect_wildcard_or_admin_permissions_includes_readable_attack_paths() -
     assert finding.attack_paths
     assert any("Omar Haddad" in path for path in finding.attack_paths)
     assert any("Production Breakglass Operator" in path for path in finding.attack_paths)
-    assert any("Production Application" in path for path in finding.attack_paths)
+    assert any("AtlasPay Production Portal" in path for path in finding.attack_paths)
 
 
 def test_run_all_detections_returns_deterministic_scores() -> None:

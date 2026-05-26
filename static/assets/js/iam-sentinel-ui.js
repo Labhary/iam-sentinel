@@ -56,10 +56,11 @@ window.IamSentinelUI = (() => {
 
   function formatStatus(status) {
     const statusLabels = {
-      UNDER_REVIEW: 'Under Review',
       OPEN: 'Open',
+      UNDER_REVIEW: 'Under Review',
       REMEDIATED: 'Remediated',
       FALSE_POSITIVE: 'False Positive',
+      SUPPRESSED: 'Suppressed',
       CLOSED: 'Closed'
     };
 
@@ -72,6 +73,29 @@ window.IamSentinelUI = (() => {
       .filter(Boolean)
       .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
       .join(' ');
+  }
+
+  function formatIdentityLabel(identityOrName, identityId) {
+    if (identityOrName && typeof identityOrName === 'object') {
+      return formatEntityLabel(identityOrName.name || identityOrName.identity_name, identityOrName.id || identityOrName.identity_id);
+    }
+    return formatEntityLabel(identityOrName, identityId);
+  }
+
+  function formatResourceLabel(resourceOrName, resourceId) {
+    if (resourceOrName && typeof resourceOrName === 'object') {
+      return formatEntityLabel(resourceOrName.name || resourceOrName.resource_name, resourceOrName.id || resourceOrName.resource_id);
+    }
+    return formatEntityLabel(resourceOrName, resourceId);
+  }
+
+  function formatEntityLabel(displayName, entityId) {
+    const id = String(entityId ?? '').trim();
+    const name = String(displayName ?? '').trim();
+    if (name && id && name !== id) {
+      return `${name} (${id})`;
+    }
+    return name || id || '';
   }
 
   function formatTimestamp(timestamp) {
@@ -103,6 +127,8 @@ window.IamSentinelUI = (() => {
   return {
     escapeHtml,
     fetchJson,
+    formatIdentityLabel,
+    formatResourceLabel,
     formatStatus,
     formatTimestamp,
     setText,

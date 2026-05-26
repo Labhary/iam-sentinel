@@ -1,6 +1,8 @@
 (() => {
   const ui = window.IamSentinelUI || {};
   const formatStatus = ui.formatStatus || ((status) => status);
+  const formatIdentityLabel = ui.formatIdentityLabel || ((name, id) => name || id || '');
+  const formatResourceLabel = ui.formatResourceLabel || ((name, id) => name || id || '');
   const severityBadgeClasses = {
     CRITICAL: 'badge bg-danger',
     HIGH: 'badge bg-warning text-dark',
@@ -170,8 +172,7 @@
             <td>${escapeHtml(finding.title)}</td>
             <td>
               <a class="identity-link" href="/identities/${encodeURIComponent(finding.identity_id)}">
-                <span class="finding-identity-name">${escapeHtml(finding.identity_name || finding.identity_id)}</span>
-                <span class="finding-identity-id d-block text-muted small">${escapeHtml(finding.identity_id)}</span>
+                <span class="finding-identity-name">${escapeHtml(formatIdentityLabel(finding.identity_name, finding.identity_id))}</span>
               </a>
             </td>
             <td>${escapeHtml(finding.score)}</td>
@@ -222,10 +223,10 @@
 
     const severityClass = severityBadgeClasses[finding.severity] || 'badge bg-secondary';
     document.getElementById('finding-detail-title').textContent = finding.title;
-    document.getElementById('finding-detail-meta').textContent = `${finding.id} | ${finding.identity_name || finding.identity_id} (${finding.identity_id})`;
+    document.getElementById('finding-detail-meta').textContent = `${finding.id} | ${formatIdentityLabel(finding.identity_name, finding.identity_id)}`;
     document.getElementById('finding-detail-links').innerHTML = `
-      <a class="btn btn-sm btn-outline-primary" href="/identities/${encodeURIComponent(finding.identity_id)}">Identity ${escapeHtml(finding.identity_name || finding.identity_id)}</a>
-      ${finding.resource_id ? `<a class="btn btn-sm btn-outline-primary" href="/resources/${encodeURIComponent(finding.resource_id)}">Resource ${escapeHtml(finding.resource_id)}</a>` : ''}
+      <a class="btn btn-sm btn-outline-primary" href="/identities/${encodeURIComponent(finding.identity_id)}">Identity ${escapeHtml(formatIdentityLabel(finding.identity_name, finding.identity_id))}</a>
+      ${finding.resource_id ? `<a class="btn btn-sm btn-outline-primary" href="/resources/${encodeURIComponent(finding.resource_id)}">Resource ${escapeHtml(formatResourceLabel(finding.resource_name, finding.resource_id))}</a>` : ''}
     `;
     document.getElementById('finding-detail-severity').innerHTML = `<span class="${severityClass}">${escapeHtml(finding.severity)}</span>`;
     document.getElementById('finding-detail-score').textContent = finding.score;

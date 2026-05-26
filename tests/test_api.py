@@ -291,8 +291,8 @@ def test_findings_script_searches_and_displays_identity_names() -> None:
 
     assert "finding.identity_name" in script
     assert "finding-identity-name" in script
-    assert "finding-identity-id" in script
-    assert "finding.identity_name || finding.identity_id" in script
+    assert "formatIdentityLabel(finding.identity_name, finding.identity_id)" in script
+    assert "finding.identity_name || finding.identity_id" not in script
     assert "finding-accepted-risk-reason" in script
     assert "ACCEPT_RISK" in script
 
@@ -967,8 +967,14 @@ def test_shared_ui_formats_backend_status_labels() -> None:
         assert f"{raw_status}: '{label}'" in helper
 
     assert "function formatStatus(status)" in helper
+    assert "function formatIdentityLabel(" in helper
+    assert "function formatResourceLabel(" in helper
+    assert "`${name} (${id})`" in helper
+    assert "SUPPRESSED: 'Suppressed'" in helper
     assert ".split('_')" in helper
     assert "formatStatus," in helper
+    assert "formatIdentityLabel," in helper
+    assert "formatResourceLabel," in helper
 
 
 def test_finding_status_dropdowns_keep_values_but_use_readable_labels() -> None:
@@ -1051,7 +1057,8 @@ def test_access_paths_workbench_uses_compact_analyst_table_polish() -> None:
 
     assert 'class="access-path-row"' in script
     assert 'class="access-path-name"' in script
-    assert 'class="access-path-id"' in script
+    assert "formatIdentityLabel(accessPath.identity_name, accessPath.identity_id)" in script
+    assert "formatResourceLabel(accessPath.resource_name, accessPath.resource_id)" in script
     assert 'class="table-truncate access-path-display" title="${pathDisplay}"' in script
     assert 'btn-group btn-group-sm access-path-actions' in script
     assert "btn-outline-success create-review-button" not in script
@@ -1060,8 +1067,10 @@ def test_access_paths_workbench_uses_compact_analyst_table_polish() -> None:
     assert "data-resource-id" in script
     assert ".access-paths-table .access-path-actions" in styles
     assert "flex-wrap: nowrap;" in styles
-    assert "opacity: 0.82;" in styles
     assert "font-size: 0.76rem;" in styles
+    assert "border-color: #0d6efd;" in styles
+    assert "font-weight: 600;" in styles
+    assert ".access-paths-table .access-path-id" not in styles
     assert ".access-paths-table .access-path-display" in styles
 
 
@@ -1725,6 +1734,22 @@ def test_report_template_has_no_duplicate_export_labels() -> None:
     assert "Export CSV" not in template
 
 
+def test_demo_reset_script_is_scoped_to_local_sqlite_state() -> None:
+    script = (
+        Path(__file__).resolve().parents[1] / "scripts" / "reset_demo_state.ps1"
+    ).read_text()
+
+    assert "data" in script
+    assert "findings.db" in script
+    assert "findings.db-wal" in script
+    assert "findings.db-shm" in script
+    assert "Remove-Item -LiteralPath $fullPath" in script
+    assert "run_analysis()" in script
+    assert "sample_iam.json" not in script
+    assert "Remove-Item -Recurse" not in script
+    assert "Refusing to remove path outside data directory" in script
+
+
 def test_governance_summary_report_has_no_duplicate_literal_keys() -> None:
     source = (Path(__file__).resolve().parents[1] / "app.py").read_text()
     module = ast.parse(source)
@@ -1908,6 +1933,20 @@ def test_get_identities_includes_service_and_external_flags(client) -> None:
     assert identities_by_id["user-004"]["service_account"] is False
     assert identities_by_id["user-006"]["service_account"] is True
     assert identities_by_id["user-006"]["external_user"] is False
+
+
+def test_api_detail_payloads_include_display_labels(client) -> None:
+    identity = client.get("/api/identities/user-003").get_json()
+    resource = client.get("/api/resources/res-customer-database").get_json()
+    finding = {
+        item["id"]: item
+        for item in client.get("/api/findings").get_json()
+    }["finding-critical"]
+
+    assert identity["label"] == "Ananya Rao (user-003)"
+    assert resource["label"] == "Customer 360 Database (res-customer-database)"
+    assert finding["identity_label"] == "Omar Haddad (user-002)"
+    assert finding["resource_label"] == "Customer 360 Database (res-customer-database)"
 
 
 def test_get_identity_detail_returns_effective_identity_fields(client) -> None:
@@ -2723,7 +2762,7 @@ def test_governance_summary_pdf_export_contains_auditor_sections(client) -> None
     assert b"Top 5 Attack-Path Summaries" in response.data
     assert b"Reviewer Activity Summary" not in response.data
     assert b"Omar Haddad \\(user-002\\)" in response.data
-    assert b"Customer Database \\(res-customer-" in response.data
+    assert b"Customer 360 Database \\(res-customer-" in response.data
     assert b"database\\)" in response.data
 
 
@@ -2759,8 +2798,8 @@ def test_governance_evidence_csv_export_returns_consolidated_evidence(client) ->
     assert b"user-004,res-customer-database" in response.data
     assert b"auditor@example.local" in response.data
     assert b"COMPLETED" in response.data
-    assert b"Leo Martin (user-004)" in response.data
-    assert b"Customer Database (res-customer-database)" in response.data
+    assert b"Lucas Meyer (user-004)" in response.data
+    assert b"Customer 360 Database (res-customer-database)" in response.data
 
 
 def test_reports_include_updated_finding_lifecycle_status(client) -> None:

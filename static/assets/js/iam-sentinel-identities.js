@@ -1,4 +1,6 @@
 (() => {
+  const ui = window.IamSentinelUI || {};
+  const formatIdentityLabel = ui.formatIdentityLabel || ((name, id) => name || id || '');
   const state = {
     identities: [],
     filteredIdentities: [],
@@ -108,7 +110,7 @@
         const email = escapeHtml(identity.email);
         return `
           <tr>
-            <td>${escapeHtml(identity.name)}</td>
+            <td>${escapeHtml(identity.label || formatIdentityLabel(identity.name, identity.id))}</td>
             <td><span class="table-truncate table-email" title="${email}">${email}</span></td>
             <td><span class="table-nowrap">${escapeHtml(formatIdentityType(identity.type))}</span></td>
             <td>${statusBadge(identity.mfa_enabled, 'Enabled', 'Disabled')}</td>

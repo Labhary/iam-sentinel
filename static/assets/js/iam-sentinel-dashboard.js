@@ -201,7 +201,7 @@
     state.statusChart = renderChart(
       state.statusChart,
       'status-distribution-chart',
-      ['OPEN', 'UNDER_REVIEW', 'REMEDIATED', 'SUPPRESSED'],
+      ['Open', 'Under Review', 'Remediated', 'Suppressed'],
       [
         statusCounts.OPEN || 0,
         statusCounts.UNDER_REVIEW || 0,
@@ -263,7 +263,7 @@
         <tr>
           <td><span class="${severityClass}">${escapeHtml(finding.severity)}</span></td>
           <td>${escapeHtml(finding.title)}</td>
-          <td><a href="/identities/${encodeURIComponent(finding.identity_id)}">${escapeHtml(finding.identity_id)}</a></td>
+          <td><a href="/identities/${encodeURIComponent(finding.identity_id)}">${escapeHtml(finding.identity_label || finding.identity_id)}</a></td>
           <td>${escapeHtml(finding.score)}</td>
           <td><a class="btn btn-sm btn-outline-primary" href="/findings/${encodeURIComponent(finding.id)}">Open</a></td>
         </tr>

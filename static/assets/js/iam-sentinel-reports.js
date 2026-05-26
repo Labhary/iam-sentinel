@@ -13,7 +13,7 @@
     ui.setText('report-completed-access-reviews', report.completed_access_reviews);
   }
 
-  function renderTopList(tableId, rows, idKey) {
+  function renderTopList(tableId, rows, idKey, displayMap) {
     const tableBody = document.getElementById(tableId);
     if (!rows || !rows.length) {
       tableBody.innerHTML = '<tr><td colspan="3" class="text-muted">No report data.</td></tr>';
@@ -22,7 +22,7 @@
 
     tableBody.innerHTML = rows.slice(0, 10).map((row) => `
       <tr>
-        <td>${ui.escapeHtml(row[idKey])}</td>
+        <td>${ui.escapeHtml((displayMap && displayMap[row[idKey]]) || row[idKey])}</td>
         <td>${ui.escapeHtml(row.finding_count)}</td>
         <td>${ui.escapeHtml(row.highest_score)}</td>
       </tr>
@@ -31,8 +31,8 @@
 
   function renderReport(report) {
     renderMetricCards(report);
-    renderTopList('top-risky-resources-table', report.top_risky_resources, 'resource_id');
-    renderTopList('top-risky-identities-table', report.top_risky_identities, 'identity_id');
+    renderTopList('top-risky-resources-table', report.top_risky_resources, 'resource_id', report.resource_display_names);
+    renderTopList('top-risky-identities-table', report.top_risky_identities, 'identity_id', report.identity_display_names);
   }
 
   async function refreshReport() {

@@ -73,7 +73,7 @@ def test_save_and_load_findings_persists_risk_explanation_fields(tmp_path) -> No
         attack_paths=["User -> Role -> Resource"],
         created_at="2026-05-18T00:00:00Z",
         risk_factors=["Missing MFA", "Sensitive resource access"],
-        risk_explanation="Maya Chen was rated at this risk level because of missing MFA and sensitive access.",
+        risk_explanation="Salma Benali was rated at this risk level because of missing MFA and sensitive access.",
     )
 
     save_findings(db_path, [finding])
@@ -81,7 +81,7 @@ def test_save_and_load_findings_persists_risk_explanation_fields(tmp_path) -> No
 
     assert loaded_finding.risk_factors == ["Missing MFA", "Sensitive resource access"]
     assert loaded_finding.risk_explanation == (
-        "Maya Chen was rated at this risk level because of missing MFA and sensitive access."
+        "Salma Benali was rated at this risk level because of missing MFA and sensitive access."
     )
 
 

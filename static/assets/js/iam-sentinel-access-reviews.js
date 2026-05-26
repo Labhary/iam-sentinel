@@ -140,9 +140,9 @@
     const visibleReviews = getPaginatedReviews();
     const rows = visibleReviews.length
       ? visibleReviews.map((review) => {
-        const identityId = ui.escapeHtml(review.identity_id);
+        const identityId = ui.escapeHtml(review.identity_label || ui.formatIdentityLabel(review.identity_id, review.identity_id));
         const reviewer = ui.escapeHtml(review.reviewer || '');
-        const resourceId = ui.escapeHtml(review.resource_id);
+        const resourceId = ui.escapeHtml(review.resource_label || ui.formatResourceLabel(review.resource_id, review.resource_id));
         const notes = ui.escapeHtml(review.notes || '');
         const notesStateClass = review.notes ? 'access-review-notes-filled' : 'access-review-notes-empty';
         const updatedAt = ui.escapeHtml(ui.formatTimestamp(review.updated_at));

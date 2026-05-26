@@ -78,12 +78,6 @@
 .access-paths-table .access-path-name {
   font-weight: 600;
   line-height: 1.2;
-}
-
-.access-paths-table .access-path-id {
-  color: #6c757d;
-  font-size: 0.78rem;
-  line-height: 1.15;
   overflow-wrap: anywhere;
 }
 
@@ -94,21 +88,22 @@
 .access-paths-table .access-path-actions {
   display: inline-flex;
   flex-wrap: nowrap;
-  opacity: 0.82;
 }
 
 .access-paths-table .access-path-actions .btn {
-  border-color: #d5dce7;
-  color: #5f6f82;
+  background-color: #fff;
+  border-color: #0d6efd;
+  color: #0b5ed7;
   font-size: 0.76rem;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.15;
   padding: 0.2rem 0.35rem;
 }
 
 .access-paths-table .access-path-actions .btn:hover,
 .access-paths-table .access-path-actions .btn:focus {
-  opacity: 1;
+  background-color: #0d6efd;
+  color: #fff;
 }
 
 .attack-graph-card .card-body {

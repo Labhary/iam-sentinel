@@ -22,9 +22,9 @@ def test_sample_iam_data_loads() -> None:
 def test_sample_iam_data_loads_normalized_lookups() -> None:
     iam_data = load_iam_data(SAMPLE_DATA_PATH)
 
-    assert iam_data.users_by_id["user-003"].name == "Priya Nair"
-    assert iam_data.groups_by_id["grp-admins"].name == "Platform Administrators"
-    assert iam_data.roles_by_id["role-platform-admin"].name == "Platform Admin"
+    assert iam_data.users_by_id["user-003"].name == "Ananya Rao"
+    assert iam_data.groups_by_id["grp-admins"].name == "Identity Platform Administrators"
+    assert iam_data.roles_by_id["role-platform-admin"].name == "Identity Platform Admin"
     assert iam_data.permissions_by_id["perm-read-payroll"].resource == "res-payroll-system"
     assert iam_data.resources_by_id["res-payroll-system"].sensitive is True
 

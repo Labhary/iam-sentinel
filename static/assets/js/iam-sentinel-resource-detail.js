@@ -1,6 +1,7 @@
 (() => {
   const ui = window.IamSentinelUI || {};
   const formatStatus = ui.formatStatus || ((status) => status);
+  const formatIdentityLabel = ui.formatIdentityLabel || ((name, id) => name || id || '');
   const severityBadgeClasses = {
     CRITICAL: 'badge bg-danger',
     HIGH: 'badge bg-warning text-dark',
@@ -90,8 +91,7 @@
 
     list.innerHTML = identities.map((identity) => `
       <li>
-        <a href="/identities/${encodeURIComponent(identity.id)}">${escapeHtml(identity.name)}</a>
-        <span class="text-muted small"> ${escapeHtml(identity.id)}</span>
+        <a href="/identities/${encodeURIComponent(identity.id)}">${escapeHtml(formatIdentityLabel(identity.name, identity.id))}</a>
       </li>
     `).join('');
   }
@@ -116,7 +116,7 @@
         <tr>
           <td><span class="${severityClass}">${escapeHtml(finding.severity)}</span></td>
           <td><a href="/findings/${encodeURIComponent(finding.id)}">${escapeHtml(finding.title)}</a></td>
-          <td>${escapeHtml(finding.identity_id)}</td>
+          <td>${escapeHtml(formatIdentityLabel(finding.identity_name, finding.identity_id))}</td>
           <td>${escapeHtml(finding.score)}</td>
           <td>${escapeHtml(formatStatus(finding.status))}</td>
           <td>
@@ -131,7 +131,7 @@
     const accessibleIdentities = getAccessibleIdentities();
 
     setText('resource-detail-name', resource.name);
-    setText('resource-detail-meta', resource.id);
+    setText('resource-detail-meta', resource.label || resource.id);
     setText('resource-detail-type', formatResourceType(resource.type));
     document.getElementById('resource-detail-sensitive').innerHTML = statusBadge(resource.sensitive, 'Sensitive', 'Not Sensitive');
     setText('resource-detail-accessible-count', resource.accessible_by_count);

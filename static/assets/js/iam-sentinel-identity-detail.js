@@ -1,6 +1,7 @@
 (() => {
   const ui = window.IamSentinelUI || {};
   const formatStatus = ui.formatStatus || ((status) => status);
+  const formatIdentityLabel = ui.formatIdentityLabel || ((name, id) => name || id || '');
   const severityBadgeClasses = {
     CRITICAL: 'badge bg-danger',
     HIGH: 'badge bg-warning text-dark',
@@ -122,7 +123,7 @@
 
   function renderIdentity(identity) {
     setText('identity-detail-name', identity.name);
-    setText('identity-detail-meta', identity.id);
+    setText('identity-detail-meta', identity.label || formatIdentityLabel(identity.name, identity.id));
     setText('identity-detail-email', identity.email);
     setText('identity-detail-type', identity.type);
     document.getElementById('identity-detail-mfa').innerHTML = statusBadge(identity.mfa_enabled, 'Enabled', 'Disabled');
@@ -227,7 +228,7 @@
       ? 'alert alert-warning mt-3 mb-0'
       : 'alert alert-info mt-3 mb-0';
     container.innerHTML = `
-      <div class="fw-semibold mb-2">Impact preview: ${escapeHtml(preview.action_label)} for ${escapeHtml(preview.identity_name)} (${escapeHtml(preview.identity_id)})</div>
+      <div class="fw-semibold mb-2">Impact preview: ${escapeHtml(preview.action_label)} for ${escapeHtml(formatIdentityLabel(preview.identity_name, preview.identity_id))}</div>
       <div class="row g-2 small">
         <div class="col-lg-6"><span class="text-muted">Current:</span> ${formatStateSummary(preview.before)}</div>
         <div class="col-lg-6"><span class="text-muted">Expected:</span> ${formatStateSummary(preview.after)}</div>

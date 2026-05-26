@@ -53,6 +53,20 @@ With the Flask app running:
 Invoke-RestMethod -Method Post -Uri http://127.0.0.1:5000/api/analysis/run
 ```
 
+## Reset Demo State
+
+The demo uses `data/sample_iam.json` plus a local SQLite database at
+`data/findings.db`. To avoid old remediation, lifecycle, or audit state mixing
+with a fresh demo, reset the local database and rerun analysis:
+
+```powershell
+.\scripts\reset_demo_state.ps1
+```
+
+The reset script only removes `data/findings.db` and SQLite sidecar files
+(`findings.db-wal`, `findings.db-shm`), then seeds fresh findings from the demo
+IAM dataset. It does not delete source files.
+
 ## Run Tests
 
 ```powershell
