@@ -828,6 +828,30 @@ def test_identity_remediation_js_has_single_clean_action_flow() -> None:
     assert action_body.count("showFeedback(`${actionLabels[actionType] || actionType} simulated.") == 1
 
 
+def test_identity_remediation_uses_contextual_default_action() -> None:
+    script = (
+        Path(__file__).resolve().parents[1]
+        / "static"
+        / "assets"
+        / "js"
+        / "iam-sentinel-identity-detail.js"
+    ).read_text()
+    default_body = extract_js_function_body(script, "getDefaultRemediationAction")
+    render_body = extract_js_function_body(script, "renderRemediationOptions")
+
+    assert script.count("function getDefaultRemediationAction(identity)") == 1
+    assert "if (!identity.mfa_enabled)" in default_body
+    assert "return 'ENABLE_MFA';" in default_body
+    assert "if (identity.disabled)" in default_body
+    assert "return 'REENABLE_ACCOUNT';" in default_body
+    assert default_body.strip().endswith("return 'DISABLE_ACCOUNT';")
+    assert (
+        "document.getElementById('identity-remediation-action').value = "
+        "getDefaultRemediationAction(identity);"
+    ) in render_body
+    assert render_body.index("getDefaultRemediationAction(identity)") < render_body.index("updateRemediationFieldVisibility();")
+
+
 def test_identity_detail_js_renders_preview_and_verified_impact() -> None:
     script = (
         Path(__file__).resolve().parents[1]
@@ -846,6 +870,36 @@ def test_identity_detail_js_renders_preview_and_verified_impact() -> None:
     assert "Warning: this preview does not reduce access paths" in script
     assert "before.access_paths_count} &rarr; ${after.access_paths_count}" in script
     assert "preview.impact.before.access_paths_count} &rarr; ${accessPaths.length}" in script
+
+
+def test_identity_detail_js_renders_analyst_workspace_sections() -> None:
+    script = (
+        Path(__file__).resolve().parents[1]
+        / "static"
+        / "assets"
+        / "js"
+        / "iam-sentinel-identity-detail.js"
+    ).read_text()
+
+    assert "const formatResourceLabel = ui.formatResourceLabel" in script
+    assert "function renderRiskSummary(identity)" in script
+    assert "function renderPrivilegeOverview(identity)" in script
+    assert "function renderQuickActions()" in script
+    assert "function renderAccessPaths()" in script
+    assert "async function createAccessReview()" in script
+    assert "fetchJson(`/api/access-paths?identity_id=${encodeURIComponent(state.identityId)}`)" in script
+    assert "identity-risk-total-findings" in script
+    assert "identity-risk-critical-high-findings" in script
+    assert "identity-risk-sensitive-resources" in script
+    assert "identity-privilege-total-permissions" in script
+    assert "identity-privilege-privileged-roles" in script
+    assert "identity-view-access-paths-link" in script
+    assert "identity-create-access-review" in script
+    assert "View Access Paths" not in script
+    assert "Investigate" in script
+    assert "neutralBadge(formatStatus(finding.status))" in script
+    assert "neutralBadge(`Length ${accessPath.path_length}`)" in script
+    assert "sensitivityBadge(accessPath.resource_sensitive)" in script
 
 
 def test_remediation_audit_page_exists_and_assets_are_single() -> None:
@@ -1176,7 +1230,8 @@ def test_identity_detail_related_findings_use_investigation_action_label() -> No
     project_root = Path(__file__).resolve().parents[1]
     script = (project_root / "static/assets/js/iam-sentinel-identity-detail.js").read_text()
 
-    assert 'href="/findings/${encodeURIComponent(finding.id)}">Open Investigation</a>' in script
+    assert 'href="/findings/${encodeURIComponent(finding.id)}">Investigate</a>' in script
+    assert "Open Investigation" not in script
     assert '>${escapeHtml(finding.id)}</a>' not in script
 
 
@@ -1897,9 +1952,28 @@ def test_get_identity_detail_page_returns_identity_shell(client) -> None:
     assert b'id="identity-remediation-preview"' in response.data
     assert b'id="identity-remediation-verified-impact"' in response.data
     assert b"No impact preview yet" in response.data
+    assert b"Identity Risk Summary" in response.data
+    assert b'id="identity-risk-total-findings"' in response.data
+    assert b'id="identity-risk-critical-high-findings"' in response.data
+    assert b'id="identity-risk-sensitive-resources"' in response.data
+    assert b'id="identity-risk-mfa"' in response.data
+    assert b'id="identity-risk-account-state"' in response.data
+    assert b'id="identity-risk-identity-type"' in response.data
+    assert b"Quick Investigation Actions" in response.data
+    assert b'id="identity-view-findings-link"' in response.data
+    assert b'id="identity-view-access-paths-link"' in response.data
+    assert b'id="identity-view-attack-graph-link"' in response.data
+    assert b'id="identity-create-access-review"' in response.data
+    assert b"Privilege Overview" in response.data
+    assert b'id="identity-privilege-total-groups"' in response.data
+    assert b'id="identity-privilege-total-roles"' in response.data
+    assert b'id="identity-privilege-total-permissions"' in response.data
+    assert b'id="identity-privilege-privileged-roles"' in response.data
+    assert b'id="identity-privilege-sensitive-access"' in response.data
     assert b'id="identity-detail-roles"' in response.data
     assert b'id="identity-detail-groups"' in response.data
     assert b'id="identity-related-findings"' in response.data
+    assert b'id="identity-access-paths"' in response.data
     assert b'id="identity-finding-link-marker"' in response.data
     assert b'id="identity-not-found"' in response.data
     assert b"assets/js/iam-sentinel-identity-detail.js" in response.data

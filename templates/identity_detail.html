@@ -62,6 +62,80 @@
                       <span id="identity-detail-service-account"></span>
                     </div>
                   </div>
+
+                  <div class="mt-3">
+                    <h6>Quick Investigation Actions</h6>
+                    <div id="identity-quick-actions" class="d-flex flex-wrap gap-2">
+                      <a id="identity-view-findings-link" class="btn btn-sm btn-outline-primary" href="/findings">View Findings</a>
+                      <a id="identity-view-access-paths-link" class="btn btn-sm btn-outline-primary" href="/access-paths">View Access Paths</a>
+                      <a id="identity-view-attack-graph-link" class="btn btn-sm btn-outline-primary" href="/attack-graph">View Attack Graph</a>
+                      <button id="identity-create-access-review" class="btn btn-sm btn-outline-primary" type="button">Create Access Review</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <div class="card">
+                <div class="card-body">
+                  <h5 class="card-title">Identity Risk Summary</h5>
+                  <div class="row g-3">
+                    <div class="col-md-2 col-6">
+                      <span class="text-muted small d-block">Findings</span>
+                      <strong id="identity-risk-total-findings">0</strong>
+                    </div>
+                    <div class="col-md-2 col-6">
+                      <span class="text-muted small d-block">Critical/High</span>
+                      <strong id="identity-risk-critical-high-findings">0</strong>
+                    </div>
+                    <div class="col-md-2 col-6">
+                      <span class="text-muted small d-block">Sensitive Resources</span>
+                      <strong id="identity-risk-sensitive-resources">0</strong>
+                    </div>
+                    <div class="col-md-2 col-6">
+                      <span class="text-muted small d-block">MFA</span>
+                      <span id="identity-risk-mfa"></span>
+                    </div>
+                    <div class="col-md-2 col-6">
+                      <span class="text-muted small d-block">Account</span>
+                      <span id="identity-risk-account-state"></span>
+                    </div>
+                    <div class="col-md-2 col-6">
+                      <span class="text-muted small d-block">Identity Type</span>
+                      <span id="identity-risk-identity-type"></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <div class="card">
+                <div class="card-body">
+                  <h5 class="card-title">Privilege Overview</h5>
+                  <div class="row g-3">
+                    <div class="col-md-2 col-6">
+                      <span class="text-muted small d-block">Groups</span>
+                      <strong id="identity-privilege-total-groups">0</strong>
+                    </div>
+                    <div class="col-md-2 col-6">
+                      <span class="text-muted small d-block">Roles</span>
+                      <strong id="identity-privilege-total-roles">0</strong>
+                    </div>
+                    <div class="col-md-2 col-6">
+                      <span class="text-muted small d-block">Permissions</span>
+                      <strong id="identity-privilege-total-permissions">0</strong>
+                    </div>
+                    <div class="col-md-2 col-6">
+                      <span class="text-muted small d-block">Privileged Roles</span>
+                      <strong id="identity-privilege-privileged-roles">0</strong>
+                    </div>
+                    <div class="col-md-4 col-12">
+                      <span class="text-muted small d-block">Sensitive Access</span>
+                      <span id="identity-privilege-sensitive-access"></span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -153,6 +227,31 @@
                       <tbody id="identity-related-findings">
                         <tr>
                           <td colspan="6" class="text-muted">Loading related findings...</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <div class="card">
+                <div class="card-body">
+                  <h5 class="card-title">Access Paths</h5>
+                  <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle">
+                      <thead>
+                        <tr>
+                          <th scope="col">Resource</th>
+                          <th scope="col">Sensitivity</th>
+                          <th scope="col">Length</th>
+                          <th scope="col">Path</th>
+                        </tr>
+                      </thead>
+                      <tbody id="identity-access-paths">
+                        <tr>
+                          <td colspan="4" class="text-muted">Loading access paths...</td>
                         </tr>
                       </tbody>
                     </table>

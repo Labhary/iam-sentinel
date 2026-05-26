@@ -2,6 +2,7 @@
   const ui = window.IamSentinelUI || {};
   const formatStatus = ui.formatStatus || ((status) => status);
   const formatIdentityLabel = ui.formatIdentityLabel || ((name, id) => name || id || '');
+  const formatResourceLabel = ui.formatResourceLabel || ((name, id) => name || id || '');
   const severityBadgeClasses = {
     CRITICAL: 'badge bg-danger',
     HIGH: 'badge bg-warning text-dark',
@@ -13,6 +14,7 @@
     identityId: null,
     identity: null,
     findings: [],
+    accessPaths: [],
     lastPreview: null
   };
   const actionLabels = {
@@ -95,9 +97,92 @@
     return `<span class="${badgeClass}">${isEnabled ? enabledText : disabledText}</span>`;
   }
 
+  function neutralBadge(label) {
+    return `<span class="badge bg-light text-dark border">${escapeHtml(label)}</span>`;
+  }
+
+  function sensitivityBadge(isSensitive) {
+    return isSensitive
+      ? '<span class="badge bg-danger">Sensitive</span>'
+      : '<span class="badge bg-success">Not Sensitive</span>';
+  }
+
+  function getRelatedFindings() {
+    return state.findings.filter((finding) => finding.identity_id === state.identityId);
+  }
+
+  function getSensitiveResourceIds() {
+    return new Set(
+      state.accessPaths
+        .filter((path) => path.resource_sensitive)
+        .map((path) => path.resource_id)
+    );
+  }
+
+  function getIdentityTypeLabel(identity) {
+    if (identity.service_account) {
+      return 'Service';
+    }
+    if (identity.external_user) {
+      return 'External';
+    }
+    return 'Human';
+  }
+
+  function isPrivilegedRole(roleId) {
+    return /(admin|privileged|break|security|root|owner)/i.test(String(roleId || ''));
+  }
+
+  function getPermissionIds() {
+    const permissionIds = new Set();
+    state.accessPaths.forEach((path) => {
+      (path.path_nodes || []).forEach((nodeId) => {
+        if (String(nodeId).startsWith('perm-')) {
+          permissionIds.add(nodeId);
+        }
+      });
+    });
+    return permissionIds;
+  }
+
+  function renderRiskSummary(identity) {
+    const relatedFindings = getRelatedFindings();
+    const criticalHighCount = relatedFindings.filter((finding) => ['CRITICAL', 'HIGH'].includes(finding.severity)).length;
+    setText('identity-risk-total-findings', relatedFindings.length);
+    setText('identity-risk-critical-high-findings', criticalHighCount);
+    setText('identity-risk-sensitive-resources', getSensitiveResourceIds().size);
+    document.getElementById('identity-risk-mfa').innerHTML = statusBadge(identity.mfa_enabled, 'Enabled', 'Disabled');
+    document.getElementById('identity-risk-account-state').innerHTML = statusBadge(!identity.disabled, 'Enabled', 'Disabled');
+    document.getElementById('identity-risk-identity-type').innerHTML = neutralBadge(getIdentityTypeLabel(identity));
+  }
+
+  function renderPrivilegeOverview(identity) {
+    const permissionIds = getPermissionIds();
+    const privilegedRoleCount = (identity.roles || []).filter(isPrivilegedRole).length;
+    setText('identity-privilege-total-groups', (identity.groups || []).length);
+    setText('identity-privilege-total-roles', (identity.roles || []).length);
+    setText('identity-privilege-total-permissions', permissionIds.size);
+    setText('identity-privilege-privileged-roles', privilegedRoleCount);
+    document.getElementById('identity-privilege-sensitive-access').innerHTML = statusBadge(
+      getSensitiveResourceIds().size > 0,
+      'Yes',
+      'No'
+    );
+  }
+
+  function renderQuickActions() {
+    const accessPathsUrl = `/access-paths?identity_id=${encodeURIComponent(state.identityId)}`;
+    document.getElementById('identity-view-findings-link').href = '/findings';
+    document.getElementById('identity-view-access-paths-link').href = accessPathsUrl;
+    document.getElementById('identity-view-attack-graph-link').href = '/attack-graph';
+    const createReviewButton = document.getElementById('identity-create-access-review');
+    createReviewButton.disabled = state.accessPaths.length === 0;
+    createReviewButton.title = state.accessPaths.length ? 'Create review for the highest-priority reachable resource' : 'No access paths available';
+  }
+
   function renderRelatedFindings() {
     const tableBody = document.getElementById('identity-related-findings');
-    const relatedFindings = state.findings.filter((finding) => finding.identity_id === state.identityId);
+    const relatedFindings = getRelatedFindings();
 
     if (!relatedFindings.length) {
       tableBody.innerHTML = '<tr><td colspan="6" class="text-muted">No related findings.</td></tr>';
@@ -111,14 +196,44 @@
           <td><span class="${severityClass}">${escapeHtml(finding.severity)}</span></td>
           <td><a href="/findings/${encodeURIComponent(finding.id)}">${escapeHtml(finding.title)}</a></td>
           <td>${escapeHtml(finding.score)}</td>
-          <td>${escapeHtml(formatStatus(finding.status))}</td>
+          <td>${neutralBadge(formatStatus(finding.status))}</td>
           <td>${escapeHtml(finding.owner || 'Unassigned')}</td>
           <td>
-            <a class="btn btn-sm btn-outline-primary" href="/findings/${encodeURIComponent(finding.id)}">Open Investigation</a>
+            <a class="btn btn-sm btn-outline-primary" href="/findings/${encodeURIComponent(finding.id)}">Investigate</a>
           </td>
         </tr>
       `;
     }).join('');
+  }
+
+  function renderAccessPaths() {
+    const tableBody = document.getElementById('identity-access-paths');
+    if (!state.accessPaths.length) {
+      tableBody.innerHTML = '<tr><td colspan="4" class="text-muted">No access paths found.</td></tr>';
+      return;
+    }
+
+    tableBody.innerHTML = state.accessPaths.slice(0, 10).map((accessPath) => {
+      const pathDisplay = escapeHtml(accessPath.path_display);
+      return `
+        <tr>
+          <td>${escapeHtml(formatResourceLabel(accessPath.resource_name, accessPath.resource_id))}</td>
+          <td>${sensitivityBadge(accessPath.resource_sensitive)}</td>
+          <td>${neutralBadge(`Length ${accessPath.path_length}`)}</td>
+          <td><span class="table-truncate" title="${pathDisplay}">${pathDisplay}</span></td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function getDefaultRemediationAction(identity) {
+    if (!identity.mfa_enabled) {
+      return 'ENABLE_MFA';
+    }
+    if (identity.disabled) {
+      return 'REENABLE_ACCOUNT';
+    }
+    return 'DISABLE_ACCOUNT';
   }
 
   function renderIdentity(identity) {
@@ -131,11 +246,16 @@
     document.getElementById('identity-detail-service-account').innerHTML = statusBadge(identity.service_account, 'Service', 'Human');
     renderList('identity-detail-roles', identity.roles);
     renderList('identity-detail-groups', identity.groups);
+    renderQuickActions();
+    renderRiskSummary(identity);
+    renderPrivilegeOverview(identity);
     renderRemediationOptions(identity);
     renderRelatedFindings();
+    renderAccessPaths();
   }
 
   function renderRemediationOptions(identity) {
+    document.getElementById('identity-remediation-action').value = getDefaultRemediationAction(identity);
     const oldGroupSelect = document.getElementById('identity-remediation-old-group');
     const newGroupSelect = document.getElementById('identity-remediation-new-group');
     const roleSelect = document.getElementById('identity-remediation-old-role');
@@ -327,6 +447,29 @@
     }
   }
 
+  async function createAccessReview() {
+    const accessPath = state.accessPaths.find((path) => path.resource_sensitive) || state.accessPaths[0];
+    if (!accessPath) {
+      showFeedback('No access path is available for review creation.', 'warning');
+      return;
+    }
+
+    showFeedback('');
+    try {
+      await fetchJson('/api/access-reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identity_id: state.identityId,
+          resource_id: accessPath.resource_id
+        })
+      });
+      showFeedback('Access review created.', 'success');
+    } catch (error) {
+      showFeedback('An active review already exists or the review could not be created.', 'warning');
+    }
+  }
+
   function formatStateChange(event) {
     if (!event || !event.before || !event.after) {
       return '';
@@ -342,12 +485,14 @@
     showError('');
 
     try {
-      const [identities, findings] = await Promise.all([
+      const [identities, findings, accessPaths] = await Promise.all([
         fetchJson('/api/identities'),
-        fetchJson('/api/findings')
+        fetchJson('/api/findings'),
+        fetchJson(`/api/access-paths?identity_id=${encodeURIComponent(state.identityId)}`)
       ]);
       state.identity = identities.find((identity) => identity.id === state.identityId);
       state.findings = findings;
+      state.accessPaths = accessPaths;
 
       if (!state.identity) {
         showNotFound(true);
@@ -383,6 +528,7 @@
       document.getElementById(elementId).addEventListener('input', refreshImpactPreview);
     });
     document.getElementById('identity-remediation-apply').addEventListener('click', applyRemediationAction);
+    document.getElementById('identity-create-access-review').addEventListener('click', createAccessReview);
     updateRemediationFieldVisibility();
     renderNoImpactPreview();
     refreshIdentityDetail();
