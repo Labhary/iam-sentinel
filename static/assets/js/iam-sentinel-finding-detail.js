@@ -118,10 +118,29 @@
   }
 
   function renderLinks(finding) {
+    const accessPathUrl = finding.resource_id
+      ? `/access-paths?identity_id=${encodeURIComponent(finding.identity_id)}&resource_id=${encodeURIComponent(finding.resource_id)}`
+      : `/access-paths?identity_id=${encodeURIComponent(finding.identity_id)}`;
     setHtml('finding-detail-links', `
-      <a class="btn btn-sm btn-outline-primary" href="/identities/${encodeURIComponent(finding.identity_id)}">Identity ${escapeHtml(formatIdentityLabel(finding.identity_name, finding.identity_id))}</a>
-      ${finding.resource_id ? `<a class="btn btn-sm btn-outline-primary" href="/resources/${encodeURIComponent(finding.resource_id)}">Resource ${escapeHtml(formatResourceLabel(finding.resource_name, finding.resource_id))}</a>` : ''}
+      <a class="btn btn-sm btn-outline-primary" href="/identities/${encodeURIComponent(finding.identity_id)}">View Identity</a>
+      ${finding.resource_id ? `<a class="btn btn-sm btn-outline-primary" href="/resources/${encodeURIComponent(finding.resource_id)}">View Resource</a>` : ''}
+      <a class="btn btn-sm btn-outline-primary" href="${accessPathUrl}">View Related Access Paths</a>
+      <a class="btn btn-sm btn-outline-primary" href="/attack-graph">View Attack Graph</a>
     `);
+  }
+
+  function renderInvestigationSummary(finding) {
+    const identityLabel = formatIdentityLabel(finding.identity_name, finding.identity_id);
+    const resourceLabel = finding.resource_id
+      ? formatResourceLabel(finding.resource_name, finding.resource_id)
+      : 'No resource linked';
+    const riskFactors = normalizeItems(finding.risk_factors);
+    const riskySummary = riskFactors.length ? riskFactors[0] : finding.title;
+
+    setText('finding-summary-risky', riskySummary);
+    setText('finding-summary-affected', identityLabel);
+    setText('finding-summary-resource', resourceLabel);
+    setText('finding-summary-matters', finding.risk_explanation || finding.description || 'Review this finding before remediation.');
   }
 
   function renderActivityList(finding) {
@@ -181,6 +200,11 @@
     setText('finding-detail-owner', finding.owner || 'Unassigned');
     setText('finding-detail-created-at', formatTimestamp(finding.created_at));
     setText('finding-detail-updated-at', formatTimestamp(finding.updated_at));
+    setText('finding-detail-identity-label', formatIdentityLabel(finding.identity_name, finding.identity_id));
+    setText(
+      'finding-detail-resource-label',
+      finding.resource_id ? formatResourceLabel(finding.resource_name, finding.resource_id) : 'No resource linked'
+    );
     setText('finding-detail-description', finding.description);
     setText('finding-detail-risk-explanation', finding.risk_explanation || 'No risk explanation available.');
     setText('finding-detail-recommendation', finding.recommendation);
@@ -189,6 +213,7 @@
     setInputValue('finding-note-input', '');
     setInputValue('finding-lifecycle-note-input', '');
 
+    renderInvestigationSummary(finding);
     renderList('finding-detail-evidence', finding.evidence);
     renderList('finding-detail-risk-factors', finding.risk_factors);
     renderList('finding-detail-attack-paths', finding.attack_paths);

@@ -50,6 +50,23 @@
     return document.getElementById(id).value;
   }
 
+  function initializeFiltersFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const identityId = params.get('identity_id');
+    const resourceId = params.get('resource_id');
+    const sensitiveOnly = params.get('sensitive_only');
+
+    if (identityId !== null) {
+      document.getElementById('access-path-identity-filter').value = identityId;
+    }
+    if (resourceId !== null) {
+      document.getElementById('access-path-resource-filter').value = resourceId;
+    }
+    if (sensitiveOnly !== null) {
+      document.getElementById('access-path-sensitive-only').checked = sensitiveOnly.toLowerCase() === 'true';
+    }
+  }
+
   function buildApiUrl() {
     const params = new URLSearchParams();
     const identityId = getControlValue('access-path-identity-filter').trim();
@@ -202,6 +219,7 @@
       itemLabel: 'paths'
     });
     wireEvents();
+    initializeFiltersFromUrl();
     refreshAccessPathsWorkbench();
   }
 

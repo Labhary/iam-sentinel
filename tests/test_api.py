@@ -217,6 +217,7 @@ def test_finding_detail_script_has_one_clean_render_path() -> None:
         "normalizeItems",
         "renderList",
         "renderLinks",
+        "renderInvestigationSummary",
         "renderActivityList",
         "renderLifecycleHistory",
         "renderFinding",
@@ -258,6 +259,25 @@ def test_finding_detail_runtime_initialization_contract() -> None:
     assert "console.error('Finding detail fetch failed.', error);" in script
     assert "console.error('Finding detail finding not found.', state.findingId);" in script
     assert "console.error('Finding detail render failed.', error);" in script
+
+
+def test_finding_detail_script_renders_summary_and_direct_action_links() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    script = (project_root / "static/assets/js/iam-sentinel-finding-detail.js").read_text()
+
+    assert "function renderInvestigationSummary(finding)" in script
+    assert "setText('finding-summary-risky'" in script
+    assert "setText('finding-summary-affected'" in script
+    assert "setText('finding-summary-resource'" in script
+    assert "setText('finding-summary-matters'" in script
+    assert "setText('finding-detail-identity-label'" in script
+    assert "setText(" in script and "finding-detail-resource-label" in script
+    assert "View Identity" in script
+    assert "View Resource" in script
+    assert "View Related Access Paths" in script
+    assert "View Attack Graph" in script
+    assert "/access-paths?identity_id=${encodeURIComponent(finding.identity_id)}" in script
+    assert "/attack-graph" in script
 
 
 def test_get_findings_returns_deterministic_sorted_findings(client) -> None:
@@ -410,6 +430,12 @@ def test_finding_detail_script_required_ids_exist_in_template() -> None:
         "finding-detail-created-at",
         "finding-detail-updated-at",
         "finding-detail-description",
+        "finding-detail-identity-label",
+        "finding-detail-resource-label",
+        "finding-summary-risky",
+        "finding-summary-affected",
+        "finding-summary-resource",
+        "finding-summary-matters",
         "finding-detail-risk-explanation",
         "finding-detail-recommendation",
         "finding-status-select",
@@ -1072,6 +1098,31 @@ def test_access_paths_workbench_uses_compact_analyst_table_polish() -> None:
     assert "font-weight: 600;" in styles
     assert ".access-paths-table .access-path-id" not in styles
     assert ".access-paths-table .access-path-display" in styles
+
+
+def test_access_paths_script_initializes_filters_from_url_query() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    script = (project_root / "static/assets/js/iam-sentinel-access-paths.js").read_text()
+
+    assert "function initializeFiltersFromUrl()" in script
+    assert "new URLSearchParams(window.location.search)" in script
+    assert "params.get('identity_id')" in script
+    assert "params.get('resource_id')" in script
+    assert "params.get('sensitive_only')" in script
+    assert "document.getElementById('access-path-identity-filter').value = identityId;" in script
+    assert "document.getElementById('access-path-resource-filter').value = resourceId;" in script
+    assert (
+        "document.getElementById('access-path-sensitive-only').checked = "
+        "sensitiveOnly.toLowerCase() === 'true';"
+    ) in script
+    init_match = re.search(
+        r"function initAccessPathsWorkbench\(\) \{(?P<body>.*?)\n  \}",
+        script,
+        flags=re.DOTALL,
+    )
+    assert init_match
+    init_body = init_match.group("body")
+    assert init_body.index("initializeFiltersFromUrl();") < init_body.index("refreshAccessPathsWorkbench();")
 
 
 def test_access_paths_row_template_has_one_of_each_action() -> None:
@@ -1788,8 +1839,19 @@ def test_get_finding_detail_page_returns_investigation_shell(client) -> None:
     assert b'<a href="/findings">Findings</a>' in response.data
     assert b'finding-low' in response.data
     assert response.data.count(b'id="finding-detail-links"') == 1
-    assert b"Identity and resource links" in response.data
+    assert b"Investigation action links" in response.data
     assert b"Open Identity Open Resource" not in response.data
+    assert b"Investigation Summary" in response.data
+    assert b"What is risky" in response.data
+    assert b"Who is affected" in response.data
+    assert b"Sensitive resource reachable" in response.data
+    assert b"Why it matters" in response.data
+    assert b'id="finding-detail-identity-label"' in response.data
+    assert b'id="finding-detail-resource-label"' in response.data
+    assert b'id="finding-summary-risky"' in response.data
+    assert b'id="finding-summary-affected"' in response.data
+    assert b'id="finding-summary-resource"' in response.data
+    assert b'id="finding-summary-matters"' in response.data
     assert b'id="finding-not-found"' in response.data
     assert b'id="finding-risk-explanation-section"' in response.data
     assert b'id="finding-detail-risk-explanation"' in response.data

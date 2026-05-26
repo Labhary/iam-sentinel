@@ -41,7 +41,7 @@
                       <h5 class="card-title mb-1" id="finding-detail-title">Finding Detail</h5>
                       <div class="small text-muted" id="finding-detail-meta"></div>
                       <div id="finding-detail-links" class="d-flex flex-wrap gap-2 mt-2">
-                        <span class="visually-hidden">Identity and resource links</span>
+                        <span class="visually-hidden">Investigation action links</span>
                       </div>
                     </div>
                     <span id="finding-detail-severity"></span>
@@ -68,11 +68,41 @@
                       <span class="text-muted small d-block">Last Updated</span>
                       <strong id="finding-detail-updated-at"></strong>
                     </div>
+                    <div class="col-md-6">
+                      <span class="text-muted small d-block">Identity</span>
+                      <strong id="finding-detail-identity-label"></strong>
+                    </div>
+                    <div class="col-md-6">
+                      <span class="text-muted small d-block">Resource</span>
+                      <strong id="finding-detail-resource-label"></strong>
+                    </div>
                   </div>
 
                   <div class="mb-3">
                     <h6>Description</h6>
                     <p id="finding-detail-description" class="mb-0"></p>
+                  </div>
+
+                  <div class="mb-3" id="finding-investigation-summary-section">
+                    <h6>Investigation Summary</h6>
+                    <div class="row g-2 small">
+                      <div class="col-lg-6">
+                        <span class="text-muted d-block">What is risky</span>
+                        <strong id="finding-summary-risky"></strong>
+                      </div>
+                      <div class="col-lg-6">
+                        <span class="text-muted d-block">Who is affected</span>
+                        <strong id="finding-summary-affected"></strong>
+                      </div>
+                      <div class="col-lg-6">
+                        <span class="text-muted d-block">Sensitive resource reachable</span>
+                        <strong id="finding-summary-resource"></strong>
+                      </div>
+                      <div class="col-lg-6">
+                        <span class="text-muted d-block">Why it matters</span>
+                        <strong id="finding-summary-matters"></strong>
+                      </div>
+                    </div>
                   </div>
 
                   <div class="mb-3" id="finding-risk-explanation-section">
