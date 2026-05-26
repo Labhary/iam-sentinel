@@ -94,8 +94,8 @@
   function renderOperationalKpis(findings) {
     const statusCounts = getStatusCounts(findings);
     setText('open-findings', statusCounts.OPEN);
-    setText('in-progress-findings', statusCounts.IN_PROGRESS);
-    setText('resolved-findings', statusCounts.RESOLVED);
+    setText('in-progress-findings', statusCounts.UNDER_REVIEW);
+    setText('resolved-findings', statusCounts.REMEDIATED);
     setText('critical-findings', findings.filter((finding) => finding.severity === 'CRITICAL').length);
   }
 
@@ -201,11 +201,11 @@
     state.statusChart = renderChart(
       state.statusChart,
       'status-distribution-chart',
-      ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'SUPPRESSED'],
+      ['OPEN', 'UNDER_REVIEW', 'REMEDIATED', 'SUPPRESSED'],
       [
         statusCounts.OPEN || 0,
-        statusCounts.IN_PROGRESS || 0,
-        statusCounts.RESOLVED || 0,
+        statusCounts.UNDER_REVIEW || 0,
+        statusCounts.REMEDIATED || 0,
         statusCounts.SUPPRESSED || 0
       ],
       ['#0d6efd', '#ffc107', '#198754', '#6c757d'],

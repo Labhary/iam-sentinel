@@ -296,9 +296,15 @@
   }
 
   async function saveFindingStatus() {
+    const note = document.getElementById('finding-note-input').value.trim();
+    if (!note) {
+      showAlert('finding-action-feedback', 'Enter an analyst note before updating status.', 'warning');
+      return;
+    }
+
     await updateFinding(
       `/api/findings/${state.selectedFindingId}/status`,
-      { status: document.getElementById('finding-status-select').value },
+      { status: document.getElementById('finding-status-select').value, note },
       'Status updated.'
     );
   }
@@ -441,7 +447,11 @@
       return;
     }
 
-    await applyBulkAction('status', { status }, 'Bulk status update complete.');
+    await applyBulkAction(
+      'status',
+      { status, note: 'Bulk lifecycle status update.' },
+      'Bulk status update complete.'
+    );
   }
 
   async function applyBulkOwner() {

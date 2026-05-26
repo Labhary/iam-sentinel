@@ -134,12 +134,17 @@
                       <div class="input-group">
                         <select id="finding-status-select" class="form-select">
                           <option value="OPEN">Open</option>
-                          <option value="IN_PROGRESS">In Progress</option>
-                          <option value="RESOLVED">Resolved</option>
+                          <option value="UNDER_REVIEW">Under Review</option>
+                          <option value="REMEDIATED">Remediated</option>
+                          <option value="FALSE_POSITIVE">False Positive</option>
                           <option value="SUPPRESSED">Suppressed</option>
                         </select>
                         <button id="save-status-button" class="btn btn-outline-primary" type="button">Save</button>
                       </div>
+                    </div>
+                    <div class="col-lg-6">
+                      <label for="finding-lifecycle-note-input" class="form-label">Lifecycle Note</label>
+                      <input id="finding-lifecycle-note-input" class="form-control" type="text" placeholder="Reason for lifecycle change">
                     </div>
                     <div class="col-lg-6">
                       <label for="finding-owner-input" class="form-label">Assign Owner</label>
@@ -148,6 +153,29 @@
                         <button id="save-owner-button" class="btn btn-outline-primary" type="button">Save</button>
                       </div>
                     </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <div class="card">
+                <div class="card-body">
+                  <h5 class="card-title">Lifecycle History</h5>
+                  <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                      <thead>
+                        <tr>
+                          <th scope="col">Timestamp</th>
+                          <th scope="col">From</th>
+                          <th scope="col">To</th>
+                          <th scope="col">Note</th>
+                        </tr>
+                      </thead>
+                      <tbody id="finding-lifecycle-history">
+                        <tr><td colspan="4" class="text-muted">No lifecycle changes yet.</td></tr>
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>

@@ -25,6 +25,7 @@ from core.finding_store import (
     assign_finding_owner,
     finding_exists,
     load_finding_activity,
+    load_finding_lifecycle_history,
     load_findings,
     update_finding_status,
 )
@@ -368,15 +369,24 @@ def patch_finding_status(finding_id: str):
 
     payload = request.get_json(silent=True) or {}
     status_value = payload.get("status")
+    note = str(payload.get("note", "")).strip()
     if not status_value:
         return error_response("Missing required field: status", 400)
+    if not note:
+        return error_response("Missing required field: note", 400)
 
     try:
         status = FindingStatus(status_value)
     except ValueError:
         return error_response("Invalid finding status.", 400)
 
-    update_finding_status(get_db_path(), finding_id, status)
+    update_finding_status(
+        get_db_path(),
+        finding_id,
+        status,
+        note,
+        updated_at=get_report_generated_at(),
+    )
     return jsonify(finding_to_dict(get_finding_or_none(finding_id)))
 
 
@@ -446,6 +456,7 @@ def finding_to_dict(finding: Finding, users_by_id: dict[str, User] | None = None
         "analyst_notes": finding.analyst_notes,
         "updated_at": finding.updated_at,
         "activity": load_finding_activity(get_db_path(), finding.id),
+        "lifecycle_history": load_finding_lifecycle_history(get_db_path(), finding.id),
     }
 
 
@@ -885,8 +896,13 @@ def apply_accept_risk_action(payload: dict, reason: str, actor: str) -> dict:
     if finding.status == FindingStatus.SUPPRESSED:
         raise RuntimeError("Finding is already marked as accepted risk.")
 
-    update_finding_status(get_db_path(), finding_id, FindingStatus.SUPPRESSED)
-    add_finding_note(get_db_path(), finding_id, f"Accepted risk: {reason}")
+    update_finding_status(
+        get_db_path(),
+        finding_id,
+        FindingStatus.SUPPRESSED,
+        f"Accepted risk: {reason}",
+        updated_at=get_report_generated_at(),
+    )
     after = {"finding_id": finding.id, "status": FindingStatus.SUPPRESSED.value}
     audit_event = insert_remediation_audit(
         get_db_path(),

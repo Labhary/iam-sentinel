@@ -14,12 +14,12 @@ DEFAULT_IAM_DATA_PATH = Path("data") / "sample_iam.json"
 DEFAULT_FINDINGS_DB_PATH = Path("data") / "findings.db"
 
 DEMO_FINDING_STATUSES = {
-    "finding-external-sensitive-user-004": FindingStatus.IN_PROGRESS,
-    "finding-service-sensitive-user-006": FindingStatus.IN_PROGRESS,
-    "finding-mfa-user-007": FindingStatus.IN_PROGRESS,
-    "finding-toxic-combo-user-007": FindingStatus.RESOLVED,
-    "finding-external-sensitive-user-008": FindingStatus.RESOLVED,
-    "finding-dormant-user-010": FindingStatus.RESOLVED,
+    "finding-external-sensitive-user-004": FindingStatus.UNDER_REVIEW,
+    "finding-service-sensitive-user-006": FindingStatus.UNDER_REVIEW,
+    "finding-mfa-user-007": FindingStatus.UNDER_REVIEW,
+    "finding-toxic-combo-user-007": FindingStatus.REMEDIATED,
+    "finding-external-sensitive-user-008": FindingStatus.REMEDIATED,
+    "finding-dormant-user-010": FindingStatus.REMEDIATED,
     "finding-service-sensitive-user-009": FindingStatus.SUPPRESSED,
 }
 

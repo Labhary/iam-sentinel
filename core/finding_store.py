@@ -4,7 +4,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from core.findings import sort_findings
-from core.models import Finding, FindingStatus, Severity
+from core.models import Finding, FindingLifecycleEvent, FindingStatus, Severity
+
+
+LEGACY_STATUS_MAP = {
+    "IN_PROGRESS": "UNDER_REVIEW",
+    "RESOLVED": "REMEDIATED",
+}
 
 
 def initialize_database(db_path: str | Path) -> None:
@@ -41,6 +47,18 @@ def initialize_database(db_path: str | Path) -> None:
                 activity_type TEXT NOT NULL,
                 message TEXT NOT NULL,
                 created_at TEXT NOT NULL
+            )
+            """
+        )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS finding_lifecycle_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                finding_id TEXT NOT NULL,
+                previous_status TEXT NOT NULL,
+                new_status TEXT NOT NULL,
+                note TEXT NOT NULL,
+                timestamp TEXT NOT NULL
             )
             """
         )
@@ -144,6 +162,7 @@ def update_finding_status(
     db_path: str | Path,
     finding_id: str,
     status: FindingStatus,
+    note: str | None = None,
     updated_at: str | None = None,
 ) -> None:
     initialize_database(db_path)
@@ -151,25 +170,40 @@ def update_finding_status(
 
     with connect(db_path) as connection:
         row = connection.execute(
-            "SELECT status FROM findings WHERE id = ?",
+            "SELECT status, analyst_notes FROM findings WHERE id = ?",
             (finding_id,),
         ).fetchone()
+        previous_status = normalize_finding_status_value(row[0]) if row else None
+        analyst_notes = json.loads(row[1]) if row is not None else []
+        if note:
+            analyst_notes = [*analyst_notes, note]
         connection.execute(
             """
             UPDATE findings
-            SET status = ?, updated_at = ?
+            SET status = ?, analyst_notes = ?, updated_at = ?
             WHERE id = ?
             """,
-            (status.value, updated_at_value, finding_id),
+            (status.value, json.dumps(analyst_notes), updated_at_value, finding_id),
         )
-        if row is not None and row[0] != status.value:
+        if row is not None and previous_status != status.value:
             insert_activity(
                 connection,
                 finding_id,
                 "STATUS_CHANGED",
-                f"Status changed from {row[0]} to {status.value}.",
+                f"Status changed from {previous_status} to {status.value}.",
                 updated_at_value,
             )
+            if note:
+                insert_lifecycle_history(
+                    connection,
+                    FindingLifecycleEvent(
+                        finding_id=finding_id,
+                        previous_status=previous_status,
+                        new_status=status.value,
+                        note=note,
+                        timestamp=updated_at_value,
+                    ),
+                )
 
 
 def assign_finding_owner(
@@ -261,6 +295,35 @@ def load_finding_activity(db_path: str | Path, finding_id: str) -> list[dict]:
     ]
 
 
+def load_finding_lifecycle_history(
+    db_path: str | Path,
+    finding_id: str,
+) -> list[dict]:
+    initialize_database(db_path)
+
+    with connect(db_path) as connection:
+        rows = connection.execute(
+            """
+            SELECT finding_id, previous_status, new_status, note, timestamp
+            FROM finding_lifecycle_history
+            WHERE finding_id = ?
+            ORDER BY timestamp ASC, id ASC
+            """,
+            (finding_id,),
+        ).fetchall()
+
+    return [
+        {
+            "finding_id": row[0],
+            "previous_status": row[1],
+            "new_status": row[2],
+            "note": row[3],
+            "timestamp": row[4],
+        }
+        for row in rows
+    ]
+
+
 def connect(db_path: str | Path) -> sqlite3.Connection:
     return sqlite3.connect(Path(db_path))
 
@@ -292,6 +355,31 @@ def insert_activity(
         VALUES (?, ?, ?, ?)
         """,
         (finding_id, activity_type, message, created_at),
+    )
+
+
+def insert_lifecycle_history(
+    connection: sqlite3.Connection,
+    event: FindingLifecycleEvent,
+) -> None:
+    connection.execute(
+        """
+        INSERT INTO finding_lifecycle_history (
+            finding_id,
+            previous_status,
+            new_status,
+            note,
+            timestamp
+        )
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (
+            event.finding_id,
+            event.previous_status,
+            event.new_status,
+            event.note,
+            event.timestamp,
+        ),
     )
 
 
@@ -332,7 +420,7 @@ def row_to_finding(row: tuple) -> Finding:
         recommendation=row[9],
         attack_paths=json.loads(row[10]),
         created_at=row[11],
-        status=FindingStatus(row[12]),
+        status=FindingStatus(normalize_finding_status_value(row[12])),
         owner=row[13],
         analyst_notes=json.loads(row[14]),
         updated_at=row[15],
@@ -345,3 +433,7 @@ def get_updated_at(updated_at: str | None) -> str:
     if updated_at is not None:
         return updated_at
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+
+def normalize_finding_status_value(value: str) -> str:
+    return LEGACY_STATUS_MAP.get(value, value)

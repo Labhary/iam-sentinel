@@ -56,9 +56,10 @@ window.IamSentinelUI = (() => {
 
   function formatStatus(status) {
     const statusLabels = {
-      IN_PROGRESS: 'In Progress',
+      UNDER_REVIEW: 'Under Review',
       OPEN: 'Open',
-      RESOLVED: 'Resolved',
+      REMEDIATED: 'Remediated',
+      FALSE_POSITIVE: 'False Positive',
       CLOSED: 'Closed'
     };
 

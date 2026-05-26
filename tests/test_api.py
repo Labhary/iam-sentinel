@@ -218,6 +218,7 @@ def test_finding_detail_script_has_one_clean_render_path() -> None:
         "renderList",
         "renderLinks",
         "renderActivityList",
+        "renderLifecycleHistory",
         "renderFinding",
         "refreshFinding",
         "updateFinding",
@@ -412,6 +413,7 @@ def test_finding_detail_script_required_ids_exist_in_template() -> None:
         "finding-detail-risk-explanation",
         "finding-detail-recommendation",
         "finding-status-select",
+        "finding-lifecycle-note-input",
         "finding-owner-input",
         "finding-note-input",
         "finding-detail-evidence",
@@ -419,6 +421,7 @@ def test_finding_detail_script_required_ids_exist_in_template() -> None:
         "finding-detail-attack-paths",
         "finding-detail-notes",
         "finding-detail-activity",
+        "finding-lifecycle-history",
         "finding-action-feedback",
         "finding-detail-loading",
         "finding-not-found",
@@ -955,9 +958,10 @@ def test_shared_ui_formats_backend_status_labels() -> None:
     helper = (project_root / "static/assets/js/iam-sentinel-ui.js").read_text()
 
     for raw_status, label in {
-        "IN_PROGRESS": "In Progress",
+        "UNDER_REVIEW": "Under Review",
         "OPEN": "Open",
-        "RESOLVED": "Resolved",
+        "REMEDIATED": "Remediated",
+        "FALSE_POSITIVE": "False Positive",
         "CLOSED": "Closed",
     }.items():
         assert f"{raw_status}: '{label}'" in helper
@@ -977,8 +981,9 @@ def test_finding_status_dropdowns_keep_values_but_use_readable_labels() -> None:
 
     for value, label in {
         "OPEN": "Open",
-        "IN_PROGRESS": "In Progress",
-        "RESOLVED": "Resolved",
+        "UNDER_REVIEW": "Under Review",
+        "REMEDIATED": "Remediated",
+        "FALSE_POSITIVE": "False Positive",
         "SUPPRESSED": "Suppressed",
     }.items():
         assert f'<option value="{value}">{label}</option>' in templates_text
@@ -987,7 +992,7 @@ def test_finding_status_dropdowns_keep_values_but_use_readable_labels() -> None:
     for template_path in template_paths:
         template = template_path.read_text()
         assert '<option value="OPEN">OPEN</option>' not in template
-        assert '<option value="RESOLVED">RESOLVED</option>' not in template
+        assert '<option value="REMEDIATED">REMEDIATED</option>' not in template
         assert '<option value="SUPPRESSED">SUPPRESSED</option>' not in template
 
 
@@ -995,8 +1000,9 @@ def test_finding_status_dropdowns_do_not_duplicate_status_options() -> None:
     project_root = Path(__file__).resolve().parents[1]
     expected_options = [
         ('OPEN', 'Open'),
-        ('IN_PROGRESS', 'In Progress'),
-        ('RESOLVED', 'Resolved'),
+        ('UNDER_REVIEW', 'Under Review'),
+        ('REMEDIATED', 'Remediated'),
+        ('FALSE_POSITIVE', 'False Positive'),
         ('SUPPRESSED', 'Suppressed'),
     ]
 
@@ -1749,6 +1755,10 @@ def test_get_finding_detail_page_returns_investigation_shell(client) -> None:
     assert response.data.count(b"</main>") == 1
     assert b'data-finding-id="finding-low"' in response.data
     assert b'id="finding-detail-content"' in response.data
+    assert b'id="finding-lifecycle-note-input"' in response.data
+    assert b'id="finding-lifecycle-history"' in response.data
+    assert b"Lifecycle History" in response.data
+    assert b"False Positive" in response.data
     assert b'<a href="/dashboard">Dashboard</a>' not in response.data
     assert b'<a href="/findings">Findings</a>' in response.data
     assert b'finding-low' in response.data
@@ -2406,6 +2416,13 @@ def test_accept_risk_requires_reason_and_records_audit(client) -> None:
     assert response.status_code == 201
     assert finding["status"] == "SUPPRESSED"
     assert "Accepted risk: Temporary exception approved by risk owner." in finding["analyst_notes"]
+    assert finding["lifecycle_history"][-1] == {
+        "finding_id": "finding-critical",
+        "previous_status": "OPEN",
+        "new_status": "SUPPRESSED",
+        "note": "Accepted risk: Temporary exception approved by risk owner.",
+        "timestamp": "2026-05-24T00:00:00+00:00",
+    }
     assert audit[-1]["action_type"] == "ACCEPT_RISK"
     assert audit[-1]["actor"] == "risk-owner@example.local"
     assert audit[-1]["reason"] == "Temporary exception approved by risk owner."
@@ -2746,6 +2763,26 @@ def test_governance_evidence_csv_export_returns_consolidated_evidence(client) ->
     assert b"Customer Database (res-customer-database)" in response.data
 
 
+def test_reports_include_updated_finding_lifecycle_status(client) -> None:
+    update_response = client.patch(
+        "/api/findings/finding-low/status",
+        json={
+            "status": "FALSE_POSITIVE",
+            "note": "Validated as expected access for this identity.",
+        },
+    )
+    findings_response = client.get("/api/reports/evidence.csv")
+    report_response = client.get("/api/reports/governance-summary")
+
+    assert update_response.status_code == 200
+    assert b"finding,finding-low,LOW,FALSE_POSITIVE" in findings_response.data
+    risks_by_id = {
+        risk["id"]: risk
+        for risk in report_response.get_json()["critical_high_iam_risks"]
+    }
+    assert risks_by_id["finding-critical"]["status"] == "OPEN"
+
+
 def test_governance_summary_uses_deterministic_top_list_ordering(tmp_path) -> None:
     db_path = tmp_path / "report_findings.db"
     app.config["TESTING"] = True
@@ -2804,12 +2841,26 @@ def test_post_analysis_run_executes_and_persists_findings(tmp_path) -> None:
 def test_patch_finding_status_updates_status(client) -> None:
     response = client.patch(
         "/api/findings/finding-low/status",
-        json={"status": "IN_PROGRESS"},
+        json={
+            "status": "UNDER_REVIEW",
+            "note": "Started lifecycle investigation.",
+        },
     )
 
     assert response.status_code == 200
-    assert response.get_json()["status"] == "IN_PROGRESS"
+    body = response.get_json()
+    assert body["status"] == "UNDER_REVIEW"
     assert response.get_json()["activity"][-1]["type"] == "STATUS_CHANGED"
+    assert body["analyst_notes"] == ["Started lifecycle investigation."]
+    assert body["lifecycle_history"] == [
+        {
+            "finding_id": "finding-low",
+            "previous_status": "OPEN",
+            "new_status": "UNDER_REVIEW",
+            "note": "Started lifecycle investigation.",
+            "timestamp": "2026-05-24T00:00:00+00:00",
+        }
+    ]
 
 
 def test_patch_finding_owner_assigns_owner(client) -> None:
@@ -2837,7 +2888,7 @@ def test_post_finding_note_appends_note(client) -> None:
 def test_api_returns_error_for_missing_finding(client) -> None:
     response = client.patch(
         "/api/findings/finding-missing/status",
-        json={"status": "RESOLVED"},
+        json={"status": "REMEDIATED", "note": "Confirmed closure."},
     )
 
     assert response.status_code == 404
@@ -2847,7 +2898,7 @@ def test_api_returns_error_for_missing_finding(client) -> None:
 def test_api_returns_error_for_invalid_status(client) -> None:
     response = client.patch(
         "/api/findings/finding-low/status",
-        json={"status": "INVALID"},
+        json={"status": "INVALID", "note": "Invalid transition attempt."},
     )
 
     assert response.status_code == 400
@@ -2865,6 +2916,16 @@ def test_api_returns_error_for_missing_payload_fields(client) -> None:
     assert status_response.get_json() == {"error": "Missing required field: status"}
     assert owner_response.get_json() == {"error": "Missing required field: owner"}
     assert note_response.get_json() == {"error": "Missing required field: note"}
+
+
+def test_api_requires_note_for_finding_lifecycle_update(client) -> None:
+    response = client.patch(
+        "/api/findings/finding-low/status",
+        json={"status": "UNDER_REVIEW"},
+    )
+
+    assert response.status_code == 400
+    assert response.get_json() == {"error": "Missing required field: note"}
 
 
 def extract_js_function_body(script: str, function_name: str) -> str:

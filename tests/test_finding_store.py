@@ -6,6 +6,7 @@ from core.finding_store import (
     finding_exists,
     initialize_database,
     load_finding_activity,
+    load_finding_lifecycle_history,
     load_findings,
     save_findings,
     update_finding_status,
@@ -129,13 +130,24 @@ def test_update_finding_status_persists_status_and_updated_at(tmp_path) -> None:
     update_finding_status(
         db_path,
         "finding-001",
-        FindingStatus.IN_PROGRESS,
+        FindingStatus.UNDER_REVIEW,
+        note="Investigation started.",
         updated_at="2026-05-19T00:00:00Z",
     )
 
     loaded_finding = load_findings(db_path)[0]
-    assert loaded_finding.status == FindingStatus.IN_PROGRESS
+    assert loaded_finding.status == FindingStatus.UNDER_REVIEW
+    assert loaded_finding.analyst_notes == ["Investigation started."]
     assert loaded_finding.updated_at == "2026-05-19T00:00:00Z"
+    assert load_finding_lifecycle_history(db_path, "finding-001") == [
+        {
+            "finding_id": "finding-001",
+            "previous_status": "OPEN",
+            "new_status": "UNDER_REVIEW",
+            "note": "Investigation started.",
+            "timestamp": "2026-05-19T00:00:00Z",
+        }
+    ]
 
 
 def test_assign_finding_owner_persists_owner_and_updated_at(tmp_path) -> None:
@@ -189,7 +201,8 @@ def test_finding_activity_records_workflow_changes(tmp_path) -> None:
     update_finding_status(
         db_path,
         "finding-001",
-        FindingStatus.IN_PROGRESS,
+        FindingStatus.UNDER_REVIEW,
+        note="Investigation started.",
         updated_at="2026-05-19T00:00:00Z",
     )
     assign_finding_owner(
@@ -213,7 +226,7 @@ def test_finding_activity_records_workflow_changes(tmp_path) -> None:
         },
         {
             "type": "STATUS_CHANGED",
-            "message": "Status changed from OPEN to IN_PROGRESS.",
+            "message": "Status changed from OPEN to UNDER_REVIEW.",
             "created_at": "2026-05-19T00:00:00Z",
         },
         {

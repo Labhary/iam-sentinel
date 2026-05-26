@@ -150,6 +150,23 @@
     }).join(''));
   }
 
+  function renderLifecycleHistory(finding) {
+    const history = normalizeItems(finding.lifecycle_history);
+    if (!history.length) {
+      setHtml('finding-lifecycle-history', '<tr><td colspan="4" class="text-muted">No lifecycle changes yet.</td></tr>');
+      return;
+    }
+
+    setHtml('finding-lifecycle-history', history.map((entry) => `
+      <tr>
+        <td>${escapeHtml(formatTimestamp(entry.timestamp))}</td>
+        <td>${escapeHtml(formatStatus(entry.previous_status))}</td>
+        <td>${escapeHtml(formatStatus(entry.new_status))}</td>
+        <td>${escapeHtml(entry.note)}</td>
+      </tr>
+    `).join(''));
+  }
+
   function renderFinding(finding) {
     const severityClass = severityBadgeClasses[finding.severity] || 'badge bg-secondary';
 
@@ -168,12 +185,14 @@
     setInputValue('finding-status-select', finding.status);
     setInputValue('finding-owner-input', finding.owner || '');
     setInputValue('finding-note-input', '');
+    setInputValue('finding-lifecycle-note-input', '');
 
     renderList('finding-detail-evidence', finding.evidence);
     renderList('finding-detail-risk-factors', finding.risk_factors);
     renderList('finding-detail-attack-paths', finding.attack_paths);
     renderList('finding-detail-notes', finding.analyst_notes);
     renderActivityList(finding);
+    renderLifecycleHistory(finding);
   }
 
   async function refreshFinding() {
@@ -220,9 +239,15 @@
   }
 
   async function saveFindingStatus() {
+    const note = getInputValue('finding-lifecycle-note-input').trim();
+    if (!note) {
+      showAlert('finding-action-feedback', 'Enter a lifecycle note before updating status.', 'warning');
+      return;
+    }
+
     await updateFinding(
       'status',
-      { status: getInputValue('finding-status-select') },
+      { status: getInputValue('finding-status-select'), note },
       'Status updated.'
     );
   }

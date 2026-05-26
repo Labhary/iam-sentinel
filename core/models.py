@@ -12,8 +12,9 @@ class Severity(Enum):
 
 class FindingStatus(Enum):
     OPEN = "OPEN"
-    IN_PROGRESS = "IN_PROGRESS"
-    RESOLVED = "RESOLVED"
+    UNDER_REVIEW = "UNDER_REVIEW"
+    REMEDIATED = "REMEDIATED"
+    FALSE_POSITIVE = "FALSE_POSITIVE"
     SUPPRESSED = "SUPPRESSED"
 
 
@@ -104,6 +105,15 @@ class Finding:
     def __post_init__(self) -> None:
         if self.updated_at is None:
             object.__setattr__(self, "updated_at", self.created_at)
+
+
+@dataclass(frozen=True)
+class FindingLifecycleEvent:
+    finding_id: str
+    previous_status: str
+    new_status: str
+    note: str
+    timestamp: str
 
 
 @dataclass(frozen=True)

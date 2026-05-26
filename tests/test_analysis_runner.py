@@ -68,11 +68,11 @@ def test_run_analysis_seeds_demo_findings_with_mixed_statuses(tmp_path) -> None:
 
     statuses = {finding.id: finding.status for finding in result["findings"]}
 
-    assert statuses["finding-external-sensitive-user-004"] == FindingStatus.IN_PROGRESS
-    assert statuses["finding-toxic-combo-user-007"] == FindingStatus.RESOLVED
+    assert statuses["finding-external-sensitive-user-004"] == FindingStatus.UNDER_REVIEW
+    assert statuses["finding-toxic-combo-user-007"] == FindingStatus.REMEDIATED
     assert statuses["finding-service-sensitive-user-009"] == FindingStatus.SUPPRESSED
     assert list(statuses.values()).count(FindingStatus.OPEN) > list(statuses.values()).count(
-        FindingStatus.RESOLVED
+        FindingStatus.REMEDIATED
     )
 
 
