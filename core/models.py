@@ -48,6 +48,7 @@ class User:
     last_login: str
     external_user: bool
     service_account: bool
+    disabled: bool = False
 
 
 @dataclass(frozen=True)

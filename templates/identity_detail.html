@@ -30,6 +30,7 @@
           Identity not found.
         </div>
         <div id="identity-detail-error" class="alert alert-danger d-none" role="alert"></div>
+        <div id="identity-remediation-feedback" class="alert d-none" role="alert"></div>
 
         <div id="identity-detail-content" class="d-none">
           <div class="row">
@@ -61,6 +62,55 @@
                       <span id="identity-detail-service-account"></span>
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <div class="card">
+                <div class="card-body">
+                  <h5 class="card-title">Remediation Simulation</h5>
+                  <div class="row g-2 align-items-end">
+                    <div class="col-lg-3 col-md-6">
+                      <label for="identity-remediation-action" class="form-label">Action</label>
+                      <select id="identity-remediation-action" class="form-select">
+                        <option value="ENABLE_MFA">Enable MFA</option>
+                        <option value="DISABLE_ACCOUNT">Disable account</option>
+                        <option value="REENABLE_ACCOUNT">Re-enable account</option>
+                        <option value="ADD_TO_GROUP">Add to group</option>
+                        <option value="CHANGE_GROUP">Change group</option>
+                        <option value="REMOVE_FROM_GROUP">Remove from group</option>
+                        <option value="REPLACE_ROLE">Replace role</option>
+                      </select>
+                    </div>
+                    <div id="identity-remediation-old-group-field" class="col-lg-2 col-md-6 identity-remediation-field">
+                      <label for="identity-remediation-old-group" class="form-label">Old Group</label>
+                      <select id="identity-remediation-old-group" class="form-select"></select>
+                    </div>
+                    <div id="identity-remediation-new-group-field" class="col-lg-2 col-md-6 identity-remediation-field">
+                      <label for="identity-remediation-new-group" class="form-label">New Group</label>
+                      <select id="identity-remediation-new-group" class="form-select"></select>
+                    </div>
+                    <div id="identity-remediation-old-role-field" class="col-lg-2 col-md-6 identity-remediation-field">
+                      <label for="identity-remediation-old-role" class="form-label">Old Role</label>
+                      <select id="identity-remediation-old-role" class="form-select"></select>
+                    </div>
+                    <div id="identity-remediation-new-role-field" class="col-lg-2 col-md-6 identity-remediation-field">
+                      <label for="identity-remediation-new-role" class="form-label">New Role</label>
+                      <select id="identity-remediation-new-role" class="form-select"></select>
+                    </div>
+                    <div class="col-lg-2 col-md-8">
+                      <label for="identity-remediation-reason" class="form-label">Reason</label>
+                      <input id="identity-remediation-reason" class="form-control" type="text" placeholder="Required for destructive actions">
+                    </div>
+                    <div class="col-lg-1 col-md-4">
+                      <button id="identity-remediation-apply" type="button" class="btn btn-outline-primary w-100">Apply</button>
+                    </div>
+                  </div>
+                  <div id="identity-remediation-preview" class="alert alert-secondary mt-3 mb-0">
+                    No impact preview yet
+                  </div>
+                  <div id="identity-remediation-verified-impact" class="alert alert-success mt-3 mb-0 d-none"></div>
                 </div>
               </div>
             </div>

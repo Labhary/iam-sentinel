@@ -76,9 +76,23 @@
       </li>
 
       <li class="nav-item">
+        <a class="nav-link{% if active_page != 'attack_graph' %} collapsed{% endif %}" href="/attack-graph">
+          <i class="bi bi-diagram-3"></i>
+          <span>Attack Graph</span>
+        </a>
+      </li>
+
+      <li class="nav-item">
         <a class="nav-link{% if active_page != 'access_reviews' %} collapsed{% endif %}" href="/access-reviews">
           <i class="bi bi-clipboard-check"></i>
           <span>Access Reviews</span>
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a class="nav-link{% if active_page != 'remediation_audit' %} collapsed{% endif %}" href="/remediation-audit">
+          <i class="bi bi-journal-text"></i>
+          <span>Remediation Audit</span>
         </a>
       </li>
 

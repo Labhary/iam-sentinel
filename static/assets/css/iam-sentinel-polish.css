@@ -111,6 +111,243 @@
   opacity: 1;
 }
 
+.attack-graph-card .card-body {
+  min-height: 690px;
+}
+
+.attack-graph-container {
+  background: #f8fafc;
+  border: 1px solid #dce5f0;
+  border-radius: 6px;
+  min-height: 620px;
+  overflow: hidden;
+}
+
+.attack-graph-svg {
+  display: block;
+  height: 620px;
+  width: 100%;
+}
+
+.attack-graph-column-label {
+  fill: #607089;
+  font-size: 13px;
+  font-weight: 700;
+  text-anchor: middle;
+  text-transform: uppercase;
+}
+
+.attack-graph-edge path {
+  fill: none;
+  stroke: #b8c5d6;
+  stroke-width: 2;
+  transition: opacity 0.15s ease, stroke 0.15s ease, stroke-width 0.15s ease;
+}
+
+.attack-graph-edge text {
+  fill: #7a8797;
+  font-size: 10px;
+  text-anchor: middle;
+}
+
+.attack-graph-edge-selected path {
+  stroke-width: 4;
+}
+
+.attack-graph-path-critical path,
+.attack-graph-path-critical.attack-graph-node-path rect {
+  stroke: #dc3545;
+}
+
+.attack-graph-path-high path,
+.attack-graph-path-high.attack-graph-node-path rect {
+  stroke: #f59f00;
+}
+
+.attack-graph-path-neutral path,
+.attack-graph-path-neutral.attack-graph-node-path rect {
+  stroke: #8fa2b8;
+}
+
+.attack-graph-edge-faded,
+.attack-graph-node-faded {
+  opacity: 0.22;
+}
+
+.attack-graph-focus-mode .attack-graph-edge-selected,
+.attack-graph-focus-mode .attack-graph-node-path {
+  opacity: 1;
+}
+
+.attack-graph-node {
+  cursor: pointer;
+}
+
+.attack-graph-node rect {
+  fill: #fff;
+  stroke: #8fa2b8;
+  stroke-width: 1.5;
+  transition: opacity 0.15s ease, stroke 0.15s ease, stroke-width 0.15s ease;
+}
+
+.attack-graph-node-user rect {
+  stroke: #0d6efd;
+}
+
+.attack-graph-node-group rect {
+  stroke: #6f42c1;
+}
+
+.attack-graph-node-role rect {
+  stroke: #198754;
+}
+
+.attack-graph-node-permission rect {
+  stroke: #6c757d;
+}
+
+.attack-graph-node-resource rect {
+  stroke: #dc3545;
+}
+
+.attack-graph-node-risky rect {
+  stroke-width: 2.5;
+}
+
+.attack-graph-node-selected rect,
+.attack-graph-node-path rect {
+  fill: #fff8e6;
+  stroke-width: 3;
+}
+
+.attack-graph-node-label {
+  fill: #25364d;
+  font-size: 11px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+
+.attack-graph-node-type {
+  fill: #6f7f91;
+  font-size: 9px;
+  text-anchor: middle;
+  text-transform: uppercase;
+}
+
+.attack-graph-legend {
+  color: #5f6f82;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+  gap: 0.75rem;
+}
+
+.attack-graph-filter-controls .btn {
+  font-size: 0.78rem;
+  line-height: 1.15;
+}
+
+.attack-graph-legend i {
+  font-size: 0.72rem;
+}
+
+.attack-graph-legend-identity {
+  color: #0d6efd;
+}
+
+.attack-graph-legend-role {
+  color: #198754;
+}
+
+.attack-graph-legend-permission {
+  color: #6c757d;
+}
+
+.attack-graph-legend-resource {
+  color: #dc3545;
+}
+
+.attack-graph-detail-list {
+  font-size: 0.86rem;
+}
+
+.attack-graph-detail-list dt {
+  color: #607089;
+}
+
+.attack-graph-path-list {
+  max-height: 430px;
+  overflow: auto;
+}
+
+.attack-graph-path-item {
+  border-left: 3px solid transparent;
+  border-right: 0;
+  font-size: 0.82rem;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.attack-graph-path-item.attack-graph-path-critical {
+  border-left-color: #dc3545;
+}
+
+.attack-graph-path-item.attack-graph-path-high {
+  border-left-color: #f59f00;
+}
+
+.attack-graph-path-item.attack-graph-path-neutral {
+  border-left-color: #c4cfdd;
+}
+
+.attack-graph-path-title,
+.attack-graph-path-meta {
+  display: block;
+}
+
+.attack-graph-path-title {
+  font-weight: 700;
+}
+
+.attack-graph-path-meta {
+  color: #6c757d;
+  font-size: 0.76rem;
+}
+
+.remediation-audit-table td,
+.remediation-audit-table th {
+  font-size: 0.82rem;
+  vertical-align: top;
+}
+
+.remediation-audit-table td:nth-child(5),
+.remediation-audit-table td:nth-child(6) {
+  min-width: 12rem;
+}
+
+.remediation-audit-state {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.remediation-audit-state-row {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  gap: 0.45rem;
+  line-height: 1.25;
+}
+
+.remediation-audit-state-key {
+  color: #6c757d;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.remediation-audit-state-value,
+.remediation-audit-reason {
+  overflow-wrap: anywhere;
+}
+
 .access-review-metric-card {
   margin-bottom: 16px;
 }

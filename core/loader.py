@@ -138,6 +138,7 @@ def build_user(data: dict[str, Any]) -> User:
         last_login=data["last_login"],
         external_user=data["external_user"],
         service_account=data["service_account"],
+        disabled=data.get("disabled", False),
     )
 
 

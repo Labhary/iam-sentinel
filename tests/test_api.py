@@ -1,4 +1,5 @@
 from pathlib import Path
+import ast
 import re
 import sqlite3
 
@@ -25,6 +26,7 @@ def client(tmp_path):
     app.config["IAM_DATA_PATH"] = (
         Path(__file__).resolve().parents[1] / "data" / "sample_iam.json"
     )
+    app.config["REPORT_GENERATED_AT"] = "2026-05-24T00:00:00+00:00"
 
     save_findings(
         db_path,
@@ -48,6 +50,7 @@ def client(tmp_path):
 
     with app.test_client() as test_client:
         yield test_client
+    app.config.pop("REPORT_GENERATED_AT", None)
 
 
 @pytest.mark.parametrize(
@@ -61,6 +64,8 @@ def client(tmp_path):
         ("/resources", b"IAM Sentinel Resources", b"assets/js/iam-sentinel-resources.js", b'id="resources-loading"', b"Loading resources..."),
         ("/resources/res-payroll-system", b"IAM Sentinel Resource", b"assets/js/iam-sentinel-resource-detail.js", b'id="resource-detail-loading"', b"Loading resource..."),
         ("/access-paths", b"IAM Sentinel Access Paths", b"assets/js/iam-sentinel-access-paths.js", b'id="access-paths-loading"', b"Loading access paths..."),
+        ("/attack-graph", b"IAM Sentinel Attack Graph", b"assets/js/iam-sentinel-attack-graph.js", b'id="attack-graph-loading"', b"Loading attack graph..."),
+        ("/remediation-audit", b"IAM Sentinel Remediation Audit", b"assets/js/iam-sentinel-remediation-audit.js", b'id="remediation-audit-loading"', b"Loading remediation audit..."),
         ("/access-reviews", b"IAM Sentinel Access Reviews", b"assets/js/iam-sentinel-access-reviews.js", b'id="access-reviews-loading"', b"Loading access reviews..."),
         ("/reports", b"IAM Sentinel Reports", b"assets/js/iam-sentinel-reports.js", b'id="reports-loading"', b"Loading governance summary..."),
     ],
@@ -271,6 +276,24 @@ def test_get_findings_returns_deterministic_sorted_findings(client) -> None:
     ]
     assert "risk_factors" in response.get_json()[0]
     assert "risk_explanation" in response.get_json()[0]
+    assert response.get_json()[0]["identity_name"] == "Omar Haddad"
+
+
+def test_findings_script_searches_and_displays_identity_names() -> None:
+    script = (
+        Path(__file__).resolve().parents[1]
+        / "static"
+        / "assets"
+        / "js"
+        / "iam-sentinel-findings.js"
+    ).read_text()
+
+    assert "finding.identity_name" in script
+    assert "finding-identity-name" in script
+    assert "finding-identity-id" in script
+    assert "finding.identity_name || finding.identity_id" in script
+    assert "finding-accepted-risk-reason" in script
+    assert "ACCEPT_RISK" in script
 
 
 def test_get_dashboard_returns_page(client) -> None:
@@ -515,6 +538,391 @@ def test_get_access_paths_page_returns_workbench(client) -> None:
     assert b"assets/js/iam-sentinel-resources.js" not in response.data
     assert b"Access Paths" in response.data
     assert b'href="/access-paths"' in response.data
+
+
+def test_get_attack_graph_page_returns_workbench(client) -> None:
+    response = client.get("/attack-graph")
+
+    assert response.status_code == 200
+    assert b"IAM Sentinel Attack Graph" in response.data
+    assert response.data.count(b'<main id="main" class="main">') == 1
+    assert b'id="attack-graph-workbench"' in response.data
+    assert b'id="attack-graph-container"' in response.data
+    assert b'id="attack-graph-svg"' in response.data
+    assert b'id="attack-graph-detail"' in response.data
+    assert b'id="attack-graph-path-list"' in response.data
+    assert b'id="attack-graph-filter-controls"' in response.data
+    assert b'data-filter-mode="all"' in response.data
+    assert b'data-filter-mode="critical-high"' in response.data
+    assert b'data-filter-mode="sensitive"' in response.data
+    assert b"All paths" in response.data
+    assert b"Critical/High only" in response.data
+    assert b"Sensitive resources only" in response.data
+    assert b"assets/js/iam-sentinel-attack-graph.js" in response.data
+    assert b"assets/js/iam-sentinel-access-paths.js" not in response.data
+    assert response.data.count(b"assets/js/iam-sentinel-attack-graph.js") == 1
+    assert response.data.count(b'href="/attack-graph"') == 1
+    assert b"Attack Graph" in response.data
+    assert b'href="/attack-graph"' in response.data
+
+
+def test_attack_graph_source_has_no_dead_access_paths_return_after_access_reviews_page() -> None:
+    source = (Path(__file__).resolve().parents[1] / "app.py").read_text()
+    access_reviews_page_match = re.search(
+        r"def access_reviews_page\(\):(?P<body>.*?)(?:\n\n@app\.get|\Z)",
+        source,
+        re.S,
+    )
+
+    assert access_reviews_page_match is not None
+    assert 'return render_template("access_reviews.html")' in access_reviews_page_match.group("body")
+    assert "return jsonify(access_paths)" not in access_reviews_page_match.group("body")
+
+
+def test_attack_graph_assets_are_declared_once() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    base_template = (project_root / "templates" / "base.html").read_text()
+    graph_template = (project_root / "templates" / "attack_graph.html").read_text()
+    styles = (
+        project_root / "static" / "assets" / "css" / "iam-sentinel-polish.css"
+    ).read_text()
+
+    assert base_template.count('href="/attack-graph"') == 1
+    assert base_template.count("<span>Attack Graph</span>") == 1
+    assert graph_template.count("iam-sentinel-attack-graph.js") == 1
+    assert styles.count(".attack-graph-card .card-body") == 1
+    assert styles.count(".attack-graph-container") == 1
+    assert styles.count(".attack-graph-node rect") == 1
+    assert styles.count(".attack-graph-path-list") == 1
+
+
+def test_attack_graph_readability_classes_and_filter_logic_exist() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    script = (
+        project_root / "static" / "assets" / "js" / "iam-sentinel-attack-graph.js"
+    ).read_text()
+    styles = (
+        project_root / "static" / "assets" / "css" / "iam-sentinel-polish.css"
+    ).read_text()
+
+    assert "filterMode: 'all'" in script
+    assert "function getFilteredPaths()" in script
+    assert "state.filterMode === 'critical-high'" in script
+    assert "state.filterMode === 'sensitive'" in script
+    assert "state.filteredPaths = getFilteredPaths();" in script
+    assert "getVisibleNodes()" in script
+    assert "getVisibleEdges()" in script
+    assert "attack-graph-focus-mode" in script
+    assert "attack-graph-node-faded" in script
+    assert "attack-graph-edge-faded" in script
+    assert "attack-graph-path-critical" in script
+    assert "attack-graph-path-high" in script
+    assert "attack-graph-path-neutral" in script
+    assert ".attack-graph-focus-mode .attack-graph-edge-selected" in styles
+    assert ".attack-graph-edge-faded" in styles
+    assert ".attack-graph-node-faded" in styles
+    assert ".attack-graph-path-critical path" in styles
+    assert ".attack-graph-path-high path" in styles
+    assert ".attack-graph-path-neutral path" in styles
+
+
+def test_attack_graph_js_has_single_state_and_selection_paths() -> None:
+    script = (
+        Path(__file__).resolve().parents[1]
+        / "static"
+        / "assets"
+        / "js"
+        / "iam-sentinel-attack-graph.js"
+    ).read_text()
+    state_match = re.search(
+        r"const state = \{(?P<body>.*?)\n  \};\n  const columns",
+        script,
+        re.S,
+    )
+    selected_path_body = extract_js_function_body(script, "getSelectedPath")
+    selected_node_body = extract_js_function_body(script, "getSelectedNode")
+
+    assert state_match is not None
+    assert state_match.group("body").count("selectedPathId:") == 1
+    assert selected_path_body.count("return ") == 1
+    assert selected_node_body.count("return ") == 1
+    assert "state.graph.paths.find" not in selected_path_body
+    assert "state.graph.nodes.find" not in selected_node_body
+
+
+def test_attack_graph_template_has_single_legend_and_filter_controls() -> None:
+    template = (
+        Path(__file__).resolve().parents[1] / "templates" / "attack_graph.html"
+    ).read_text()
+
+    assert template.count('id="attack-graph-filter-controls"') == 1
+    assert template.count('class="attack-graph-legend"') == 1
+    assert template.count('data-filter-mode="all"') == 1
+    assert template.count('data-filter-mode="critical-high"') == 1
+    assert template.count('data-filter-mode="sensitive"') == 1
+
+
+def test_identity_remediation_uses_controlled_role_and_group_rendering() -> None:
+    script = (
+        Path(__file__).resolve().parents[1]
+        / "static"
+        / "assets"
+        / "js"
+        / "iam-sentinel-identity-detail.js"
+    ).read_text()
+    action_labels_body = extract_js_const_object_body(script, "actionLabels")
+
+    assert "identity.available_roles" in script
+    assert "identity.available_groups" in script
+    assert "identity-remediation-new-role" in script
+    assert "const actionLabels = {" in script
+    assert "ACCEPT_RISK: 'Accept risk'" in script
+    assert "new_role_id = document.getElementById('identity-remediation-new-role').value" in script
+    assert "new_role_id = document.getElementById('identity-remediation-new-role').value.trim()" not in script
+    assert "ADD_TO_GROUP" in script
+    assert "CHANGE_GROUP" in script
+    assert "formatStateChange(result.audit_event)" in script
+    assert "fetchJson('/api/remediation-actions/preview'" in script
+    assert "renderImpactPreview(preview)" in script
+    assert "renderVerifiedImpactSummary(previewBeforeApply)" in script
+    for action_type in [
+        "ENABLE_MFA",
+        "DISABLE_ACCOUNT",
+        "REENABLE_ACCOUNT",
+        "ADD_TO_GROUP",
+        "CHANGE_GROUP",
+        "REMOVE_FROM_GROUP",
+        "REPLACE_ROLE",
+        "ACCEPT_RISK",
+    ]:
+        assert action_labels_body.count(f"{action_type}:") == 1
+
+
+def test_remediation_api_routes_do_not_keep_old_return_paths() -> None:
+    source = (Path(__file__).resolve().parents[1] / "app.py").read_text()
+    get_findings_source = extract_python_function_source(source, "get_findings")
+    get_identities_source = extract_python_function_source(source, "get_identities")
+
+    assert source.count("def identity_to_dict(") == 1
+    assert get_findings_source.count("return jsonify") == 1
+    assert "load_effective_iam_data()" in get_findings_source
+    assert "finding_to_dict(finding, iam_data.users_by_id)" in get_findings_source
+    assert "finding_to_dict(finding) for finding in findings" not in get_findings_source
+    assert get_identities_source.count("return jsonify") == 1
+    assert "identity_to_dict(user, iam_data)" in get_identities_source
+    assert "identity_to_dict(user) for user in iam_data.users" not in get_identities_source
+
+
+def test_identity_remediation_template_has_no_legacy_controls() -> None:
+    template = (
+        Path(__file__).resolve().parents[1] / "templates" / "identity_detail.html"
+    ).read_text()
+
+    assert template.count('id="identity-remediation-old-group"') == 1
+    assert template.count('id="identity-remediation-new-group"') == 1
+    assert template.count('id="identity-remediation-old-role"') == 1
+    assert template.count('id="identity-remediation-new-role"') == 1
+    assert template.count('class="col-lg-2 col-md-6 identity-remediation-field"') == 4
+    assert template.count('<div class="col-lg-2 col-md-6">') == 0
+    assert 'id="identity-remediation-old-group-field"' in template
+    assert 'id="identity-remediation-new-group-field"' in template
+    assert 'id="identity-remediation-old-role-field"' in template
+    assert 'id="identity-remediation-new-role-field"' in template
+    assert not re.search(
+        r'<div class="col-lg-2 col-md-6">\s*<div id="identity-remediation-[^"]+-field"',
+        template,
+    )
+    assert 'id="identity-remediation-group"' not in template
+    assert '<input id="identity-remediation-new-role"' not in template
+    assert '<select id="identity-remediation-new-role"' in template
+    assert 'id="identity-remediation-preview"' in template
+    assert 'id="identity-remediation-verified-impact"' in template
+    assert "No impact preview yet" in template
+
+
+def test_identity_remediation_js_has_single_clean_action_flow() -> None:
+    script = (
+        Path(__file__).resolve().parents[1]
+        / "static"
+        / "assets"
+        / "js"
+        / "iam-sentinel-identity-detail.js"
+    ).read_text()
+    action_body = extract_js_function_body(script, "applyRemediationAction")
+
+    assert script.count("async function fetchJson(") == 1
+    assert script.count("function renderRemediationOptions(") == 1
+    assert script.count("function updateRemediationFieldVisibility(") == 1
+    assert script.count("async function applyRemediationAction(") == 1
+    assert script.count("const groupSelect") == 0
+    assert script.count("oldGroupSelect") >= 1
+    assert script.count("newGroupSelect") >= 1
+    assert "const actionFieldMap = {" in script
+    assert "ENABLE_MFA: []" in script
+    assert "DISABLE_ACCOUNT: []" in script
+    assert "REENABLE_ACCOUNT: []" in script
+    assert "ACCEPT_RISK: []" in script
+    assert "ADD_TO_GROUP: ['new-group']" in script
+    assert "REMOVE_FROM_GROUP: ['old-group']" in script
+    assert "CHANGE_GROUP: ['old-group', 'new-group']" in script
+    assert "REPLACE_ROLE: ['old-role', 'new-role']" in script
+    assert "classList.toggle('d-none', !visibleFields.has(fieldName))" in script
+    assert "updateRemediationFieldVisibility();" in script
+    assert "refreshImpactPreview();" in script
+    assert action_body.count("if (actionType === 'ADD_TO_GROUP')") == 1
+    assert action_body.count("if (actionType === 'CHANGE_GROUP')") == 1
+    assert action_body.count("if (actionType === 'REMOVE_FROM_GROUP')") == 1
+    assert action_body.count("if (actionType === 'REPLACE_ROLE')") == 1
+    assert (
+        "payload.group_id = document.getElementById('identity-remediation-new-group').value;"
+        in action_body
+    )
+    assert (
+        "payload.group_id = document.getElementById('identity-remediation-old-group').value;"
+        in action_body
+    )
+    assert (
+        "payload.old_group_id = document.getElementById('identity-remediation-old-group').value;"
+        in action_body
+    )
+    assert (
+        "payload.new_group_id = document.getElementById('identity-remediation-new-group').value;"
+        in action_body
+    )
+    assert action_body.count("payload.new_role_id =") == 1
+    assert (
+        "payload.new_role_id = document.getElementById('identity-remediation-new-role').value;"
+        in action_body
+    )
+    assert "document.getElementById('identity-remediation-group')" not in action_body
+    assert "Remediation action simulated." not in action_body
+    assert action_body.count("showFeedback(`${actionLabels[actionType] || actionType} simulated.") == 1
+
+
+def test_identity_detail_js_renders_preview_and_verified_impact() -> None:
+    script = (
+        Path(__file__).resolve().parents[1]
+        / "static"
+        / "assets"
+        / "js"
+        / "iam-sentinel-identity-detail.js"
+    ).read_text()
+
+    assert "function renderImpactPreview(preview)" in script
+    assert "function renderVerifiedImpactSummary(preview)" in script
+    assert "identity-remediation-preview" in script
+    assert "identity-remediation-verified-impact" in script
+    assert "Impact preview" in script
+    assert "Verified impact" in script
+    assert "Warning: this preview does not reduce access paths" in script
+    assert "before.access_paths_count} &rarr; ${after.access_paths_count}" in script
+    assert "preview.impact.before.access_paths_count} &rarr; ${accessPaths.length}" in script
+
+
+def test_remediation_audit_page_exists_and_assets_are_single() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    base_template = (project_root / "templates" / "base.html").read_text()
+    template = (project_root / "templates" / "remediation_audit.html").read_text()
+
+    assert base_template.count('href="/remediation-audit"') == 1
+    assert base_template.count("<span>Remediation Audit</span>") == 1
+    assert template.count("iam-sentinel-remediation-audit.js") == 1
+    assert 'id="remediation-audit-table-body"' in template
+    assert 'id="remediation-audit-count"' in template
+
+
+def test_remediation_audit_script_renders_newest_first() -> None:
+    script = (
+        Path(__file__).resolve().parents[1]
+        / "static"
+        / "assets"
+        / "js"
+        / "iam-sentinel-remediation-audit.js"
+    ).read_text()
+    action_labels_body = extract_js_const_object_body(script, "actionLabels")
+    render_body = extract_js_function_body(script, "renderAudit")
+    rendered_row_match = re.search(
+        r"sortedEvents\.map\(\(event\) => `(?P<row>.*?)`\)\.join",
+        render_body,
+        re.S,
+    )
+    format_action_body = extract_js_function_body(script, "formatAction")
+    format_state_body = extract_js_function_body(script, "formatState")
+
+    assert "const sortedEvents = [...events].sort" in script
+    assert "String(right.timestamp).localeCompare(String(left.timestamp))" in script
+    assert "const formatTimestamp = ui.formatTimestamp" in script
+    assert "formatTimestamp(event.timestamp)" in script
+    assert "const actionLabels = {" in script
+    assert "ENABLE_MFA: 'Enable MFA'" in script
+    assert "ACCEPT_RISK: 'Accept risk'" in script
+    assert "formatState(event.before)" in script
+    assert "formatState(event.after)" in script
+    assert 'class="remediation-audit-state-row"' in script
+    assert 'class="remediation-audit-state-key"' in script
+    assert 'class="remediation-audit-state-value"' in script
+    assert "JSON.stringify" not in script
+    for action_type in [
+        "ENABLE_MFA",
+        "DISABLE_ACCOUNT",
+        "REENABLE_ACCOUNT",
+        "ADD_TO_GROUP",
+        "CHANGE_GROUP",
+        "REMOVE_FROM_GROUP",
+        "REPLACE_ROLE",
+        "ACCEPT_RISK",
+    ]:
+        assert action_labels_body.count(f"{action_type}:") == 1
+    assert rendered_row_match is not None
+    rendered_row = rendered_row_match.group("row")
+    assert rendered_row.count("<td") == 7
+    assert "${escapeHtml(formatTimestamp(event.timestamp))}" in rendered_row
+    assert "${escapeHtml(event.timestamp)}" not in rendered_row
+    assert "${escapeHtml(formatTargetType(event.target_type))}" in rendered_row
+    assert "${escapeHtml(event.target_type)}" not in rendered_row
+    assert rendered_row.count("event.target_id") == 1
+    assert rendered_row.count("remediation-audit-reason") == 1
+    assert rendered_row.count("event.reason") == 1
+    assert format_action_body.count("return ") == 1
+    assert "return actionLabels[actionType] || String(actionType || '').replaceAll('_', ' ');" in format_action_body
+    assert "return String(actionType || '').replaceAll('_', ' ');" not in format_action_body
+    assert format_state_body.count('class="remediation-audit-state"') == 1
+    assert "Object.entries(state).map" not in format_state_body
+    assert '<div><span class="text-muted">' not in format_state_body
+
+
+def test_attack_graph_css_blocks_are_balanced_and_not_duplicate_properties() -> None:
+    styles = (
+        Path(__file__).resolve().parents[1]
+        / "static"
+        / "assets"
+        / "css"
+        / "iam-sentinel-polish.css"
+    ).read_text()
+    guarded_properties = {
+        "min-width",
+        "max-width",
+        "font-size",
+        "padding",
+        "stroke",
+        "stroke-width",
+    }
+
+    assert styles.count("{") == styles.count("}")
+    for selector, body in re.findall(r"([^{}]+)\{([^{}]*)\}", styles):
+        if "attack-graph" not in selector:
+            continue
+        properties = [
+            line.split(":", 1)[0].strip()
+            for line in body.splitlines()
+            if ":" in line and not line.strip().startswith("/*")
+        ]
+        guarded = [
+            property_name
+            for property_name in properties
+            if property_name in guarded_properties
+        ]
+        assert len(guarded) == len(set(guarded))
 
 
 @pytest.mark.parametrize(
@@ -1277,10 +1685,59 @@ def test_get_reports_page_returns_workbench(client) -> None:
     assert b'id="top-risky-resources-table"' in response.data
     assert b'id="top-risky-identities-table"' in response.data
     assert b'id="export-governance-json"' in response.data
-    assert b'id="export-governance-csv"' in response.data
+    assert b'id="export-governance-pdf"' in response.data
+    assert b'id="export-evidence-csv"' in response.data
+    assert response.data.count(b"Export JSON") == 1
+    assert response.data.count(b"Export PDF") == 1
+    assert response.data.count(b"Export Evidence CSV") == 1
+    assert b'id="export-governance-csv"' not in response.data
+    assert b'id="export-findings-csv"' not in response.data
+    assert b'id="export-access-reviews-csv"' not in response.data
+    assert b'id="export-remediation-csv"' not in response.data
+    assert b"Summary CSV" not in response.data
+    assert b"Findings CSV" not in response.data
+    assert b"Reviews CSV" not in response.data
+    assert b"Remediation CSV" not in response.data
+    assert b"Export CSV" not in response.data
     assert b"assets/js/iam-sentinel-reports.js" in response.data
     assert b"Reports" in response.data
     assert b'href="/reports"' in response.data
+
+
+def test_report_template_has_no_duplicate_export_labels() -> None:
+    template = (
+        Path(__file__).resolve().parents[1] / "templates" / "reports.html"
+    ).read_text()
+
+    assert template.count("Export JSON") == 1
+    assert template.count("Export PDF") == 1
+    assert template.count("Export Evidence CSV") == 1
+    assert "Summary CSV" not in template
+    assert "Findings CSV" not in template
+    assert "Reviews CSV" not in template
+    assert "Remediation CSV" not in template
+    assert "Export CSV" not in template
+
+
+def test_governance_summary_report_has_no_duplicate_literal_keys() -> None:
+    source = (Path(__file__).resolve().parents[1] / "app.py").read_text()
+    module = ast.parse(source)
+    report_function = next(
+        node
+        for node in module.body
+        if isinstance(node, ast.FunctionDef)
+        and node.name == "build_governance_summary_report"
+    )
+
+    for node in ast.walk(report_function):
+        if not isinstance(node, ast.Dict):
+            continue
+        literal_keys = [
+            key.value
+            for key in node.keys
+            if isinstance(key, ast.Constant) and isinstance(key.value, str)
+        ]
+        assert len(literal_keys) == len(set(literal_keys))
 
 
 def test_get_finding_detail_page_returns_investigation_shell(client) -> None:
@@ -1333,6 +1790,16 @@ def test_get_identity_detail_page_returns_identity_shell(client) -> None:
     assert b'<a href="/identities">Identities</a>' in response.data
     assert b'user-004' in response.data
     assert b'id="identity-detail-content"' in response.data
+    assert b'id="identity-remediation-action"' in response.data
+    assert b'id="identity-remediation-reason"' in response.data
+    assert b'id="identity-remediation-apply"' in response.data
+    assert b'id="identity-remediation-new-role"' in response.data
+    assert b'<input id="identity-remediation-new-role"' not in response.data
+    assert b'id="identity-remediation-old-group"' in response.data
+    assert b'id="identity-remediation-new-group"' in response.data
+    assert b'id="identity-remediation-preview"' in response.data
+    assert b'id="identity-remediation-verified-impact"' in response.data
+    assert b"No impact preview yet" in response.data
     assert b'id="identity-detail-roles"' in response.data
     assert b'id="identity-detail-groups"' in response.data
     assert b'id="identity-related-findings"' in response.data
@@ -1433,6 +1900,39 @@ def test_get_identities_includes_service_and_external_flags(client) -> None:
     assert identities_by_id["user-006"]["external_user"] is False
 
 
+def test_get_identity_detail_returns_effective_identity_fields(client) -> None:
+    remediation_response = client.post(
+        "/api/remediation-actions",
+        json={"action_type": "ENABLE_MFA", "identity_id": "user-007"},
+    )
+
+    response = client.get("/api/identities/user-007")
+
+    assert remediation_response.status_code == 201
+    assert response.status_code == 200
+    identity = response.get_json()
+    assert identity["id"] == "user-007"
+    assert identity["mfa_enabled"] is True
+    assert {
+        "name",
+        "email",
+        "type",
+        "external_user",
+        "service_account",
+        "groups",
+        "roles",
+        "available_groups",
+        "available_roles",
+    }.issubset(identity)
+
+
+def test_get_missing_identity_detail_returns_json_404(client) -> None:
+    response = client.get("/api/identities/missing")
+
+    assert response.status_code == 404
+    assert response.get_json() == {"error": "Identity not found."}
+
+
 def test_get_resources_returns_resource_fields(client) -> None:
     response = client.get("/api/resources")
 
@@ -1468,6 +1968,31 @@ def test_get_resources_includes_access_and_finding_counts(client) -> None:
     assert customer_database["external_access_count"] == 2
     assert payroll_system["service_account_access_count"] == 1
     assert payroll_system["related_findings_count"] == 1
+
+
+def test_get_resource_detail_returns_resource_fields(client) -> None:
+    response = client.get("/api/resources/res-payroll-system")
+
+    assert response.status_code == 200
+    resource = response.get_json()
+    assert resource["id"] == "res-payroll-system"
+    assert resource["sensitive"] is True
+    assert {
+        "name",
+        "type",
+        "accessible_by",
+        "accessible_by_count",
+        "external_access_count",
+        "service_account_access_count",
+        "related_findings_count",
+    }.issubset(resource)
+
+
+def test_get_missing_resource_detail_returns_json_404(client) -> None:
+    response = client.get("/api/resources/missing")
+
+    assert response.status_code == 404
+    assert response.get_json() == {"error": "Resource not found."}
 
 
 def test_get_access_paths_returns_required_fields(client) -> None:
@@ -1523,6 +2048,392 @@ def test_get_access_paths_filters_sensitive_only(client) -> None:
         path["resource_id"]
         for path in access_paths
     }
+
+
+def test_get_attack_graph_returns_nodes_edges_and_paths(client) -> None:
+    response = client.get("/api/attack-graph")
+
+    assert response.status_code == 200
+    graph = response.get_json()
+    assert {"nodes", "edges", "paths"}.issubset(graph)
+    assert graph["nodes"]
+    assert graph["edges"]
+    assert graph["paths"]
+    assert {
+        "id",
+        "label",
+        "type",
+        "risky",
+        "external_identity",
+        "service_account",
+        "privileged_role",
+        "sensitive_resource",
+        "critical_high_finding",
+        "related_finding_count",
+    }.issubset(graph["nodes"][0])
+    assert {"id", "source", "target", "relationship"}.issubset(graph["edges"][0])
+    assert {
+        "id",
+        "identity_id",
+        "resource_id",
+        "resource_sensitive",
+        "path_nodes",
+        "path_display",
+        "path_length",
+        "related_finding_count",
+        "finding_severity",
+    }.issubset(graph["paths"][0])
+    assert graph["paths"][0]["path_length"] == len(graph["paths"][0]["path_nodes"]) - 1
+    assert {path["finding_severity"] for path in graph["paths"]} & {"CRITICAL", "HIGH"}
+
+
+def test_attack_graph_metadata_highlights_risky_elements(client) -> None:
+    response = client.get("/api/attack-graph")
+
+    assert response.status_code == 200
+    nodes_by_id = {
+        node["id"]: node
+        for node in response.get_json()["nodes"]
+    }
+    assert nodes_by_id["user-004"]["external_identity"] is True
+    assert nodes_by_id["user-006"]["service_account"] is True
+    assert nodes_by_id["role-platform-admin"]["privileged_role"] is True
+    assert nodes_by_id["res-customer-database"]["sensitive_resource"] is True
+    assert nodes_by_id["res-customer-database"]["critical_high_finding"] is True
+    assert nodes_by_id["res-customer-database"]["related_finding_count"] >= 1
+
+
+def test_remediation_preview_returns_before_after_state_for_enable_mfa(client) -> None:
+    response = client.post(
+        "/api/remediation-actions/preview",
+        json={"action_type": "ENABLE_MFA", "identity_id": "user-007"},
+    )
+
+    assert response.status_code == 200
+    preview = response.get_json()
+    assert preview["identity_id"] == "user-007"
+    assert preview["action_type"] == "ENABLE_MFA"
+    assert preview["before"]["mfa_enabled"] is False
+    assert preview["after"]["mfa_enabled"] is True
+    assert preview["before"]["disabled"] is False
+    assert preview["after"]["disabled"] is False
+    assert "access_paths_count" in preview["impact"]["before"]
+    assert "access_paths_count" in preview["impact"]["after"]
+    assert "affected_findings" in preview["impact"]
+
+
+def test_remediation_preview_returns_path_counts_for_disable_account(client) -> None:
+    response = client.post(
+        "/api/remediation-actions/preview",
+        json={"action_type": "DISABLE_ACCOUNT", "identity_id": "user-004"},
+    )
+
+    assert response.status_code == 200
+    preview = response.get_json()
+    assert preview["before"]["disabled"] is False
+    assert preview["after"]["disabled"] is True
+    assert preview["impact"]["before"]["access_paths_count"] > 0
+    assert preview["impact"]["after"]["access_paths_count"] == 0
+    assert preview["impact"]["before"]["sensitive_resources_count"] > 0
+    assert preview["impact"]["after"]["sensitive_resources_count"] == 0
+    assert preview["impact"]["risk_reduction"] is True
+
+
+def test_remediation_preview_group_and_role_changes_do_not_mutate_state(client) -> None:
+    change_group_response = client.post(
+        "/api/remediation-actions/preview",
+        json={
+            "action_type": "CHANGE_GROUP",
+            "identity_id": "user-001",
+            "old_group_id": "grp-finance-readers",
+            "new_group_id": "grp-engineering",
+        },
+    )
+    replace_role_response = client.post(
+        "/api/remediation-actions/preview",
+        json={
+            "action_type": "REPLACE_ROLE",
+            "identity_id": "user-002",
+            "old_role_id": "role-production-breakglass",
+            "new_role_id": "role-finance-viewer",
+        },
+    )
+    identities = {
+        identity["id"]: identity
+        for identity in client.get("/api/identities").get_json()
+    }
+
+    assert change_group_response.status_code == 200
+    assert change_group_response.get_json()["before"]["groups"] == ["grp-finance-readers"]
+    assert change_group_response.get_json()["after"]["groups"] == ["grp-engineering"]
+    assert replace_role_response.status_code == 200
+    assert "role-production-breakglass" in replace_role_response.get_json()["before"]["roles"]
+    assert "role-finance-viewer" in replace_role_response.get_json()["after"]["roles"]
+    assert identities["user-001"]["groups"] == ["grp-finance-readers"]
+    assert "role-production-breakglass" in identities["user-002"]["roles"]
+    assert "role-finance-viewer" not in identities["user-002"]["roles"]
+    assert client.get("/api/remediation-audit").get_json() == []
+
+
+def test_invalid_remediation_preview_payload_returns_json_error(client) -> None:
+    missing_action = client.post("/api/remediation-actions/preview", json={})
+    invalid_identity = client.post(
+        "/api/remediation-actions/preview",
+        json={"action_type": "ENABLE_MFA", "identity_id": "missing"},
+    )
+    invalid_change = client.post(
+        "/api/remediation-actions/preview",
+        json={"action_type": "CHANGE_GROUP", "identity_id": "user-001"},
+    )
+
+    assert missing_action.status_code == 400
+    assert missing_action.get_json() == {"error": "Missing required field: action_type"}
+    assert invalid_identity.status_code == 404
+    assert invalid_identity.get_json() == {"error": "Identity not found."}
+    assert invalid_change.status_code == 400
+    assert invalid_change.get_json() == {
+        "error": "Missing required fields: old_group_id and new_group_id"
+    }
+
+
+def test_enable_disable_and_reenable_identity_remediation_actions(client) -> None:
+    enable_response = client.post(
+        "/api/remediation-actions",
+        json={"action_type": "ENABLE_MFA", "identity_id": "user-004"},
+    )
+    duplicate_response = client.post(
+        "/api/remediation-actions",
+        json={"action_type": "ENABLE_MFA", "identity_id": "user-004"},
+    )
+    disable_response = client.post(
+        "/api/remediation-actions",
+        json={
+            "action_type": "DISABLE_ACCOUNT",
+            "identity_id": "user-004",
+            "reason": "Contractor access no longer approved.",
+        },
+    )
+    paths_after_disable = client.get("/api/access-paths?identity_id=user-004")
+    reenable_response = client.post(
+        "/api/remediation-actions",
+        json={"action_type": "REENABLE_ACCOUNT", "identity_id": "user-004"},
+    )
+    paths_after_reenable = client.get("/api/access-paths?identity_id=user-004")
+
+    assert enable_response.status_code == 201
+    assert enable_response.get_json()["identity"]["mfa_enabled"] is True
+    assert duplicate_response.status_code == 409
+    assert disable_response.status_code == 201
+    assert disable_response.get_json()["identity"]["disabled"] is True
+    assert paths_after_disable.status_code == 200
+    assert paths_after_disable.get_json() == []
+    assert reenable_response.status_code == 201
+    assert reenable_response.get_json()["identity"]["disabled"] is False
+    assert paths_after_reenable.status_code == 200
+    assert paths_after_reenable.get_json()
+
+
+def test_remove_identity_from_group_remediation_action(client) -> None:
+    missing_reason = client.post(
+        "/api/remediation-actions",
+        json={
+            "action_type": "REMOVE_FROM_GROUP",
+            "identity_id": "user-004",
+            "group_id": "grp-engineering",
+        },
+    )
+    response = client.post(
+        "/api/remediation-actions",
+        json={
+            "action_type": "REMOVE_FROM_GROUP",
+            "identity_id": "user-004",
+            "group_id": "grp-engineering",
+            "reason": "Contractor no longer belongs in engineering.",
+        },
+    )
+    identity_response = client.get("/api/identities")
+
+    assert missing_reason.status_code == 400
+    assert response.status_code == 201
+    identities_by_id = {
+        identity["id"]: identity
+        for identity in identity_response.get_json()
+    }
+    assert "grp-engineering" not in identities_by_id["user-004"]["groups"]
+
+
+def test_replace_risky_role_remediation_action(client) -> None:
+    response = client.post(
+        "/api/remediation-actions",
+        json={
+            "action_type": "REPLACE_ROLE",
+            "identity_id": "user-002",
+            "old_role_id": "role-production-breakglass",
+            "new_role_id": "role-finance-viewer",
+            "reason": "Breakglass access replaced with read-only access.",
+        },
+    )
+    identities = client.get("/api/identities").get_json()
+    identities_by_id = {identity["id"]: identity for identity in identities}
+
+    assert response.status_code == 201
+    assert "role-production-breakglass" not in identities_by_id["user-002"]["roles"]
+    assert "role-finance-viewer" in identities_by_id["user-002"]["roles"]
+
+
+def test_replacement_role_must_be_valid_and_different(client) -> None:
+    same_role = client.post(
+        "/api/remediation-actions",
+        json={
+            "action_type": "REPLACE_ROLE",
+            "identity_id": "user-002",
+            "old_role_id": "role-production-breakglass",
+            "new_role_id": "role-production-breakglass",
+            "reason": "No-op should not be allowed.",
+        },
+    )
+    invalid_role = client.post(
+        "/api/remediation-actions",
+        json={
+            "action_type": "REPLACE_ROLE",
+            "identity_id": "user-002",
+            "old_role_id": "role-production-breakglass",
+            "new_role_id": "role-missing",
+            "reason": "Invalid role should not be allowed.",
+        },
+    )
+
+    assert same_role.status_code == 409
+    assert invalid_role.status_code == 404
+
+
+def test_add_to_group_works_and_records_audit(client) -> None:
+    response = client.post(
+        "/api/remediation-actions",
+        json={
+            "action_type": "ADD_TO_GROUP",
+            "identity_id": "user-001",
+            "group_id": "grp-engineering",
+            "reason": "Temporary engineering collaboration.",
+            "actor": "iam-analyst@example.local",
+        },
+    )
+    identities = {
+        identity["id"]: identity
+        for identity in client.get("/api/identities").get_json()
+    }
+    audit = client.get("/api/remediation-audit").get_json()
+
+    assert response.status_code == 201
+    assert "grp-engineering" in identities["user-001"]["groups"]
+    assert audit[-1]["action_type"] == "ADD_TO_GROUP"
+    assert audit[-1]["actor"] == "iam-analyst@example.local"
+    assert "grp-engineering" not in audit[-1]["before"]["groups"]
+    assert "grp-engineering" in audit[-1]["after"]["groups"]
+
+
+def test_change_group_works_and_records_audit(client) -> None:
+    response = client.post(
+        "/api/remediation-actions",
+        json={
+            "action_type": "CHANGE_GROUP",
+            "identity_id": "user-001",
+            "old_group_id": "grp-finance-readers",
+            "new_group_id": "grp-engineering",
+            "reason": "Move user to engineering access profile.",
+        },
+    )
+    identities = {
+        identity["id"]: identity
+        for identity in client.get("/api/identities").get_json()
+    }
+    audit = client.get("/api/remediation-audit").get_json()
+
+    assert response.status_code == 201
+    assert "grp-finance-readers" not in identities["user-001"]["groups"]
+    assert "grp-engineering" in identities["user-001"]["groups"]
+    assert audit[-1]["action_type"] == "CHANGE_GROUP"
+    assert audit[-1]["before"]["groups"] == ["grp-finance-readers"]
+    assert audit[-1]["after"]["groups"] == ["grp-engineering"]
+
+
+def test_duplicate_and_noop_group_actions_return_conflict(client) -> None:
+    duplicate_add = client.post(
+        "/api/remediation-actions",
+        json={
+            "action_type": "ADD_TO_GROUP",
+            "identity_id": "user-001",
+            "group_id": "grp-finance-readers",
+            "reason": "Duplicate group membership.",
+        },
+    )
+    same_group_change = client.post(
+        "/api/remediation-actions",
+        json={
+            "action_type": "CHANGE_GROUP",
+            "identity_id": "user-001",
+            "old_group_id": "grp-finance-readers",
+            "new_group_id": "grp-finance-readers",
+            "reason": "No-op group change.",
+        },
+    )
+
+    assert duplicate_add.status_code == 409
+    assert same_group_change.status_code == 409
+
+
+def test_accept_risk_requires_reason_and_records_audit(client) -> None:
+    missing_reason = client.post(
+        "/api/remediation-actions",
+        json={"action_type": "ACCEPT_RISK", "finding_id": "finding-critical"},
+    )
+    response = client.post(
+        "/api/remediation-actions",
+        json={
+            "action_type": "ACCEPT_RISK",
+            "finding_id": "finding-critical",
+            "reason": "Temporary exception approved by risk owner.",
+            "actor": "risk-owner@example.local",
+        },
+    )
+    finding = {
+        item["id"]: item
+        for item in client.get("/api/findings").get_json()
+    }["finding-critical"]
+    audit = client.get("/api/remediation-audit").get_json()
+
+    assert missing_reason.status_code == 400
+    assert response.status_code == 201
+    assert finding["status"] == "SUPPRESSED"
+    assert "Accepted risk: Temporary exception approved by risk owner." in finding["analyst_notes"]
+    assert audit[-1]["action_type"] == "ACCEPT_RISK"
+    assert audit[-1]["actor"] == "risk-owner@example.local"
+    assert audit[-1]["reason"] == "Temporary exception approved by risk owner."
+    assert audit[-1]["before"]["status"] == "OPEN"
+    assert audit[-1]["after"]["status"] == "SUPPRESSED"
+
+
+def test_remediation_audit_records_identity_before_after(client) -> None:
+    client.post(
+        "/api/remediation-actions",
+        json={
+            "action_type": "DISABLE_ACCOUNT",
+            "identity_id": "user-004",
+            "reason": "Investigation containment.",
+            "actor": "analyst@example.local",
+        },
+    )
+
+    response = client.get("/api/remediation-audit")
+
+    assert response.status_code == 200
+    audit = response.get_json()
+    assert audit[-1]["action_type"] == "DISABLE_ACCOUNT"
+    assert audit[-1]["target_type"] == "identity"
+    assert audit[-1]["target_id"] == "user-004"
+    assert audit[-1]["before"]["disabled"] is False
+    assert audit[-1]["after"]["disabled"] is True
+    assert audit[-1]["timestamp"] == "2026-05-24T00:00:00+00:00"
 
 
 def test_create_access_review(client) -> None:
@@ -1747,9 +2658,23 @@ def test_governance_summary_report_returns_required_fields(client) -> None:
         "top_risky_identities",
         "open_access_reviews",
         "completed_access_reviews",
+        "report_version",
+        "executive_summary",
+        "critical_high_iam_risks",
+        "attack_path_summaries",
+        "access_review_statistics",
+        "remediation_statistics",
+        "reviewer_activity_summary",
     }.issubset(report)
+    assert report["generated_at"] == "2026-05-24T00:00:00+00:00"
+    assert report["report_version"] == "1.0"
     assert report["total_findings"] == 2
     assert report["critical_findings"] == 1
+    assert report["executive_summary"]["critical_high_findings"] == 1
+    assert report["critical_high_iam_risks"][0]["severity"] == "CRITICAL"
+    assert report["attack_path_summaries"][0]["finding_id"] == "finding-critical"
+    assert "pending_remediations" in report["remediation_statistics"]
+    assert "reviews_per_reviewer" not in report["remediation_statistics"]
     assert report["top_risky_resources"]
     assert report["top_risky_identities"]
 
@@ -1759,8 +2684,66 @@ def test_governance_summary_csv_export_content_type(client) -> None:
 
     assert response.status_code == 200
     assert response.content_type.startswith("text/csv")
-    assert b"generated_at,total_findings,critical_findings" in response.data
+    assert b"generated_at,report_version,total_findings,critical_findings" in response.data
     assert b"top_risky_resources,top_risky_identities" in response.data
+    assert b"2026-05-24T00:00:00+00:00,1.0,2,1" in response.data
+
+
+def test_governance_summary_pdf_export_contains_auditor_sections(client) -> None:
+    response = client.get("/api/reports/governance-summary?format=pdf")
+
+    assert response.status_code == 200
+    assert response.content_type == "application/pdf"
+    assert response.data.startswith(b"%PDF-1.4")
+    assert b"IAM Sentinel Governance Report" in response.data
+    assert b"Executive Summary" in response.data
+    assert b"Critical and High IAM Risks" in response.data
+    assert b"Attack-Path Summaries" in response.data
+    assert b"Access Review Statistics" in response.data
+    assert b"Remediation Statistics" in response.data
+    assert b"Top 5 Critical and High IAM Risks" in response.data
+    assert b"Top 5 Risky Identities" in response.data
+    assert b"Top 5 Attack-Path Summaries" in response.data
+    assert b"Reviewer Activity Summary" not in response.data
+    assert b"Omar Haddad \\(user-002\\)" in response.data
+    assert b"Customer Database \\(res-customer-" in response.data
+    assert b"database\\)" in response.data
+
+
+def test_governance_evidence_csv_export_returns_consolidated_evidence(client) -> None:
+    create_response = client.post(
+        "/api/access-reviews",
+        json={
+            "identity_id": "user-004",
+            "resource_id": "res-customer-database",
+        },
+    )
+    client.patch(
+        f"/api/access-reviews/{create_response.get_json()['id']}",
+        json={
+            "reviewer": "auditor@example.local",
+            "decision": "REVOKE",
+            "status": "COMPLETED",
+        },
+    )
+
+    response = client.get("/api/reports/evidence.csv")
+
+    assert response.status_code == 200
+    assert response.content_type.startswith("text/csv")
+    assert b"filename=governance-evidence.csv" in response.headers["Content-Disposition"].encode()
+    assert (
+        b"generated_at,report_version,evidence_type,item_id,severity,status,decision,"
+        b"identity_id,resource_id,owner,reviewer,remediation_status,summary"
+    ) in response.data
+    assert b"2026-05-24T00:00:00+00:00,1.0" in response.data
+    assert b"finding,finding-critical,CRITICAL,OPEN" in response.data
+    assert b"access_review" in response.data
+    assert b"user-004,res-customer-database" in response.data
+    assert b"auditor@example.local" in response.data
+    assert b"COMPLETED" in response.data
+    assert b"Leo Martin (user-004)" in response.data
+    assert b"Customer Database (res-customer-database)" in response.data
 
 
 def test_governance_summary_uses_deterministic_top_list_ordering(tmp_path) -> None:
@@ -1882,6 +2865,38 @@ def test_api_returns_error_for_missing_payload_fields(client) -> None:
     assert status_response.get_json() == {"error": "Missing required field: status"}
     assert owner_response.get_json() == {"error": "Missing required field: owner"}
     assert note_response.get_json() == {"error": "Missing required field: note"}
+
+
+def extract_js_function_body(script: str, function_name: str) -> str:
+    match = re.search(rf"function {function_name}\([^)]*\) \{{", script)
+    assert match is not None
+    body_start = match.end()
+    depth = 1
+    index = body_start
+    while index < len(script) and depth:
+        if script[index] == "{":
+            depth += 1
+        elif script[index] == "}":
+            depth -= 1
+        index += 1
+    assert depth == 0
+    return script[body_start:index - 1]
+
+
+def extract_js_const_object_body(script: str, object_name: str) -> str:
+    match = re.search(rf"const {object_name} = \{{(?P<body>.*?)\n  \}};", script, re.S)
+    assert match is not None
+    return match.group("body")
+
+
+def extract_python_function_source(source: str, function_name: str) -> str:
+    module = ast.parse(source)
+    for node in module.body:
+        if isinstance(node, ast.FunctionDef) and node.name == function_name:
+            function_source = ast.get_source_segment(source, node)
+            assert function_source is not None
+            return function_source
+    raise AssertionError(f"Function not found: {function_name}")
 
 
 def make_finding(

@@ -15,6 +15,8 @@ def build_identity_graph(iam_data: IAMData) -> nx.DiGraph:
     add_nodes(graph, iam_data.resources, "resource")
 
     for user in iam_data.users:
+        if user.disabled:
+            continue
         user_id = user.id
         for group_id in user.groups:
             graph.add_edge(user_id, group_id, relationship="member_of")

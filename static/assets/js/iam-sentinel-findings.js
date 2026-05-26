@@ -73,6 +73,7 @@
     return [
       finding.title,
       finding.identity_id,
+      finding.identity_name,
       finding.finding_type,
       finding.owner
     ].some((value) => String(value ?? '').toLowerCase().includes(searchTerm));
@@ -167,7 +168,12 @@
             </td>
             <td><span class="${badgeClass}">${severity}</span></td>
             <td>${escapeHtml(finding.title)}</td>
-            <td><a class="identity-link" href="/identities/${encodeURIComponent(finding.identity_id)}">${escapeHtml(finding.identity_id)}</a></td>
+            <td>
+              <a class="identity-link" href="/identities/${encodeURIComponent(finding.identity_id)}">
+                <span class="finding-identity-name">${escapeHtml(finding.identity_name || finding.identity_id)}</span>
+                <span class="finding-identity-id d-block text-muted small">${escapeHtml(finding.identity_id)}</span>
+              </a>
+            </td>
             <td>${escapeHtml(finding.score)}</td>
             <td>${escapeHtml(formatStatus(finding.status))}</td>
             <td>${escapeHtml(finding.owner || 'Unassigned')}</td>
@@ -216,9 +222,9 @@
 
     const severityClass = severityBadgeClasses[finding.severity] || 'badge bg-secondary';
     document.getElementById('finding-detail-title').textContent = finding.title;
-    document.getElementById('finding-detail-meta').textContent = `${finding.id} | ${finding.identity_id}`;
+    document.getElementById('finding-detail-meta').textContent = `${finding.id} | ${finding.identity_name || finding.identity_id} (${finding.identity_id})`;
     document.getElementById('finding-detail-links').innerHTML = `
-      <a class="btn btn-sm btn-outline-primary" href="/identities/${encodeURIComponent(finding.identity_id)}">Identity ${escapeHtml(finding.identity_id)}</a>
+      <a class="btn btn-sm btn-outline-primary" href="/identities/${encodeURIComponent(finding.identity_id)}">Identity ${escapeHtml(finding.identity_name || finding.identity_id)}</a>
       ${finding.resource_id ? `<a class="btn btn-sm btn-outline-primary" href="/resources/${encodeURIComponent(finding.resource_id)}">Resource ${escapeHtml(finding.resource_id)}</a>` : ''}
     `;
     document.getElementById('finding-detail-severity').innerHTML = `<span class="${severityClass}">${escapeHtml(finding.severity)}</span>`;
@@ -231,6 +237,7 @@
     document.getElementById('finding-status-select').value = finding.status;
     document.getElementById('finding-owner-input').value = finding.owner || '';
     document.getElementById('finding-note-input').value = '';
+    document.getElementById('finding-accepted-risk-reason').value = '';
 
     renderList('finding-triage-risk-factors', (finding.risk_factors || []).slice(0, 3));
     renderList('finding-triage-evidence', (finding.evidence || []).slice(0, 3));
@@ -316,6 +323,30 @@
       { note },
       'Note added.'
     );
+  }
+
+  async function acceptRisk() {
+    const reason = document.getElementById('finding-accepted-risk-reason').value.trim();
+    if (!reason) {
+      showAlert('finding-action-feedback', 'Enter a reason before accepting risk.', 'warning');
+      return;
+    }
+
+    try {
+      await fetchJson('/api/remediation-actions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action_type: 'ACCEPT_RISK',
+          finding_id: state.selectedFindingId,
+          reason
+        })
+      });
+      await refreshFindingsWorkbench();
+      showAlert('finding-action-feedback', 'Risk accepted and audit event recorded.', 'success');
+    } catch (error) {
+      showAlert('finding-action-feedback', 'Risk acceptance failed.', 'danger');
+    }
   }
 
   function csvEscape(value) {
@@ -439,6 +470,7 @@
     document.getElementById('save-status-button').addEventListener('click', saveFindingStatus);
     document.getElementById('save-owner-button').addEventListener('click', saveFindingOwner);
     document.getElementById('add-note-button').addEventListener('click', addFindingNote);
+    document.getElementById('accept-risk-button').addEventListener('click', acceptRisk);
   }
 
   function handleTableClick(event) {

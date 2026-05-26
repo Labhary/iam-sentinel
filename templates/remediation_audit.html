@@ -1,0 +1,54 @@
+{% set active_page = 'remediation_audit' %}
+{% extends "base.html" %}
+
+{% block title %}IAM Sentinel Remediation Audit{% endblock %}
+
+{% block content %}
+    <div class="pagetitle">
+      <h1>Remediation Audit</h1>
+      <nav>
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item active">Remediation Audit</li>
+        </ol>
+      </nav>
+    </div>
+
+    <section class="section" id="remediation-audit-workbench">
+      <div id="remediation-audit-error" class="alert alert-danger d-none" role="alert"></div>
+      <div id="remediation-audit-loading" class="alert alert-info" role="status">Loading remediation audit...</div>
+
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <h5 class="card-title mb-0">Audit Events</h5>
+            <span id="remediation-audit-count" class="text-muted small">0 events</span>
+          </div>
+          <div class="table-responsive mt-3">
+            <table class="table table-sm table-hover align-middle remediation-audit-table">
+              <thead>
+                <tr>
+                  <th scope="col">Timestamp</th>
+                  <th scope="col">Actor</th>
+                  <th scope="col">Action</th>
+                  <th scope="col">Target</th>
+                  <th scope="col">Before</th>
+                  <th scope="col">After</th>
+                  <th scope="col">Reason</th>
+                </tr>
+              </thead>
+              <tbody id="remediation-audit-table-body">
+                <tr>
+                  <td colspan="7" class="text-muted">Loading remediation audit events...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='assets/js/iam-sentinel-remediation-audit.js') }}"></script>
+{% endblock %}
