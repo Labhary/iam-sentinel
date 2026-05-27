@@ -388,130 +388,135 @@
   white-space: nowrap;
 }
 
-.access-reviews-table td,
-.access-reviews-table th {
-  padding-top: 0.45rem;
-  padding-bottom: 0.45rem;
+.access-review-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  overflow-x: hidden;
 }
 
-.access-reviews-table {
-  table-layout: fixed;
-  width: 100%;
+.access-review-card {
+  background: #fff;
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
+  padding: 0.85rem;
 }
 
-.access-reviews-table td {
-  overflow-wrap: normal;
+.access-review-card.is-selected {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.15rem rgba(13, 110, 253, 0.1);
 }
 
-.access-reviews-table th:nth-child(1) {
-  width: 8%;
+.access-review-card-header {
+  align-items: flex-start;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
 }
 
-.access-reviews-table th:nth-child(2) {
-  width: 10%;
+.access-review-principal {
+  align-items: center;
+  display: flex;
+  flex: 1 1 24rem;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  min-width: 0;
 }
 
-.access-reviews-table th:nth-child(3) {
-  width: 8%;
+.access-review-risk {
+  flex: 0 1 24rem;
 }
 
-.access-reviews-table th:nth-child(4) {
-  width: 12%;
+.access-review-fields {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  margin-top: 0.75rem;
 }
 
-.access-reviews-table th:nth-child(5) {
-  width: 12%;
+.access-review-field {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
 }
 
-.access-reviews-table th:nth-child(6) {
-  width: 15%;
+.access-review-field > span {
+  color: #6c7788;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
-.access-reviews-table th:nth-child(7) {
-  width: 11%;
-}
-
-.access-reviews-table th:nth-child(8) {
-  width: 14%;
-}
-
-.access-reviews-table th:nth-child(9) {
-  width: 10%;
-}
-
-.access-reviews-table .form-select-sm,
-.access-reviews-table .form-control-sm {
-  font-size: 0.76rem;
+.access-review-field .form-select-sm,
+.access-review-field .form-control-sm {
+  font-size: 0.78rem;
   min-width: 0;
   width: 100%;
 }
 
-.access-reviews-table .review-status {
-  min-width: min(5.75rem, 100%);
+.access-review-notes-field {
+  grid-column: span 2;
 }
 
-.access-reviews-table .review-decision {
-  min-width: min(8rem, 100%);
+.access-review-identity,
+.access-review-resource {
+  max-width: min(100%, 22rem);
 }
 
-.access-reviews-table .access-review-reviewer {
-  max-width: 100%;
-  min-width: min(7rem, 100%);
-}
-
-.access-reviews-table .access-review-notes {
-  max-width: 100%;
-  min-width: min(7rem, 100%);
-}
-
-.access-reviews-table .access-review-identity,
-.access-reviews-table .access-review-resource {
-  max-width: 100%;
-}
-
-.access-reviews-table td:nth-child(6),
-.access-reviews-table td:nth-child(9) {
-  white-space: nowrap;
-}
-
-.access-reviews-table td:nth-child(7) .table-nowrap {
-  line-height: 1.2;
-  white-space: normal;
-}
-
-.access-reviews-table .access-review-notes-empty {
+.access-review-notes-empty {
   background-color: #f8fafc;
   border-style: dashed;
   color: #8a97a8;
   font-style: italic;
 }
 
-.access-reviews-table .access-review-notes-filled {
+.access-review-notes-filled {
   background-color: #fff;
   color: #29384d;
 }
 
-.access-reviews-table .save-review-button {
-  border-color: #d5dce7;
-  color: #5f6f82;
-  font-size: 0.72rem;
-  padding: 0.15rem 0.25rem;
+.access-review-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.75rem;
 }
 
-.access-reviews-table .review-history-button {
-  font-size: 0.72rem;
-  padding: 0.15rem 0.15rem;
+.access-review-actions .btn {
+  font-size: 0.76rem;
+  padding: 0.2rem 0.45rem;
+}
+
+.access-review-actions .save-review-button {
+  border-color: #d5dce7;
+  color: #5f6f82;
+}
+
+.access-review-actions .review-history-button {
+  padding-left: 0.2rem;
+  padding-right: 0.2rem;
   text-decoration: none;
 }
 
-.access-reviews-table .access-review-actions {
-  align-items: center;
-  flex-wrap: nowrap;
-}
-
-.access-reviews-table .complete-remediation-button {
+.access-review-actions .complete-remediation-button,
+.access-review-field .complete-remediation-button {
   font-size: 0.7rem;
   padding: 0.12rem 0.25rem;
+}
+
+@media (max-width: 767.98px) {
+  .access-review-card-header {
+    display: grid;
+  }
+
+  .access-review-risk {
+    flex-basis: auto;
+  }
+
+  .access-review-notes-field {
+    grid-column: auto;
+  }
 }
 
 .reviewer-workload-label {

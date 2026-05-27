@@ -54,6 +54,41 @@
         </div>
       </div>
 
+      <div class="row" id="access-review-workspace-summary">
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card access-review-metric-card">
+            <div class="card-body">
+              <h5 class="card-title">Pending Reviews</h5>
+              <h6 id="pending-access-reviews">0</h6>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card access-review-metric-card">
+            <div class="card-body">
+              <h5 class="card-title">High/Critical Reviews</h5>
+              <h6 id="high-critical-access-reviews">0</h6>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card access-review-metric-card">
+            <div class="card-body">
+              <h5 class="card-title">Overdue Reviews</h5>
+              <h6 id="overdue-access-reviews">0</h6>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+          <div class="card info-card access-review-metric-card">
+            <div class="card-body">
+              <h5 class="card-title">Completed Reviews</h5>
+              <h6 id="workspace-completed-access-reviews">0</h6>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="row" id="access-review-analytics-cards">
         <div class="col-lg-3 col-md-6">
           <div class="card info-card access-review-metric-card">
@@ -186,27 +221,8 @@
             </div>
           </div>
 
-          <div class="table-responsive">
-            <table class="table table-sm table-hover align-middle access-reviews-table">
-              <thead>
-                <tr>
-                  <th scope="col">Identity</th>
-                  <th scope="col">Resource</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Reviewer</th>
-                  <th scope="col">Decision</th>
-                  <th scope="col">Remediation</th>
-                  <th scope="col">Updated</th>
-                  <th scope="col">Notes</th>
-                  <th scope="col">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="access-reviews-table-body">
-                <tr>
-                  <td colspan="9" class="text-muted">Preparing access reviews table...</td>
-                </tr>
-              </tbody>
-            </table>
+          <div id="access-reviews-table-body" class="access-review-list" aria-live="polite">
+            <div class="text-muted">Preparing access reviews...</div>
             <span id="access-review-actions-marker" class="visually-hidden">Access review actions</span>
           </div>
           <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-3">
@@ -216,6 +232,14 @@
               <button id="access-reviews-next-page" type="button" class="btn btn-outline-secondary btn-sm" disabled>Next</button>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Review Detail</h5>
+          <div id="access-review-detail-panel" class="text-muted">Select a review to inspect risk context and investigation actions.</div>
+          <div id="access-review-revoke-preview" class="alert alert-secondary mt-3 mb-0 d-none"></div>
         </div>
       </div>
     </section>

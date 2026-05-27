@@ -4,9 +4,13 @@
   const state = {
     reviews: [],
     metrics: null,
+    findings: [],
+    accessPaths: [],
+    resourcesById: {},
     decisionChart: null,
     statusChart: null,
     historyModal: null,
+    selectedReviewId: null,
     currentPage: 1,
     pageSize: 5
   };
@@ -17,6 +21,7 @@
 
   function renderSummary() {
     const metrics = state.metrics || {};
+    const highCriticalReviews = state.reviews.filter((review) => ['CRITICAL', 'HIGH'].includes(getReviewSeverity(review))).length;
     ui.setText('total-access-reviews', metrics.total_reviews || 0);
     ui.setText('open-access-reviews', metrics.open_reviews || 0);
     ui.setText('completed-access-reviews', metrics.completed_reviews || 0);
@@ -27,6 +32,10 @@
     ui.setText('unique-access-reviewers', metrics.unique_reviewers || 0);
     ui.setText('pending-remediations', metrics.pending_remediations || 0);
     ui.setText('completed-remediations', metrics.completed_remediations || 0);
+    ui.setText('pending-access-reviews', (metrics.open_reviews || 0) + (metrics.in_review_reviews || 0));
+    ui.setText('high-critical-access-reviews', highCriticalReviews);
+    ui.setText('overdue-access-reviews', metrics.stale_open_reviews || 0);
+    ui.setText('workspace-completed-access-reviews', metrics.completed_reviews || 0);
     ui.setText('access-review-decision-summary', `${metrics.total_reviews || 0} reviews`);
     ui.setText('access-review-status-summary', `${(metrics.open_reviews || 0) + (metrics.in_review_reviews || 0)} active`);
   }
@@ -121,6 +130,76 @@
     return state.reviews.slice(start, start + state.pageSize);
   }
 
+  function getRelatedFindings(review) {
+    return state.findings.filter((finding) => (
+      finding.identity_id === review.identity_id || finding.resource_id === review.resource_id
+    ));
+  }
+
+  function getReviewAccessPaths(review) {
+    return state.accessPaths.filter((path) => (
+      path.identity_id === review.identity_id && path.resource_id === review.resource_id
+    ));
+  }
+
+  function severityRank(severity) {
+    return { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 }[severity] || 0;
+  }
+
+  function getReviewSeverity(review) {
+    const relatedFindings = getRelatedFindings(review);
+    if (!relatedFindings.length) {
+      return 'NONE';
+    }
+    return relatedFindings
+      .map((finding) => finding.severity)
+      .sort((left, right) => severityRank(right) - severityRank(left))[0];
+  }
+
+  function severityBadge(severity) {
+    const badgeClass = {
+      CRITICAL: 'badge bg-danger',
+      HIGH: 'badge bg-warning text-dark',
+      MEDIUM: 'badge bg-warning-subtle text-dark border border-warning',
+      LOW: 'badge bg-success'
+    }[severity] || 'badge bg-light text-dark border';
+    return `<span class="${badgeClass}">${ui.escapeHtml(severity)}</span>`;
+  }
+
+  function neutralBadge(label) {
+    return `<span class="badge bg-light text-dark border">${ui.escapeHtml(label)}</span>`;
+  }
+
+  function getResource(review) {
+    return state.resourcesById[review.resource_id] || {};
+  }
+
+  function isSensitiveReview(review) {
+    return Boolean(getResource(review).sensitive || getReviewAccessPaths(review).some((path) => path.resource_sensitive));
+  }
+
+  function getIdentityRiskLevel(review) {
+    const severity = getReviewSeverity(review);
+    if (['CRITICAL', 'HIGH'].includes(severity)) {
+      return 'High';
+    }
+    if (getRelatedFindings(review).length || getReviewAccessPaths(review).length > 3) {
+      return 'Medium';
+    }
+    return 'Low';
+  }
+
+  function riskContext(review) {
+    return `
+      <div class="d-flex flex-wrap gap-1">
+        ${severityBadge(getReviewSeverity(review))}
+        ${isSensitiveReview(review) ? '<span class="badge bg-danger">Sensitive</span>' : '<span class="badge bg-success">Not Sensitive</span>'}
+        ${neutralBadge(`${getReviewAccessPaths(review).length} paths`)}
+        ${neutralBadge(`${getIdentityRiskLevel(review)} identity risk`)}
+      </div>
+    `;
+  }
+
   function renderPaginationControls(visibleReviews) {
     const totalReviews = state.reviews.length;
     const totalPages = getTotalPages();
@@ -136,7 +215,7 @@
   }
 
   function renderReviews() {
-    const tableBody = document.getElementById('access-reviews-table-body');
+    const reviewList = document.getElementById('access-reviews-table-body');
     const visibleReviews = getPaginatedReviews();
     const rows = visibleReviews.length
       ? visibleReviews.map((review) => {
@@ -147,45 +226,112 @@
         const notesStateClass = review.notes ? 'access-review-notes-filled' : 'access-review-notes-empty';
         const updatedAt = ui.escapeHtml(ui.formatTimestamp(review.updated_at));
         return `
-        <tr data-review-id="${ui.escapeHtml(review.id)}">
-          <td><a class="table-truncate access-review-identity" href="/identities/${encodeURIComponent(review.identity_id)}" title="${identityId}">${identityId}</a></td>
-          <td><a class="table-truncate access-review-resource" href="/resources/${encodeURIComponent(review.resource_id)}" title="${resourceId}">${resourceId}</a></td>
-          <td>
-            <select class="form-select form-select-sm review-status">
-              ${statusOptions.map((status) => option(status, review.status, formatReviewStatus(status))).join('')}
-            </select>
-          </td>
-          <td>
-            <input class="form-control form-control-sm table-truncate access-review-reviewer review-reviewer" type="text" value="${reviewer}" title="${reviewer}" placeholder="reviewer@example.local">
-          </td>
-          <td>
-            <select class="form-select form-select-sm review-decision">
-              ${decisionOptions.map((decision) => option(decision, review.decision, formatReviewDecision(decision))).join('')}
-            </select>
-          </td>
-          <td>
-            <span class="badge bg-light text-dark border">${ui.escapeHtml(formatRemediationStatus(review.remediation_status))}</span>
-            ${review.remediation_status === 'PENDING' ? '<button class="btn btn-sm btn-outline-secondary complete-remediation-button ms-1" type="button">Complete</button>' : ''}
-          </td>
-          <td>
-            <span class="table-nowrap">${updatedAt}</span>
-            ${review.stale ? '<span class="badge bg-warning text-dark ms-1">Stale</span>' : ''}
-          </td>
-          <td>
-            <input class="form-control form-control-sm table-truncate access-review-notes ${notesStateClass} review-notes" type="text" value="${notes}" title="${notes}" placeholder="No notes">
-          </td>
-          <td>
-            <div class="d-inline-flex gap-1 access-review-actions">
+        <article class="access-review-card" data-review-id="${ui.escapeHtml(review.id)}" tabindex="0">
+          <div class="access-review-card-header">
+            <div class="access-review-principal">
+              <a class="table-truncate access-review-identity" href="/identities/${encodeURIComponent(review.identity_id)}" title="${identityId}">${identityId}</a>
+              <span class="text-muted">-></span>
+              <a class="table-truncate access-review-resource" href="/resources/${encodeURIComponent(review.resource_id)}" title="${resourceId}">${resourceId}</a>
+            </div>
+            <div class="access-review-risk">${riskContext(review)}</div>
+          </div>
+          <div class="access-review-fields">
+            <label class="access-review-field">
+              <span>Status</span>
+              <select class="form-select form-select-sm review-status">
+                ${statusOptions.map((status) => option(status, review.status, formatReviewStatus(status))).join('')}
+              </select>
+            </label>
+            <label class="access-review-field">
+              <span>Reviewer</span>
+              <input class="form-control form-control-sm table-truncate access-review-reviewer review-reviewer" type="text" value="${reviewer}" title="${reviewer}" placeholder="reviewer@example.local">
+            </label>
+            <label class="access-review-field">
+              <span>Decision</span>
+              <select class="form-select form-select-sm review-decision">
+                ${decisionOptions.map((decision) => option(decision, review.decision, formatReviewDecision(decision))).join('')}
+              </select>
+            </label>
+            <div class="access-review-field">
+              <span>Remediation</span>
+              <div>
+                <span class="badge bg-light text-dark border">${ui.escapeHtml(formatRemediationStatus(review.remediation_status))}</span>
+                ${review.remediation_status === 'PENDING' ? '<button class="btn btn-sm btn-outline-secondary complete-remediation-button ms-1" type="button">Complete</button>' : ''}
+              </div>
+            </div>
+            <div class="access-review-field">
+              <span>Updated</span>
+              <div>
+                <span class="table-nowrap">${updatedAt}</span>
+                ${review.stale ? '<span class="badge bg-warning text-dark ms-1">Stale</span>' : ''}
+              </div>
+            </div>
+            <label class="access-review-field access-review-notes-field">
+              <span>Notes</span>
+              <input class="form-control form-control-sm table-truncate access-review-notes ${notesStateClass} review-notes" type="text" value="${notes}" title="${notes}" placeholder="No notes">
+            </label>
+          </div>
+          <div class="access-review-actions">
+              <button class="btn btn-sm btn-outline-success quick-decision-button" type="button" data-decision="APPROVE">Set Approve</button>
+              <button class="btn btn-sm btn-outline-danger quick-decision-button" type="button" data-decision="REVOKE">Set Revoke</button>
+              <button class="btn btn-sm btn-outline-warning quick-decision-button" type="button" data-decision="NEEDS_FOLLOW_UP">Set Follow-up</button>
               <button class="btn btn-sm btn-outline-secondary save-review-button" type="button">Save</button>
               <button class="btn btn-sm btn-link text-secondary review-history-button" type="button">History</button>
-            </div>
-          </td>
-        </tr>
+          </div>
+        </article>
       `;
       }).join('')
-      : '<tr><td colspan="9" class="text-muted">No access reviews have been created.</td></tr>';
-    tableBody.innerHTML = rows;
+      : '<div class="text-muted">No access reviews have been created.</div>';
+    reviewList.innerHTML = `${rows}<span id="access-review-actions-marker" class="visually-hidden">Access review actions</span>`;
     renderPaginationControls(visibleReviews);
+    renderSelectedReviewDetail();
+  }
+
+  function whyReviewMatters(review) {
+    const reasons = [];
+    const pathCount = getReviewAccessPaths(review).length;
+    if (isSensitiveReview(review)) reasons.push('privileged access to sensitive resource');
+    if (['CRITICAL', 'HIGH'].includes(getReviewSeverity(review))) reasons.push('critical identity exposure');
+    if (pathCount > 3) reasons.push('excessive access path count');
+    if (getRelatedFindings(review).some((finding) => /external/i.test(`${finding.title} ${finding.description || ''}`))) {
+      reasons.push('external identity involved');
+    }
+    return reasons.length ? reasons.join('; ') : 'review requested access entitlement for business justification';
+  }
+
+  function getSelectedReview() {
+    return state.reviews.find((review) => review.id === state.selectedReviewId) || state.reviews[0] || null;
+  }
+
+  function renderSelectedReviewDetail() {
+    const panel = document.getElementById('access-review-detail-panel');
+    const review = getSelectedReview();
+    if (!review) {
+      panel.classList.add('text-muted');
+      panel.textContent = 'Select a review to inspect risk context and investigation actions.';
+      return;
+    }
+    state.selectedReviewId = review.id;
+    panel.classList.remove('text-muted');
+    document.querySelectorAll('.access-review-card').forEach((card) => {
+      card.classList.toggle('is-selected', card.dataset.reviewId === review.id);
+    });
+    panel.innerHTML = `
+      <div class="row g-2 small">
+        <div class="col-md-3"><span class="text-muted d-block">Highest Severity</span>${severityBadge(getReviewSeverity(review))}</div>
+        <div class="col-md-3"><span class="text-muted d-block">Sensitive Resource</span>${isSensitiveReview(review) ? '<span class="badge bg-danger">Yes</span>' : '<span class="badge bg-success">No</span>'}</div>
+        <div class="col-md-3"><span class="text-muted d-block">Access Paths</span><strong>${getReviewAccessPaths(review).length}</strong></div>
+        <div class="col-md-3"><span class="text-muted d-block">Identity Risk</span><strong>${ui.escapeHtml(getIdentityRiskLevel(review))}</strong></div>
+        <div class="col-12"><span class="text-muted d-block">Why this review matters</span><strong>${ui.escapeHtml(whyReviewMatters(review))}</strong></div>
+      </div>
+      <div class="d-flex flex-wrap gap-2 mt-3">
+        <a class="btn btn-sm btn-outline-primary" href="/identities/${encodeURIComponent(review.identity_id)}">View Identity</a>
+        <a class="btn btn-sm btn-outline-primary" href="/resources/${encodeURIComponent(review.resource_id)}">View Resource</a>
+        <a class="btn btn-sm btn-outline-primary" href="/access-paths?identity_id=${encodeURIComponent(review.identity_id)}&resource_id=${encodeURIComponent(review.resource_id)}">View Access Paths</a>
+        <a class="btn btn-sm btn-outline-primary" href="/attack-graph?resource_id=${encodeURIComponent(review.resource_id)}">View Attack Graph</a>
+        <a class="btn btn-sm btn-outline-primary" href="/findings?search=${encodeURIComponent(review.identity_id)}">View Related Findings</a>
+      </div>
+    `;
   }
 
   function renderMetricTable(id, rows, labelKey) {
@@ -292,12 +438,18 @@
     ui.showAlert('access-reviews-error', '');
 
     try {
-      const [reviews, metrics] = await Promise.all([
+      const [reviews, metrics, findings, accessPaths, resources] = await Promise.all([
         ui.fetchJson('/api/access-reviews'),
-        ui.fetchJson('/api/access-review-metrics')
+        ui.fetchJson('/api/access-review-metrics'),
+        ui.fetchJson('/api/findings'),
+        ui.fetchJson('/api/access-paths'),
+        ui.fetchJson('/api/resources')
       ]);
       state.reviews = reviews;
       state.metrics = metrics;
+      state.findings = findings;
+      state.accessPaths = accessPaths;
+      state.resourcesById = Object.fromEntries(resources.map((resource) => [resource.id, resource]));
       renderSummary();
       renderAnalyticsTables();
       renderCharts();
@@ -330,6 +482,59 @@
       ui.showAlert('access-reviews-feedback', 'Access review updated.', 'success');
     } catch (error) {
       ui.showAlert('access-reviews-feedback', 'Access review update failed.', 'danger');
+    }
+  }
+
+  async function renderRevokeImpactPreview(row) {
+    const review = state.reviews.find((candidate) => candidate.id === row.dataset.reviewId);
+    const preview = document.getElementById('access-review-revoke-preview');
+    if (!review) {
+      return;
+    }
+    preview.className = 'alert alert-info mt-3 mb-0';
+    preview.textContent = 'Loading revoke impact preview...';
+    try {
+      const impact = await ui.fetchJson('/api/remediation-actions/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action_type: 'DISABLE_ACCOUNT',
+          identity_id: review.identity_id,
+          reason: 'Access review revoke preview'
+        })
+      });
+      const relatedFindings = getRelatedFindings(review).length;
+      const relatedPaths = getReviewAccessPaths(review).length;
+      const identityLabel = review.identity_label || review.identity_id;
+      const resourceLabel = review.resource_label || review.resource_id;
+      const before = impact.impact.before;
+      const after = impact.impact.after;
+      preview.innerHTML = `
+        <div class="fw-semibold">Revoke impact preview</div>
+        <div class="small text-muted">Context: ${ui.escapeHtml(identityLabel)} &rarr; ${ui.escapeHtml(resourceLabel)}</div>
+        <div class="small">
+          findings affected: ${relatedFindings};
+          review paths affected: ${relatedPaths};
+          sensitive resources affected: ${before.sensitive_resources_count};
+          path count reduction: ${before.access_paths_count} &rarr; ${after.access_paths_count}
+        </div>
+      `;
+    } catch (error) {
+      preview.className = 'alert alert-warning mt-3 mb-0';
+      preview.textContent = 'Revoke impact preview unavailable.';
+    }
+  }
+
+  async function applyQuickDecision(row, decision) {
+    row.querySelector('.review-decision').value = decision;
+    row.querySelector('.review-status').value = decision === 'APPROVE' ? 'COMPLETED' : 'IN_REVIEW';
+    const noteInput = row.querySelector('.review-notes');
+    if (decision === 'REVOKE') {
+      await renderRevokeImpactPreview(row);
+      return;
+    }
+    if (decision === 'NEEDS_FOLLOW_UP' && !noteInput.value.trim()) {
+      noteInput.value = 'Deferred for additional analyst review.';
     }
   }
 
@@ -406,23 +611,39 @@
       state.currentPage += 1;
       renderReviews();
     });
-    document.getElementById('access-reviews-table-body').addEventListener('click', (event) => {
+    document.getElementById('access-reviews-table-body').addEventListener('click', async (event) => {
+      const row = event.target.closest('[data-review-id]');
+      if (row) {
+        state.selectedReviewId = row.dataset.reviewId;
+        renderSelectedReviewDetail();
+      }
+
       const saveButton = event.target.closest('.save-review-button');
       const historyButton = event.target.closest('.review-history-button');
       const remediationButton = event.target.closest('.complete-remediation-button');
-      if (!saveButton && !historyButton && !remediationButton) {
+      const quickDecisionButton = event.target.closest('.quick-decision-button');
+      if (!row || (!saveButton && !historyButton && !remediationButton && !quickDecisionButton)) {
         return;
       }
 
-      const row = event.target.closest('tr[data-review-id]');
-      if (row && saveButton) {
+      if (quickDecisionButton) {
+        await applyQuickDecision(row, quickDecisionButton.dataset.decision);
+      }
+      if (saveButton) {
         saveReview(row);
       }
-      if (row && historyButton) {
+      if (historyButton) {
         showReviewHistory(row);
       }
-      if (row && remediationButton) {
+      if (remediationButton) {
         completeRemediation(row);
+      }
+    });
+    document.getElementById('access-reviews-table-body').addEventListener('focusin', (event) => {
+      const row = event.target.closest('[data-review-id]');
+      if (row) {
+        state.selectedReviewId = row.dataset.reviewId;
+        renderSelectedReviewDetail();
       }
     });
   }

@@ -1390,15 +1390,21 @@ def test_get_access_reviews_page_returns_workbench(client) -> None:
     assert b"IAM Sentinel Access Reviews" in response.data
     assert response.data.count(b'<main id="main" class="main">') == 1
     assert b'id="access-reviews-workbench"' in response.data
-    assert response.data.count(b'access-review-metric-card') == 10
+    assert response.data.count(b'access-review-metric-card') == 14
     assert response.data.count(b'id="access-review-decision-chart"') == 1
     assert response.data.count(b'id="access-review-status-chart"') == 1
     assert response.data.count(b'id="access-reviews-count"') == 1
-    assert response.data.count(b'class="table table-sm table-hover align-middle access-reviews-table"') == 1
+    assert b'class="access-review-list"' in response.data
+    assert b'class="table table-sm table-hover align-middle access-reviews-table"' not in response.data
     assert b'id="total-access-reviews"' in response.data
     assert b'id="open-access-reviews"' in response.data
     assert b'id="completed-access-reviews"' in response.data
     assert b'id="revoke-access-reviews"' in response.data
+    assert b'id="access-review-workspace-summary"' in response.data
+    assert b'id="pending-access-reviews"' in response.data
+    assert b'id="high-critical-access-reviews"' in response.data
+    assert b'id="overdue-access-reviews"' in response.data
+    assert b'id="workspace-completed-access-reviews"' in response.data
     assert b'id="access-review-analytics-cards"' in response.data
     assert b'id="in-review-access-reviews"' in response.data
     assert b'id="stale-access-reviews"' in response.data
@@ -1425,20 +1431,14 @@ def test_get_access_reviews_page_returns_workbench(client) -> None:
     assert b'id="access-reviews-prev-page"' in response.data
     assert b'id="access-reviews-next-page"' in response.data
     assert b'id="access-reviews-table-body"' in response.data
-    assert response.data.count(b'<th scope="col">') == 9
-    assert b'colspan="9"' in response.data
+    assert response.data.count(b'<th scope="col">') == 0
+    assert b'colspan="10"' not in response.data
+    assert b'colspan="9"' not in response.data
     assert b'colspan="8"' not in response.data
-    assert b'Identity' in response.data
-    assert b'Resource' in response.data
-    assert b'Status' in response.data
-    assert b'Reviewer' in response.data
-    assert b'Decision' in response.data
-    assert b'Remediation' in response.data
-    assert b'Updated' in response.data
-    assert b'Notes' in response.data
-    assert b'Actions' in response.data
-    assert b'table table-sm table-hover align-middle access-reviews-table' in response.data
+    assert b'Preparing access reviews...' in response.data
     assert b'id="access-review-actions-marker"' in response.data
+    assert b'id="access-review-detail-panel"' in response.data
+    assert b'id="access-review-revoke-preview"' in response.data
     assert b'id="access-review-history-modal"' in response.data
     assert b'id="access-review-history-table"' in response.data
     assert b"assets/js/iam-sentinel-access-reviews.js" in response.data
@@ -1564,8 +1564,12 @@ def test_access_reviews_template_has_no_duplicate_metric_card_wrappers() -> None
     project_root = Path(__file__).resolve().parents[1]
     template = (project_root / "templates/access_reviews.html").read_text()
 
-    assert template.count('<div class="card info-card access-review-metric-card">') == 10
-    assert template.count('colspan="9"') == 1
+    assert template.count('<div class="card info-card access-review-metric-card">') == 14
+    assert 'class="table table-sm table-hover align-middle access-reviews-table"' not in template
+    assert 'table-responsive' not in template
+    assert '<th scope="col">Actions</th>' not in template
+    assert 'colspan="10"' not in template
+    assert 'colspan="9"' not in template
     assert 'colspan="8"' not in template
     assert '<div class="card info-card">\n          <div class="card info-card access-review-metric-card">' not in template
     assert '<div class="card info-card access-review-metric-card">\n          <div class="card info-card">' not in template
@@ -1676,23 +1680,23 @@ def test_access_reviews_script_uses_compact_charts_pagination_and_readable_label
         assert hardcoded_decision_option not in script
     assert ".access-review-chart-card" in styles
     assert ".access-review-chart-summary" in styles
-    assert ".access-reviews-table {\n  table-layout: fixed;\n  width: 100%;" in styles
-    assert ".access-reviews-table .review-decision" in styles
-    assert "min-width: min(8rem, 100%);" in styles
-    assert ".access-reviews-table td:nth-child(6)" in styles
-    assert ".access-reviews-table td:nth-child(7) .table-nowrap" in styles
-    assert ".access-reviews-table .save-review-button" in styles
-    assert ".access-reviews-table .access-review-identity" in styles
-    assert ".access-reviews-table .access-review-resource" in styles
-    assert "max-width: 100%;" in styles
+    assert ".access-review-list" in styles
+    assert "overflow-x: hidden;" in styles
+    assert ".access-review-card" in styles
+    assert ".access-review-card.is-selected" in styles
+    assert ".access-review-card-header" in styles
+    assert ".access-review-fields" in styles
+    assert ".access-review-actions" in styles
+    assert "grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));" in styles
+    assert ".access-reviews-table" not in styles
+    assert "table-layout: fixed;" not in styles
     assert 'btn-link text-secondary review-history-button' in script
     assert "access-review-actions" in script
-    assert ".access-reviews-table .access-review-actions" in styles
-    assert ".access-reviews-table .review-history-button" in styles
+    assert ".access-review-actions .review-history-button" in styles
     assert "text-decoration: none;" in styles
     assert styles.count("{") == styles.count("}")
     for selector, body in re.findall(r"([^{}]+)\{([^{}]+)\}", styles):
-        if ".access-reviews-table" not in selector:
+        if ".access-review" not in selector:
             continue
         properties = [
             line.split(":", 1)[0].strip()
@@ -1708,9 +1712,10 @@ def test_access_reviews_script_uses_compact_charts_pagination_and_readable_label
     assert "id === 'reviewer-workload-table'" in script
     assert 'class="table-truncate reviewer-workload-label" title="${label}"' in script
     assert 'class="text-end reviewer-workload-count"' in script
-    assert ".access-reviews-table .access-review-notes-empty" in styles
-    assert ".access-reviews-table .access-review-notes-filled" in styles
-    assert script.count('colspan="9"') == 1
+    assert ".access-review-notes-empty" in styles
+    assert ".access-review-notes-filled" in styles
+    assert 'colspan="10"' not in script
+    assert 'colspan="9"' not in script
     assert 'colspan="8"' not in script
 
 
@@ -1718,13 +1723,14 @@ def test_access_reviews_row_template_renders_one_notes_input() -> None:
     project_root = Path(__file__).resolve().parents[1]
     script = (project_root / "static/assets/js/iam-sentinel-access-reviews.js").read_text()
     row_match = re.search(
-        r'<tr data-review-id="\$\{ui\.escapeHtml\(review\.id\)\}">(.*?)</tr>',
+        r'<article class="access-review-card" data-review-id="\$\{ui\.escapeHtml\(review\.id\)\}" tabindex="0">(.*?)</article>',
         script,
         flags=re.DOTALL,
     )
 
     assert row_match
     row_template = row_match.group(1)
+    assert '<tr data-review-id=' not in script
     assert row_template.count('href="/identities/${encodeURIComponent(review.identity_id)}"') == 1
     assert row_template.count('access-review-identity') == 1
     assert row_template.count('title="${identityId}"') == 1
@@ -1737,14 +1743,84 @@ def test_access_reviews_row_template_renders_one_notes_input() -> None:
     assert '<td><a href="/resources/${encodeURIComponent(review.resource_id)}">${ui.escapeHtml(review.resource_id)}</a></td>' not in row_template
     assert row_template.count('save-review-button') == 1
     assert row_template.count('review-history-button') == 1
-    assert row_template.count('<div class="d-inline-flex gap-1 access-review-actions">') == 1
+    assert row_template.count('<div class="access-review-actions">') == 1
     assert '<div class="d-inline-flex gap-1">' not in row_template
     assert 'btn btn-sm btn-outline-secondary review-history-button' not in row_template
     assert 'btn btn-sm btn-link text-secondary review-history-button' in row_template
+    assert 'Set Approve' in row_template
+    assert 'Set Revoke' in row_template
+    assert 'Set Follow-up' in row_template
     assert row_template.count('review-notes"') == 1
     assert row_template.count('access-review-notes ${notesStateClass} review-notes') == 1
     assert '<textarea' not in row_template
     assert '${notesStateClass}' in row_template
+
+
+def test_access_reviews_script_renders_analyst_review_workspace() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    script = (project_root / "static/assets/js/iam-sentinel-access-reviews.js").read_text()
+
+    assert "findings: []" in script
+    assert "accessPaths: []" in script
+    assert "resourcesById: {}" in script
+    assert "selectedReviewId: null" in script
+    assert "function getRelatedFindings(review)" in script
+    assert "function getReviewAccessPaths(review)" in script
+    assert "function getReviewSeverity(review)" in script
+    assert "function riskContext(review)" in script
+    assert "function whyReviewMatters(review)" in script
+    assert "function renderSelectedReviewDetail()" in script
+    assert "async function renderRevokeImpactPreview(row)" in script
+    assert "async function applyQuickDecision(row, decision)" in script
+    assert "pending-access-reviews" in script
+    assert "high-critical-access-reviews" in script
+    assert "overdue-access-reviews" in script
+    assert "workspace-completed-access-reviews" in script
+    assert "View Identity" in script
+    assert "View Resource" in script
+    assert "View Access Paths" in script
+    assert "View Attack Graph" in script
+    assert "View Related Findings" in script
+    assert "quick-decision-button" in script
+    assert "data-decision=\"APPROVE\"" in script
+    assert "data-decision=\"REVOKE\"" in script
+    assert "data-decision=\"NEEDS_FOLLOW_UP\"" in script
+    assert "action_type: 'DISABLE_ACCOUNT'" in script
+    assert "identity_id: review.identity_id" in script
+    assert "Context: ${ui.escapeHtml(identityLabel)} &rarr; ${ui.escapeHtml(resourceLabel)}" in script
+    assert "review paths affected: ${relatedPaths};" in script
+    assert "path count reduction" in script
+    assert "ui.fetchJson('/api/remediation-actions/preview'" in script
+    assert "ui.fetchJson('/api/findings')" in script
+    assert "ui.fetchJson('/api/access-paths')" in script
+    assert "ui.fetchJson('/api/resources')" in script
+    assert "href=\"/access-paths?identity_id=${encodeURIComponent(review.identity_id)}&resource_id=${encodeURIComponent(review.resource_id)}\"" in script
+    assert "href=\"/attack-graph?resource_id=${encodeURIComponent(review.resource_id)}\"" in script
+    assert "href=\"/findings?search=${encodeURIComponent(review.identity_id)}\"" in script
+
+    row_selection_index = script.index("const row = event.target.closest('[data-review-id]');")
+    action_guard_index = script.index("if (!row || (!saveButton && !historyButton && !remediationButton && !quickDecisionButton))")
+    assert row_selection_index < action_guard_index
+    assert "document.getElementById('access-reviews-table-body').addEventListener('click', async (event) => {" in script
+    assert "document.getElementById('access-reviews-table-body').addEventListener('focusin', (event) => {" in script
+    assert "await applyQuickDecision(row, quickDecisionButton.dataset.decision);" in script
+
+    quick_decision_start = script.index("async function applyQuickDecision(row, decision)")
+    quick_decision_end = script.index("async function completeRemediation(row)")
+    quick_decision_body = script[quick_decision_start:quick_decision_end]
+    assert "row.querySelector('.review-decision').value = decision;" in quick_decision_body
+    assert "row.querySelector('.review-status').value = decision === 'APPROVE' ? 'COMPLETED' : 'IN_REVIEW';" in quick_decision_body
+    assert "await renderRevokeImpactPreview(row);" in quick_decision_body
+    assert "saveReview(" not in quick_decision_body
+    assert "ui.fetchJson(`/api/access-reviews/" not in quick_decision_body
+
+    revoke_preview_start = script.index("async function renderRevokeImpactPreview(row)")
+    revoke_preview_end = script.index("async function applyQuickDecision(row, decision)")
+    revoke_preview_body = script[revoke_preview_start:revoke_preview_end]
+    assert "getReviewAccessPaths(review).length" in revoke_preview_body
+    assert "identityLabel = review.identity_label || review.identity_id" in revoke_preview_body
+    assert "resourceLabel = review.resource_label || review.resource_id" in revoke_preview_body
+    assert "saveReview(" not in revoke_preview_body
 
 
 def test_access_review_history_events_append_for_changed_fields(client) -> None:
