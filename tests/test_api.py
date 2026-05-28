@@ -1511,6 +1511,18 @@ def test_resource_detail_js_renders_investigation_workflow() -> None:
     assert "Open Path" in script
 
 
+def test_resource_detail_related_access_paths_are_not_silently_limited() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+    script = (project_root / "static/assets/js/iam-sentinel-resource-detail.js").read_text()
+    summary_body = extract_js_function_body(script, "renderInvestigationSummary")
+    access_paths_body = extract_js_function_body(script, "renderRelatedAccessPaths")
+
+    assert "setText('resource-summary-access-paths', state.accessPaths.length);" in summary_body
+    assert "state.accessPaths.map((path)" in access_paths_body
+    assert "state.accessPaths.slice" not in access_paths_body
+    assert "Showing ${" not in access_paths_body
+
+
 def test_resource_detail_uses_readable_type_labels() -> None:
     project_root = Path(__file__).resolve().parents[1]
     script = (project_root / "static/assets/js/iam-sentinel-resource-detail.js").read_text()

@@ -216,7 +216,7 @@
       return;
     }
 
-    tableBody.innerHTML = state.accessPaths.slice(0, 10).map((path) => {
+    tableBody.innerHTML = state.accessPaths.map((path) => {
       const pathDisplay = escapeHtml(path.path_display);
       const severity = getHighestSeverity(getIdentityFindings(path.identity_id));
       return `
