@@ -380,6 +380,12 @@ def test_get_findings_page_returns_workbench(client) -> None:
     assert b"Open Investigation" not in response.data
     assert b'id="finding-identity-link-marker"' in response.data
     assert response.data.count(b'id="finding-detail-links"') == 1
+    assert b'class="modal-header align-items-start"' in response.data
+    assert b'class="finding-modal-header flex-grow-1 min-w-0"' in response.data
+    assert b'class="modal-title mb-1" id="finding-detail-title"' in response.data
+    assert b'class="small text-muted mb-2" id="finding-detail-meta"' in response.data
+    assert b'id="finding-detail-links" class="finding-modal-context d-flex flex-wrap align-items-center gap-2"' in response.data
+    assert b'class="btn-close flex-shrink-0 ms-2"' in response.data
     assert b"Open Identity Open Resource" not in response.data
     assert b"Open Identity" not in response.data
     assert b"Open Resource" not in response.data
@@ -417,6 +423,26 @@ def test_findings_workbench_script_keeps_pagination_and_compact_modal_boundaries
     assert "finding-detail-attack-paths" not in script
     assert "finding-detail-activity" not in script
     assert "finding-detail-notes" not in script
+
+
+def test_findings_modal_header_uses_compact_context_links() -> None:
+    script = (
+        Path(__file__).resolve().parents[1]
+        / "static"
+        / "assets"
+        / "js"
+        / "iam-sentinel-findings.js"
+    ).read_text()
+    render_body = extract_js_function_body(script, "renderFindingDetail")
+
+    assert "const identityLabel = formatIdentityLabel(finding.identity_name, finding.identity_id);" in render_body
+    assert "const resourceLabel = formatResourceLabel(finding.resource_name, finding.resource_id);" in render_body
+    assert "`Finding ${finding.id} | Identity ${identityLabel}`" in render_body
+    assert "Identity ${escapeHtml(formatIdentityLabel" not in render_body
+    assert "Resource ${escapeHtml(formatResourceLabel" not in render_body
+    assert 'text-nowrap finding-context-link" href="/identities/' in render_body
+    assert 'title="${escapeHtml(identityLabel)}">Identity</a>' in render_body
+    assert 'title="${escapeHtml(resourceLabel)}">Resource</a>' in render_body
 
 
 def test_findings_script_initializes_search_from_url_before_first_refresh() -> None:

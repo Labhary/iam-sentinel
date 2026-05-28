@@ -155,17 +155,15 @@
   <div class="modal fade" id="finding-detail-modal" tabindex="-1" aria-labelledby="finding-detail-title" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
       <div class="modal-content">
-        <div class="modal-header">
-          <div>
-            <h5 class="modal-title" id="finding-detail-title">Finding Detail</h5>
-            <div class="small text-muted" id="finding-detail-meta"></div>
-          </div>
-          <div class="d-flex align-items-center gap-2">
-            <div id="finding-detail-links" class="d-flex flex-wrap gap-2">
+        <div class="modal-header align-items-start">
+          <div class="finding-modal-header flex-grow-1 min-w-0">
+            <h5 class="modal-title mb-1" id="finding-detail-title">Finding Detail</h5>
+            <div class="small text-muted mb-2" id="finding-detail-meta"></div>
+            <div id="finding-detail-links" class="finding-modal-context d-flex flex-wrap align-items-center gap-2">
               <span class="visually-hidden">Identity and resource links</span>
             </div>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
+          <button type="button" class="btn-close flex-shrink-0 ms-2" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
           <div id="finding-action-feedback" class="alert d-none" role="alert"></div>

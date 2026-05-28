@@ -224,11 +224,13 @@
     }
 
     const severityClass = severityBadgeClasses[finding.severity] || 'badge bg-secondary';
+    const identityLabel = formatIdentityLabel(finding.identity_name, finding.identity_id);
+    const resourceLabel = formatResourceLabel(finding.resource_name, finding.resource_id);
     document.getElementById('finding-detail-title').textContent = finding.title;
-    document.getElementById('finding-detail-meta').textContent = `${finding.id} | ${formatIdentityLabel(finding.identity_name, finding.identity_id)}`;
+    document.getElementById('finding-detail-meta').textContent = `Finding ${finding.id} | Identity ${identityLabel}`;
     document.getElementById('finding-detail-links').innerHTML = `
-      <a class="btn btn-sm btn-outline-primary" href="/identities/${encodeURIComponent(finding.identity_id)}">Identity ${escapeHtml(formatIdentityLabel(finding.identity_name, finding.identity_id))}</a>
-      ${finding.resource_id ? `<a class="btn btn-sm btn-outline-primary" href="/resources/${encodeURIComponent(finding.resource_id)}">Resource ${escapeHtml(formatResourceLabel(finding.resource_name, finding.resource_id))}</a>` : ''}
+      <a class="btn btn-sm btn-outline-primary text-nowrap finding-context-link" href="/identities/${encodeURIComponent(finding.identity_id)}" title="${escapeHtml(identityLabel)}">Identity</a>
+      ${finding.resource_id ? `<a class="btn btn-sm btn-outline-primary text-nowrap finding-context-link" href="/resources/${encodeURIComponent(finding.resource_id)}" title="${escapeHtml(resourceLabel)}">Resource</a>` : ''}
     `;
     document.getElementById('finding-detail-severity').innerHTML = `<span class="${severityClass}">${escapeHtml(finding.severity)}</span>`;
     document.getElementById('finding-detail-score').textContent = finding.score;
