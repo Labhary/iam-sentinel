@@ -415,11 +415,11 @@
 }
 
 .access-review-principal {
-  align-items: center;
+  align-items: flex-start;
   display: flex;
   flex: 1 1 24rem;
-  flex-wrap: wrap;
-  gap: 0.4rem;
+  flex-direction: column;
+  gap: 0.15rem;
   min-width: 0;
 }
 
@@ -463,6 +463,16 @@
   max-width: min(100%, 22rem);
 }
 
+.access-review-title {
+  color: #25364d;
+  font-weight: 700;
+}
+
+.access-review-subtitle {
+  color: #6c7788;
+  font-size: 0.78rem;
+}
+
 .access-review-notes-empty {
   background-color: #f8fafc;
   border-style: dashed;
@@ -486,11 +496,6 @@
 .access-review-actions .btn {
   font-size: 0.76rem;
   padding: 0.2rem 0.45rem;
-}
-
-.access-review-actions .save-review-button {
-  border-color: #d5dce7;
-  color: #5f6f82;
 }
 
 .access-review-actions .review-history-button {

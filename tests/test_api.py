@@ -1423,6 +1423,8 @@ def test_get_access_reviews_page_returns_workbench(client) -> None:
     assert b'id="reviewer-workload-table"' in response.data
     assert b'id="access-reviews-page-size"' in response.data
     assert b'id="access-review-current-analyst"' in response.data
+    assert b'id="access-reviews-feedback"' in response.data
+    assert b'id="access-reviews-inline-feedback"' in response.data
     assert b'<option value="5" selected>5</option>' in response.data
     assert b'<option value="10">10</option>' in response.data
     assert b'<option value="25">25</option>' in response.data
@@ -1613,14 +1615,21 @@ def test_access_reviews_script_uses_compact_charts_pagination_and_readable_label
     assert "PENDING: 'Pending'" in script
     assert "formatRemediationStatus(review.remediation_status)" in script
     assert "complete-remediation-button" in script
-    assert 'class="table-truncate access-review-identity"' in script
-    assert 'title="${identityId}"' in script
-    assert '>${identityId}</a>' in script
+    assert 'class="table-truncate access-review-title access-review-identity"' in script
+    assert "function getReviewLabels(review)" in script
+    assert 'title="${reviewLabels.identity}"' in script
+    assert '>${reviewLabels.identity}</a>' in script
     assert '>${ui.escapeHtml(review.identity_id)}</a>' not in script
-    assert 'class="table-truncate access-review-resource"' in script
-    assert 'title="${resourceId}"' in script
-    assert '>${resourceId}</a>' in script
+    assert 'class="table-truncate access-review-subtitle access-review-resource"' in script
+    assert 'title="${reviewLabels.resource}"' in script
+    assert '>${reviewLabels.resource}</a>' in script
     assert '>${ui.escapeHtml(review.resource_id)}</a>' not in script
+    assert "quick-decision-button" not in script
+    assert "Set Approve" not in script
+    assert "Set Revoke" not in script
+    assert "Set Follow-up" not in script
+    assert "Stage only" not in script
+    assert "applyQuickDecision" not in script
     assert script.count("event.target.closest('.complete-remediation-button')") == 1
     assert script.count("completeRemediation(row);") == 1
     assert "function completeRemediation(row)" in script
@@ -1632,6 +1641,27 @@ def test_access_reviews_script_uses_compact_charts_pagination_and_readable_label
     assert "function getCurrentAnalyst()" in script
     assert "function loadCurrentAnalyst()" in script
     assert "function saveCurrentAnalyst()" in script
+    assert "function getReviewCard(reviewId)" in script
+    assert "function showCardFeedback(reviewId, message, type = 'success')" in script
+    assert "function focusReviewCard(reviewId)" in script
+    assert script.count("function showWorkbenchFeedback(") == 1
+    assert "function showWorkbenchFeedback(message, type = 'success', reviewId = null)" in script
+    assert extract_js_function_body(script, "showWorkbenchFeedback") == (
+        "\n"
+        "    ui.showAlert('access-reviews-feedback', message, type);\n"
+        "\n"
+        "    if (reviewId) {\n"
+        "      showCardFeedback(reviewId, message, type);\n"
+        "      return;\n"
+        "    }\n"
+        "\n"
+        "    ui.showAlert('access-reviews-inline-feedback', message, type);\n"
+        "  "
+    )
+    assert "card.focus({ preventScroll: true });" in script
+    assert "card.scrollIntoView({ block: 'center', behavior: 'smooth' });" in script
+    assert "function showReviewOnCurrentPage(reviewId)" in script
+    assert "state.currentPage = Math.floor(reviewIndex / state.pageSize) + 1;" in script
     assert "localStorage.getItem(analystStorageKey)" in script
     assert "localStorage.setItem(analystStorageKey, getCurrentAnalyst())" in script
     assert "actor: getCurrentAnalyst()" in script
@@ -1690,8 +1720,14 @@ def test_access_reviews_script_uses_compact_charts_pagination_and_readable_label
     assert "grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));" in styles
     assert ".access-reviews-table" not in styles
     assert "table-layout: fixed;" not in styles
+    assert 'btn btn-sm btn-primary save-review-button' in script
     assert 'btn-link text-secondary review-history-button' in script
     assert "access-review-actions" in script
+    assert "access-review-card-feedback" in script
+    assert 'role="alert"' in script
+    assert ".access-review-title" in styles
+    assert ".access-review-subtitle" in styles
+    assert ".access-review-stage-label" not in styles
     assert ".access-review-actions .review-history-button" in styles
     assert "text-decoration: none;" in styles
     assert styles.count("{") == styles.count("}")
@@ -1733,23 +1769,31 @@ def test_access_reviews_row_template_renders_one_notes_input() -> None:
     assert '<tr data-review-id=' not in script
     assert row_template.count('href="/identities/${encodeURIComponent(review.identity_id)}"') == 1
     assert row_template.count('access-review-identity') == 1
-    assert row_template.count('title="${identityId}"') == 1
-    assert row_template.count('>${identityId}</a>') == 1
+    assert row_template.count('access-review-title access-review-identity') == 1
+    assert row_template.count('title="${reviewLabels.identity}"') == 1
+    assert row_template.count('>${reviewLabels.identity}</a>') == 1
     assert '<td><a href="/identities/${encodeURIComponent(review.identity_id)}">${ui.escapeHtml(review.identity_id)}</a></td>' not in row_template
     assert row_template.count('href="/resources/${encodeURIComponent(review.resource_id)}"') == 1
     assert row_template.count('access-review-resource') == 1
-    assert row_template.count('title="${resourceId}"') == 1
-    assert row_template.count('>${resourceId}</a>') == 1
+    assert row_template.count('access-review-subtitle access-review-resource') == 1
+    assert row_template.count('title="${reviewLabels.resource}"') == 1
+    assert row_template.count('>${reviewLabels.resource}</a>') == 1
     assert '<td><a href="/resources/${encodeURIComponent(review.resource_id)}">${ui.escapeHtml(review.resource_id)}</a></td>' not in row_template
     assert row_template.count('save-review-button') == 1
     assert row_template.count('review-history-button') == 1
+    assert row_template.count('access-review-card-feedback') == 1
+    assert row_template.count('role="alert"') == 1
     assert row_template.count('<div class="access-review-actions">') == 1
     assert '<div class="d-inline-flex gap-1">' not in row_template
     assert 'btn btn-sm btn-outline-secondary review-history-button' not in row_template
     assert 'btn btn-sm btn-link text-secondary review-history-button' in row_template
-    assert 'Set Approve' in row_template
-    assert 'Set Revoke' in row_template
-    assert 'Set Follow-up' in row_template
+    assert 'Stage only' not in row_template
+    assert 'Set Approve' not in row_template
+    assert 'Set Revoke' not in row_template
+    assert 'Set Follow-up' not in row_template
+    assert 'quick-decision-button' not in row_template
+    assert 'btn btn-sm btn-primary save-review-button' in row_template
+    assert 'review-decision' in row_template
     assert row_template.count('review-notes"') == 1
     assert row_template.count('access-review-notes ${notesStateClass} review-notes') == 1
     assert '<textarea' not in row_template
@@ -1771,7 +1815,7 @@ def test_access_reviews_script_renders_analyst_review_workspace() -> None:
     assert "function whyReviewMatters(review)" in script
     assert "function renderSelectedReviewDetail()" in script
     assert "async function renderRevokeImpactPreview(row)" in script
-    assert "async function applyQuickDecision(row, decision)" in script
+    assert "async function handleDecisionChange(row)" in script
     assert "pending-access-reviews" in script
     assert "high-critical-access-reviews" in script
     assert "overdue-access-reviews" in script
@@ -1781,15 +1825,25 @@ def test_access_reviews_script_renders_analyst_review_workspace() -> None:
     assert "View Access Paths" in script
     assert "View Attack Graph" in script
     assert "View Related Findings" in script
-    assert "quick-decision-button" in script
-    assert "data-decision=\"APPROVE\"" in script
-    assert "data-decision=\"REVOKE\"" in script
-    assert "data-decision=\"NEEDS_FOLLOW_UP\"" in script
+    assert "quick-decision-button" not in script
+    assert "data-decision=\"APPROVE\"" not in script
+    assert "data-decision=\"REVOKE\"" not in script
+    assert "data-decision=\"NEEDS_FOLLOW_UP\"" not in script
     assert "action_type: 'DISABLE_ACCOUNT'" in script
     assert "identity_id: review.identity_id" in script
     assert "Context: ${ui.escapeHtml(identityLabel)} &rarr; ${ui.escapeHtml(resourceLabel)}" in script
     assert "review paths affected: ${relatedPaths};" in script
     assert "path count reduction" in script
+    assert "Revoke impact preview simulation" in script
+    assert "Preview only. No access changes are applied from this panel." in script
+    assert "Revoke impact preview simulation loaded. Select Save to persist the review." in script
+    assert "showWorkbenchFeedback('Revoke impact preview simulation loaded. Select Save to persist the review.', 'info', reviewId);" in script
+    assert "showWorkbenchFeedback('Revoke impact preview simulation unavailable.', 'warning', reviewId);" in script
+    assert "showWorkbenchFeedback('Access review updated.', 'success', reviewId);" in script
+    assert "showWorkbenchFeedback('Access review update failed.', 'danger', reviewId);" in script
+    assert "showWorkbenchFeedback('Remediation completed.', 'success', reviewId);" in script
+    assert "showWorkbenchFeedback('Remediation update failed.', 'danger', reviewId);" in script
+    assert "showWorkbenchFeedback('Decision selected. Select Save to persist status, reviewer, decision, and notes.', 'info', row.dataset.reviewId);" in script
     assert "ui.fetchJson('/api/remediation-actions/preview'" in script
     assert "ui.fetchJson('/api/findings')" in script
     assert "ui.fetchJson('/api/access-paths')" in script
@@ -1799,28 +1853,47 @@ def test_access_reviews_script_renders_analyst_review_workspace() -> None:
     assert "href=\"/findings?search=${encodeURIComponent(review.identity_id)}\"" in script
 
     row_selection_index = script.index("const row = event.target.closest('[data-review-id]');")
-    action_guard_index = script.index("if (!row || (!saveButton && !historyButton && !remediationButton && !quickDecisionButton))")
+    action_guard_index = script.index("if (!row || (!saveButton && !historyButton && !remediationButton))")
     assert row_selection_index < action_guard_index
     assert "document.getElementById('access-reviews-table-body').addEventListener('click', async (event) => {" in script
     assert "document.getElementById('access-reviews-table-body').addEventListener('focusin', (event) => {" in script
-    assert "await applyQuickDecision(row, quickDecisionButton.dataset.decision);" in script
+    assert "document.getElementById('access-reviews-table-body').addEventListener('change', async (event) => {" in script
+    assert "const decisionSelect = event.target.closest('.review-decision');" in script
+    assert "await handleDecisionChange(row);" in script
 
-    quick_decision_start = script.index("async function applyQuickDecision(row, decision)")
-    quick_decision_end = script.index("async function completeRemediation(row)")
-    quick_decision_body = script[quick_decision_start:quick_decision_end]
-    assert "row.querySelector('.review-decision').value = decision;" in quick_decision_body
-    assert "row.querySelector('.review-status').value = decision === 'APPROVE' ? 'COMPLETED' : 'IN_REVIEW';" in quick_decision_body
-    assert "await renderRevokeImpactPreview(row);" in quick_decision_body
-    assert "saveReview(" not in quick_decision_body
-    assert "ui.fetchJson(`/api/access-reviews/" not in quick_decision_body
+    decision_change_start = script.index("async function handleDecisionChange(row)")
+    decision_change_end = script.index("async function completeRemediation(row)")
+    decision_change_body = script[decision_change_start:decision_change_end]
+    assert "row.querySelector('.review-decision').value === 'REVOKE'" in decision_change_body
+    assert "await renderRevokeImpactPreview(row);" in decision_change_body
+    assert "showWorkbenchFeedback(" in decision_change_body
+    assert "saveReview(" not in decision_change_body
+    assert "ui.fetchJson(`/api/access-reviews/" not in decision_change_body
 
     revoke_preview_start = script.index("async function renderRevokeImpactPreview(row)")
-    revoke_preview_end = script.index("async function applyQuickDecision(row, decision)")
+    revoke_preview_end = script.index("async function handleDecisionChange(row)")
     revoke_preview_body = script[revoke_preview_start:revoke_preview_end]
     assert "getReviewAccessPaths(review).length" in revoke_preview_body
     assert "identityLabel = review.identity_label || review.identity_id" in revoke_preview_body
     assert "resourceLabel = review.resource_label || review.resource_id" in revoke_preview_body
+    assert "showWorkbenchFeedback(" in revoke_preview_body
     assert "saveReview(" not in revoke_preview_body
+
+    save_review_start = script.index("async function saveReview(row)")
+    save_review_end = script.index("async function renderRevokeImpactPreview(row)")
+    save_review_body = script[save_review_start:save_review_end]
+    assert "state.selectedReviewId = reviewId;" in save_review_body
+    assert "await refreshAccessReviews(reviewId);" in save_review_body
+    assert "showWorkbenchFeedback('Access review updated.', 'success', reviewId);" in save_review_body
+    assert "focusReviewCard(reviewId);" in save_review_body
+
+    complete_start = script.index("async function completeRemediation(row)")
+    complete_end = script.index("async function showReviewHistory(row)")
+    complete_body = script[complete_start:complete_end]
+    assert "state.selectedReviewId = reviewId;" in complete_body
+    assert "await refreshAccessReviews(reviewId);" in complete_body
+    assert "showWorkbenchFeedback('Remediation completed.', 'success', reviewId);" in complete_body
+    assert "focusReviewCard(reviewId);" in complete_body
 
 
 def test_access_review_history_events_append_for_changed_fields(client) -> None:
@@ -1942,13 +2015,22 @@ def test_access_review_remediation_completion_flow(client) -> None:
         for event in history
         if event["changed_field"] == "remediation_status"
     ]
-    assert any(
-        event["old_value"] == "NOT_REQUIRED" and event["new_value"] == "PENDING"
-        for event in remediation_status_events
-    )
-    assert any(
-        event["old_value"] == "PENDING" and event["new_value"] == "COMPLETED"
-        for event in remediation_status_events
+    remediation_completion_events = [
+        event
+        for event in history
+        if event["changed_field"] == "remediation_completed"
+    ]
+    assert remediation_status_events == [
+        event
+        for event in history
+        if event["old_value"] == "NOT_REQUIRED" and event["new_value"] == "PENDING"
+    ]
+    assert len(remediation_completion_events) == 1
+    assert not any(
+        event["changed_field"] == "remediation_status"
+        and event["old_value"] == "PENDING"
+        and event["new_value"] == "COMPLETED"
+        for event in history
     )
 
 

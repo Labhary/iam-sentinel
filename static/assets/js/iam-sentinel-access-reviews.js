@@ -116,6 +116,43 @@
     localStorage.setItem(analystStorageKey, getCurrentAnalyst());
   }
 
+  function getReviewCard(reviewId) {
+    return Array.from(document.querySelectorAll('.access-review-card'))
+      .find((card) => card.dataset.reviewId === reviewId) || null;
+  }
+
+  function showCardFeedback(reviewId, message, type = 'success') {
+    const feedback = getReviewCard(reviewId)?.querySelector('.access-review-card-feedback');
+    if (!feedback) {
+      return;
+    }
+
+    feedback.textContent = message;
+    feedback.className = `access-review-card-feedback alert alert-${type} mt-2 mb-0`;
+    feedback.classList.toggle('d-none', !message);
+  }
+
+  function focusReviewCard(reviewId) {
+    const card = getReviewCard(reviewId);
+    if (!card) {
+      return;
+    }
+
+    card.focus({ preventScroll: true });
+    card.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+
+  function showWorkbenchFeedback(message, type = 'success', reviewId = null) {
+    ui.showAlert('access-reviews-feedback', message, type);
+
+    if (reviewId) {
+      showCardFeedback(reviewId, message, type);
+      return;
+    }
+
+    ui.showAlert('access-reviews-inline-feedback', message, type);
+  }
+
   function getTotalPages() {
     return Math.max(1, Math.ceil(state.reviews.length / state.pageSize));
   }
@@ -128,6 +165,13 @@
     clampCurrentPage();
     const start = (state.currentPage - 1) * state.pageSize;
     return state.reviews.slice(start, start + state.pageSize);
+  }
+
+  function showReviewOnCurrentPage(reviewId) {
+    const reviewIndex = state.reviews.findIndex((review) => review.id === reviewId);
+    if (reviewIndex >= 0) {
+      state.currentPage = Math.floor(reviewIndex / state.pageSize) + 1;
+    }
   }
 
   function getRelatedFindings(review) {
@@ -172,6 +216,13 @@
 
   function getResource(review) {
     return state.resourcesById[review.resource_id] || {};
+  }
+
+  function getReviewLabels(review) {
+    return {
+      identity: ui.escapeHtml(review.identity_label || ui.formatIdentityLabel(review.identity_id, review.identity_id)),
+      resource: ui.escapeHtml(review.resource_label || ui.formatResourceLabel(review.resource_id, review.resource_id))
+    };
   }
 
   function isSensitiveReview(review) {
@@ -219,9 +270,8 @@
     const visibleReviews = getPaginatedReviews();
     const rows = visibleReviews.length
       ? visibleReviews.map((review) => {
-        const identityId = ui.escapeHtml(review.identity_label || ui.formatIdentityLabel(review.identity_id, review.identity_id));
+        const reviewLabels = getReviewLabels(review);
         const reviewer = ui.escapeHtml(review.reviewer || '');
-        const resourceId = ui.escapeHtml(review.resource_label || ui.formatResourceLabel(review.resource_id, review.resource_id));
         const notes = ui.escapeHtml(review.notes || '');
         const notesStateClass = review.notes ? 'access-review-notes-filled' : 'access-review-notes-empty';
         const updatedAt = ui.escapeHtml(ui.formatTimestamp(review.updated_at));
@@ -229,9 +279,8 @@
         <article class="access-review-card" data-review-id="${ui.escapeHtml(review.id)}" tabindex="0">
           <div class="access-review-card-header">
             <div class="access-review-principal">
-              <a class="table-truncate access-review-identity" href="/identities/${encodeURIComponent(review.identity_id)}" title="${identityId}">${identityId}</a>
-              <span class="text-muted">-></span>
-              <a class="table-truncate access-review-resource" href="/resources/${encodeURIComponent(review.resource_id)}" title="${resourceId}">${resourceId}</a>
+              <a class="table-truncate access-review-title access-review-identity" href="/identities/${encodeURIComponent(review.identity_id)}" title="${reviewLabels.identity}">${reviewLabels.identity}</a>
+              <a class="table-truncate access-review-subtitle access-review-resource" href="/resources/${encodeURIComponent(review.resource_id)}" title="${reviewLabels.resource}">${reviewLabels.resource}</a>
             </div>
             <div class="access-review-risk">${riskContext(review)}</div>
           </div>
@@ -272,12 +321,10 @@
             </label>
           </div>
           <div class="access-review-actions">
-              <button class="btn btn-sm btn-outline-success quick-decision-button" type="button" data-decision="APPROVE">Set Approve</button>
-              <button class="btn btn-sm btn-outline-danger quick-decision-button" type="button" data-decision="REVOKE">Set Revoke</button>
-              <button class="btn btn-sm btn-outline-warning quick-decision-button" type="button" data-decision="NEEDS_FOLLOW_UP">Set Follow-up</button>
-              <button class="btn btn-sm btn-outline-secondary save-review-button" type="button">Save</button>
+              <button class="btn btn-sm btn-primary save-review-button" type="button">Save</button>
               <button class="btn btn-sm btn-link text-secondary review-history-button" type="button">History</button>
           </div>
+          <div class="access-review-card-feedback alert d-none mt-2 mb-0" role="alert"></div>
         </article>
       `;
       }).join('')
@@ -433,7 +480,7 @@
     });
   }
 
-  async function refreshAccessReviews() {
+  async function refreshAccessReviews(reviewIdToShow = null) {
     ui.toggleLoading('access-reviews-loading', true);
     ui.showAlert('access-reviews-error', '');
 
@@ -450,6 +497,10 @@
       state.findings = findings;
       state.accessPaths = accessPaths;
       state.resourcesById = Object.fromEntries(resources.map((resource) => [resource.id, resource]));
+      if (reviewIdToShow) {
+        state.selectedReviewId = reviewIdToShow;
+        showReviewOnCurrentPage(reviewIdToShow);
+      }
       renderSummary();
       renderAnalyticsTables();
       renderCharts();
@@ -471,28 +522,31 @@
       actor: getCurrentAnalyst()
     };
 
-    ui.showAlert('access-reviews-feedback', '', 'success');
+    state.selectedReviewId = reviewId;
+    showWorkbenchFeedback('', 'success', reviewId);
     try {
       await ui.fetchJson(`/api/access-reviews/${encodeURIComponent(reviewId)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      await refreshAccessReviews();
-      ui.showAlert('access-reviews-feedback', 'Access review updated.', 'success');
+      await refreshAccessReviews(reviewId);
+      showWorkbenchFeedback('Access review updated.', 'success', reviewId);
+      focusReviewCard(reviewId);
     } catch (error) {
-      ui.showAlert('access-reviews-feedback', 'Access review update failed.', 'danger');
+      showWorkbenchFeedback('Access review update failed.', 'danger', reviewId);
     }
   }
 
   async function renderRevokeImpactPreview(row) {
-    const review = state.reviews.find((candidate) => candidate.id === row.dataset.reviewId);
+    const reviewId = row.dataset.reviewId;
+    const review = state.reviews.find((candidate) => candidate.id === reviewId);
     const preview = document.getElementById('access-review-revoke-preview');
     if (!review) {
       return;
     }
     preview.className = 'alert alert-info mt-3 mb-0';
-    preview.textContent = 'Loading revoke impact preview...';
+    preview.textContent = 'Loading revoke impact preview simulation...';
     try {
       const impact = await ui.fetchJson('/api/remediation-actions/preview', {
         method: 'POST',
@@ -510,7 +564,8 @@
       const before = impact.impact.before;
       const after = impact.impact.after;
       preview.innerHTML = `
-        <div class="fw-semibold">Revoke impact preview</div>
+        <div class="fw-semibold">Revoke impact preview simulation</div>
+        <div class="small text-muted">Preview only. No access changes are applied from this panel.</div>
         <div class="small text-muted">Context: ${ui.escapeHtml(identityLabel)} &rarr; ${ui.escapeHtml(resourceLabel)}</div>
         <div class="small">
           findings affected: ${relatedFindings};
@@ -519,29 +574,28 @@
           path count reduction: ${before.access_paths_count} &rarr; ${after.access_paths_count}
         </div>
       `;
+      showWorkbenchFeedback('Revoke impact preview simulation loaded. Select Save to persist the review.', 'info', reviewId);
     } catch (error) {
       preview.className = 'alert alert-warning mt-3 mb-0';
-      preview.textContent = 'Revoke impact preview unavailable.';
+      preview.textContent = 'Revoke impact preview simulation unavailable.';
+      showWorkbenchFeedback('Revoke impact preview simulation unavailable.', 'warning', reviewId);
     }
   }
 
-  async function applyQuickDecision(row, decision) {
-    row.querySelector('.review-decision').value = decision;
-    row.querySelector('.review-status').value = decision === 'APPROVE' ? 'COMPLETED' : 'IN_REVIEW';
-    const noteInput = row.querySelector('.review-notes');
-    if (decision === 'REVOKE') {
+  async function handleDecisionChange(row) {
+    if (row.querySelector('.review-decision').value === 'REVOKE') {
       await renderRevokeImpactPreview(row);
       return;
     }
-    if (decision === 'NEEDS_FOLLOW_UP' && !noteInput.value.trim()) {
-      noteInput.value = 'Deferred for additional analyst review.';
-    }
+    document.getElementById('access-review-revoke-preview').classList.add('d-none');
+    showWorkbenchFeedback('Decision selected. Select Save to persist status, reviewer, decision, and notes.', 'info', row.dataset.reviewId);
   }
 
   async function completeRemediation(row) {
     const reviewId = row.dataset.reviewId;
 
-    ui.showAlert('access-reviews-feedback', '', 'success');
+    state.selectedReviewId = reviewId;
+    showWorkbenchFeedback('', 'success', reviewId);
     try {
       await ui.fetchJson(`/api/access-reviews/${encodeURIComponent(reviewId)}/remediation`, {
         method: 'PATCH',
@@ -550,10 +604,11 @@
           actor: getCurrentAnalyst()
         })
       });
-      await refreshAccessReviews();
-      ui.showAlert('access-reviews-feedback', 'Remediation completed.', 'success');
+      await refreshAccessReviews(reviewId);
+      showWorkbenchFeedback('Remediation completed.', 'success', reviewId);
+      focusReviewCard(reviewId);
     } catch (error) {
-      ui.showAlert('access-reviews-feedback', 'Remediation update failed.', 'danger');
+      showWorkbenchFeedback('Remediation update failed.', 'danger', reviewId);
     }
   }
 
@@ -584,7 +639,7 @@
               <td><span class="table-nowrap">${ui.escapeHtml(ui.formatTimestamp(event.timestamp))}</span></td>
               <td>${ui.escapeHtml(event.actor || 'Unassigned Analyst')}</td>
               <td>${ui.escapeHtml(formatHistoryField(event.changed_field))}</td>
-              <td><span class="text-muted">${oldValue}</span> → <strong>${newValue}</strong></td>
+              <td><span class="text-muted">${oldValue}</span> &rarr; <strong>${newValue}</strong></td>
             </tr>
           `;
         }).join('')
@@ -621,14 +676,10 @@
       const saveButton = event.target.closest('.save-review-button');
       const historyButton = event.target.closest('.review-history-button');
       const remediationButton = event.target.closest('.complete-remediation-button');
-      const quickDecisionButton = event.target.closest('.quick-decision-button');
-      if (!row || (!saveButton && !historyButton && !remediationButton && !quickDecisionButton)) {
+      if (!row || (!saveButton && !historyButton && !remediationButton)) {
         return;
       }
 
-      if (quickDecisionButton) {
-        await applyQuickDecision(row, quickDecisionButton.dataset.decision);
-      }
       if (saveButton) {
         saveReview(row);
       }
@@ -644,6 +695,13 @@
       if (row) {
         state.selectedReviewId = row.dataset.reviewId;
         renderSelectedReviewDetail();
+      }
+    });
+    document.getElementById('access-reviews-table-body').addEventListener('change', async (event) => {
+      const decisionSelect = event.target.closest('.review-decision');
+      const row = event.target.closest('[data-review-id]');
+      if (decisionSelect && row) {
+        await handleDecisionChange(row);
       }
     });
   }

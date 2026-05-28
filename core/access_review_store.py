@@ -226,19 +226,7 @@ def complete_access_review_remediation(
         updated_at=timestamp,
     )
     normalized_actor = normalize_history_actor(actor)
-    history_events = []
-    if current.remediation_status != updated.remediation_status:
-        history_events.append(
-            AccessReviewHistoryEvent(
-                review_id=updated.id,
-                actor=normalized_actor,
-                timestamp=timestamp,
-                changed_field="remediation_status",
-                old_value=current.remediation_status.value,
-                new_value=updated.remediation_status.value,
-            )
-        )
-    history_events.append(
+    history_events = [
         AccessReviewHistoryEvent(
             review_id=updated.id,
             actor=normalized_actor,
@@ -247,7 +235,7 @@ def complete_access_review_remediation(
             old_value=current.remediation_status.value,
             new_value=updated.remediation_status.value,
         )
-    )
+    ]
 
     with connect(db_path) as connection:
         connection.execute(
