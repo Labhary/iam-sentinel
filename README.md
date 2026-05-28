@@ -1,17 +1,59 @@
-# IAM Sentinel
+﻿# IAM Sentinel - IAM Governance & Access Risk Analysis Platform
 
-IAM Sentinel is a local cybersecurity portfolio project for identity risk and attack path analysis. This first milestone only creates the project foundation: a minimal Flask app, sample IAM data, a loader, simple typed structures, and starter tests.
+IAM Sentinel is a local Flask and SQLite platform for analyzing IAM risk, access paths, governance reviews, remediation impact, audit evidence, and reporting using a coherent sample IAM dataset.
 
-## Local-only Design
+The project models identities, groups, roles, permissions, resources, findings, access reviews, remediation actions, and governance evidence in a repeatable local environment.
 
-This project is designed to run locally on your machine. It does not integrate with cloud providers, paid APIs, scanners, SIEM tools, or external monitoring systems.
+## Core Capabilities
+
+- IAM graph modeling across identities, groups, roles, permissions, and resources
+- Risk findings engine with severity, score, evidence, recommendations, and lifecycle status
+- Identity and resource investigation pages with related findings and access context
+- Access-path analysis for identity-to-resource reachability
+- Attack graph exploration for visual access-path reasoning
+- Access review workflow with reviewer, decision, notes, history, and remediation status
+- Remediation impact preview before applying simulated changes
+- Verified impact summary after remediation
+- Remediation audit trail with before and after evidence
+- Governance reports and exports in JSON, PDF, and evidence CSV formats
+
+## Architecture
+
+- `app.py` - Flask routes, API endpoints, remediation actions, and report generation
+- `core/` - IAM loading, graph building, risk analysis, persistence helpers, and data models
+- `data/` - sample IAM data and local SQLite state
+- `templates/` - Jinja templates for the web interface
+- `static/assets/js/` - page-specific JavaScript workbenches
+- `tests/` - pytest regression tests for API behavior, graph logic, persistence, reports, and UI contracts
+- `scripts/` - local reset and utility scripts
+
+## Local Scope and Boundaries
+
+IAM Sentinel is designed for local IAM governance analysis using sample data.
+
+It does not include:
+
+- Live IAM provider connections
+- Cloud integration
+- Authentication or RBAC
+- Ticketing or email integration
+- SIEM or log ingestion
+- Real production IAM data
+- Production authorization server behavior
+
+The platform is not a replacement for a production IAM connector, SIEM, authorization server, or enterprise access governance product.
 
 ## Windows Setup
 
-Create and activate a virtual environment:
+Create a virtual environment:
 
 ```powershell
 python -m venv .venv
+```
+
+Activate the virtual environment:
+
+```powershell
 .\.venv\Scripts\Activate.ps1
 ```
 
@@ -21,16 +63,22 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-## Run the App
+Reset the sample state:
+
+```powershell
+.\scripts\reset_demo_state.ps1
+```
+
+Run the Flask app:
 
 ```powershell
 .\.venv\Scripts\python.exe app.py
 ```
 
-Open:
+Open the dashboard:
 
 ```text
-http://127.0.0.1:5000
+http://127.0.0.1:5000/dashboard
 ```
 
 Health check:
@@ -39,55 +87,70 @@ Health check:
 http://127.0.0.1:5000/
 ```
 
-Dashboard:
+## Reset Sample State
 
-```text
-http://127.0.0.1:5000/dashboard
-```
+The application uses `data/sample_iam.json` and local SQLite state in `data/findings.db`.
 
-## Run Analysis
-
-With the Flask app running:
-
-```powershell
-Invoke-RestMethod -Method Post -Uri http://127.0.0.1:5000/api/analysis/run
-```
-
-## Reset Demo State
-
-The demo uses `data/sample_iam.json` plus a local SQLite database at
-`data/findings.db`. To avoid old remediation, lifecycle, or audit state mixing
-with a fresh demo, reset the local database and rerun analysis:
+To reset the sample analysis state:
 
 ```powershell
 .\scripts\reset_demo_state.ps1
 ```
 
-The reset script only removes `data/findings.db` and SQLite sidecar files
-(`findings.db-wal`, `findings.db-shm`), then seeds fresh findings from the demo
-IAM dataset. It does not delete source files.
+The reset script removes only local SQLite state, including `data/findings.db` and SQLite sidecar files such as `findings.db-wal` and `findings.db-shm`. It then reseeds findings and access-review sample state from the sample IAM dataset. It does not delete source files or change `data/sample_iam.json`.
 
-## Run Tests
+## Tests
+
+Run the full test suite:
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest
 ```
 
-## Manual QA Checklist
+The suite covers API behavior, graph building, risk analysis, findings persistence, access reviews, remediation simulation, report exports, and UI contract checks.
 
-Use this checklist before demos, screenshots, or portfolio recording.
+## Application Map
 
-- Route checks: open `/dashboard`, `/findings`, `/identities`, `/resources`, `/access-paths`, `/access-reviews`, and `/reports`.
-- Detail route checks: open one valid finding, identity, and resource detail page from table actions.
-- Loading state checks: refresh each workbench page and confirm one visible loading alert appears before data renders.
-- Empty state checks: use filters/searches that return no rows and confirm the table shows a readable empty-state row.
-- Export checks: use Reports export buttons for JSON and CSV, and confirm `/api/reports/governance-summary?format=csv` downloads CSV text.
-- Cross-link navigation checks: use finding identity/resource links, access path identity/resource links, and report/review navigation links.
-- Chart rendering checks: confirm dashboard charts and access review analytics charts render without layout overlap.
-- Missing-detail-page checks: open `/findings/finding-missing`, `/identities/user-missing`, and `/resources/res-missing`.
-- Access review workflow checks: create a review from Access Paths, update reviewer/status/decision/notes from Access Reviews, and verify stale/revoke metrics still render.
-- Mobile overflow checks: narrow the browser width and confirm tables scroll horizontally, long IDs wrap safely, and action buttons remain usable.
+- `/dashboard` - governance and risk summary dashboard
+- `/findings` - findings workbench and quick investigation modal
+- `/findings/<finding_id>` - full finding investigation workspace
+- `/identities` - identity inventory
+- `/identities/<identity_id>` - identity investigation and remediation workspace
+- `/resources` - resource inventory
+- `/resources/<resource_id>` - resource exposure investigation workspace
+- `/access-paths` - identity-to-resource access path analysis
+- `/attack-graph` - visual graph exploration of access relationships
+- `/access-reviews` - access review workflow and review history
+- `/remediation-audit` - remediation audit trail
+- `/reports` - governance summary and evidence exports
 
-## Current Scope
+## Suggested Walkthrough
 
-This milestone does not include risk detection rules, dashboards, cloud integrations, attack simulation, or monitoring. The goal is a clean base that is easy to extend.
+1. Start at `/dashboard` to review the current IAM risk posture.
+2. Open `/findings` and investigate a critical finding.
+3. Follow the identity and resource context from the finding.
+4. Review related access paths and the attack graph.
+5. Create or update an access review for a risky identity/resource relationship.
+6. Preview remediation impact from an identity detail page.
+7. Apply the simulated remediation and review verified impact.
+8. Open `/remediation-audit` to inspect the remediation evidence trail.
+9. Export the governance summary or evidence file from `/reports`.
+
+## Validation
+
+Before sharing or recording the project, run:
+
+```powershell
+.\scripts\reset_demo_state.ps1
+.\.venv\Scripts\python.exe -m pytest
+```
+
+Recommended smoke checks:
+
+- Confirm `/dashboard`, `/findings`, `/identities`, `/resources`, `/access-paths`, `/attack-graph`, `/access-reviews`, `/remediation-audit`, and `/reports` return HTTP 200.
+- Confirm report exports generate JSON, PDF, and evidence CSV files.
+- Confirm the remediation preview and audit trail work from an identity detail page.
+
+## Current Status
+
+IAM Sentinel currently focuses on local IAM governance analysis, access-risk investigation, review workflow evidence, remediation simulation, and reporting. Future extensions could add production IAM connectors, authentication, approval routing, or external system integrations, but those are intentionally outside the current local scope.
