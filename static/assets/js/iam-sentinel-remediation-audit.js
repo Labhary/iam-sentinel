@@ -48,21 +48,34 @@
   function renderAudit(events) {
     const sortedEvents = [...events].sort((left, right) => String(right.timestamp).localeCompare(String(left.timestamp)));
     document.getElementById('remediation-audit-count').textContent = `${sortedEvents.length} events`;
-    const tableBody = document.getElementById('remediation-audit-table-body');
+    const timeline = document.getElementById('remediation-audit-events');
     if (!sortedEvents.length) {
-      tableBody.innerHTML = '<tr><td colspan="7" class="text-muted">No remediation audit events.</td></tr>';
+      timeline.innerHTML = '<div class="text-muted">No remediation audit events.</div>';
       return;
     }
-    tableBody.innerHTML = sortedEvents.map((event) => `
-      <tr>
-        <td class="table-nowrap">${escapeHtml(formatTimestamp(event.timestamp))}</td>
-        <td>${escapeHtml(event.actor)}</td>
-        <td><span class="badge bg-light text-dark border">${escapeHtml(formatAction(event.action_type))}</span></td>
-        <td>${escapeHtml(formatTargetType(event.target_type))}<br><span class="text-muted small">${escapeHtml(event.target_id)}</span></td>
-        <td>${formatState(event.before)}</td>
-        <td>${formatState(event.after)}</td>
-        <td class="remediation-audit-reason">${escapeHtml(event.reason || 'None')}</td>
-      </tr>
+    timeline.innerHTML = sortedEvents.map((event) => `
+      <article class="remediation-audit-event border rounded p-3 mb-3">
+        <div class="d-flex flex-wrap align-items-start justify-content-between gap-2">
+          <div>
+            <div class="fw-semibold">${escapeHtml(formatAction(event.action_type))}</div>
+            <div class="text-muted small">${escapeHtml(formatTimestamp(event.timestamp))}</div>
+          </div>
+          <span class="badge bg-light text-dark border">${escapeHtml(formatTargetType(event.target_type))}: ${escapeHtml(event.target_id)}</span>
+        </div>
+        <div class="row g-3 small mt-1">
+          <div class="col-md-4">
+            <span class="text-muted d-block">Actor</span>
+            <span>${escapeHtml(event.actor || 'Unknown')}</span>
+          </div>
+          <div class="col-md-8">
+            <span class="text-muted d-block">Reason</span>
+            <span class="remediation-audit-reason">${escapeHtml(event.reason || 'None')}</span>
+          </div>
+        </div>
+        <div class="remediation-audit-changes mt-3">
+          ${formatChangedFields(event.before, event.after)}
+        </div>
+      </article>
     `).join('');
   }
 
@@ -74,24 +87,36 @@
     return String(targetType || 'target').replaceAll('_', ' ');
   }
 
-  function formatState(state) {
-    if (!state || typeof state !== 'object') {
-      return '<span class="text-muted">None</span>';
+  function formatChangedFields(before, after) {
+    const changes = getChangedFields(before, after);
+    if (!changes.length) {
+      return '<div class="text-muted small">No field-level changes recorded.</div>';
     }
-    const entries = Object.entries(state);
-    if (!entries.length) {
-      return '<span class="text-muted">None</span>';
-    }
-    return `<div class="remediation-audit-state">${entries.map(([key, value]) => `
-      <div class="remediation-audit-state-row">
-        <span class="remediation-audit-state-key">${escapeHtml(formatStateKey(key))}</span>
-        <span class="remediation-audit-state-value">${escapeHtml(formatValue(value))}</span>
+    return `<div class="remediation-audit-state">${changes.map((change) => `
+      <div class="remediation-audit-state-row d-flex flex-wrap gap-2 py-1 border-top">
+        <span class="remediation-audit-state-key">${escapeHtml(formatStateKey(change.key))}</span>
+        <span class="remediation-audit-state-value">${escapeHtml(formatValue(change.before))} &rarr; ${escapeHtml(formatValue(change.after))}</span>
       </div>
     `).join('')}</div>`;
   }
 
+  function getChangedFields(before, after) {
+    const beforeState = before && typeof before === 'object' ? before : {};
+    const afterState = after && typeof after === 'object' ? after : {};
+    return [...new Set([...Object.keys(beforeState), ...Object.keys(afterState)])]
+      .filter((key) => JSON.stringify(beforeState[key]) !== JSON.stringify(afterState[key]))
+      .map((key) => ({
+        key,
+        before: beforeState[key],
+        after: afterState[key]
+      }));
+  }
+
   function formatStateKey(key) {
-    return String(key || '').replaceAll('_', ' ');
+    return String(key || '')
+      .replaceAll('_', ' ')
+      .replace(/\bmfa\b/i, 'MFA')
+      .replace(/\b\w/g, (letter) => letter.toUpperCase());
   }
 
   function formatValue(value) {

@@ -1088,8 +1088,12 @@ def test_remediation_audit_page_exists_and_assets_are_single() -> None:
     assert base_template.count('href="/remediation-audit"') == 1
     assert base_template.count("<span>Remediation Audit</span>") == 1
     assert template.count("iam-sentinel-remediation-audit.js") == 1
-    assert 'id="remediation-audit-table-body"' in template
+    assert 'id="remediation-audit-events"' in template
+    assert 'class="remediation-audit-timeline mt-3"' in template
     assert 'id="remediation-audit-count"' in template
+    assert "remediation-audit-table" not in template
+    assert "<th scope=\"col\">Before</th>" not in template
+    assert "<th scope=\"col\">After</th>" not in template
 
 
 def test_remediation_audit_script_renders_newest_first() -> None:
@@ -1102,13 +1106,14 @@ def test_remediation_audit_script_renders_newest_first() -> None:
     ).read_text()
     action_labels_body = extract_js_const_object_body(script, "actionLabels")
     render_body = extract_js_function_body(script, "renderAudit")
-    rendered_row_match = re.search(
-        r"sortedEvents\.map\(\(event\) => `(?P<row>.*?)`\)\.join",
+    rendered_event_match = re.search(
+        r"sortedEvents\.map\(\(event\) => `(?P<event>.*?)`\)\.join",
         render_body,
         re.S,
     )
     format_action_body = extract_js_function_body(script, "formatAction")
-    format_state_body = extract_js_function_body(script, "formatState")
+    format_changes_body = extract_js_function_body(script, "formatChangedFields")
+    get_changed_fields_body = extract_js_function_body(script, "getChangedFields")
 
     assert "const sortedEvents = [...events].sort" in script
     assert "String(right.timestamp).localeCompare(String(left.timestamp))" in script
@@ -1117,12 +1122,10 @@ def test_remediation_audit_script_renders_newest_first() -> None:
     assert "const actionLabels = {" in script
     assert "ENABLE_MFA: 'Enable MFA'" in script
     assert "ACCEPT_RISK: 'Accept risk'" in script
-    assert "formatState(event.before)" in script
-    assert "formatState(event.after)" in script
-    assert 'class="remediation-audit-state-row"' in script
+    assert "formatChangedFields(event.before, event.after)" in script
+    assert 'class="remediation-audit-state-row d-flex flex-wrap gap-2 py-1 border-top"' in script
     assert 'class="remediation-audit-state-key"' in script
     assert 'class="remediation-audit-state-value"' in script
-    assert "JSON.stringify" not in script
     for action_type in [
         "ENABLE_MFA",
         "DISABLE_ACCOUNT",
@@ -1134,22 +1137,26 @@ def test_remediation_audit_script_renders_newest_first() -> None:
         "ACCEPT_RISK",
     ]:
         assert action_labels_body.count(f"{action_type}:") == 1
-    assert rendered_row_match is not None
-    rendered_row = rendered_row_match.group("row")
-    assert rendered_row.count("<td") == 7
-    assert "${escapeHtml(formatTimestamp(event.timestamp))}" in rendered_row
-    assert "${escapeHtml(event.timestamp)}" not in rendered_row
-    assert "${escapeHtml(formatTargetType(event.target_type))}" in rendered_row
-    assert "${escapeHtml(event.target_type)}" not in rendered_row
-    assert rendered_row.count("event.target_id") == 1
-    assert rendered_row.count("remediation-audit-reason") == 1
-    assert rendered_row.count("event.reason") == 1
+    assert rendered_event_match is not None
+    rendered_event = rendered_event_match.group("event")
+    assert '<article class="remediation-audit-event border rounded p-3 mb-3">' in rendered_event
+    assert "<td" not in rendered_event
+    assert "${escapeHtml(formatTimestamp(event.timestamp))}" in rendered_event
+    assert "${escapeHtml(event.timestamp)}" not in rendered_event
+    assert "${escapeHtml(formatTargetType(event.target_type))}: ${escapeHtml(event.target_id)}" in rendered_event
+    assert "${escapeHtml(event.target_type)}" not in rendered_event
+    assert rendered_event.count("event.target_id") == 1
+    assert rendered_event.count("remediation-audit-reason") == 1
+    assert rendered_event.count("event.reason") == 1
+    assert "No remediation audit events." in render_body
     assert format_action_body.count("return ") == 1
     assert "return actionLabels[actionType] || String(actionType || '').replaceAll('_', ' ');" in format_action_body
     assert "return String(actionType || '').replaceAll('_', ' ');" not in format_action_body
-    assert format_state_body.count('class="remediation-audit-state"') == 1
-    assert "Object.entries(state).map" not in format_state_body
-    assert '<div><span class="text-muted">' not in format_state_body
+    assert format_changes_body.count('class="remediation-audit-state"') == 1
+    assert "${escapeHtml(formatValue(change.before))} &rarr; ${escapeHtml(formatValue(change.after))}" in format_changes_body
+    assert "formatStateKey(change.key)" in format_changes_body
+    assert "Object.entries" not in format_changes_body
+    assert "JSON.stringify(beforeState[key]) !== JSON.stringify(afterState[key])" in get_changed_fields_body
 
 
 def test_attack_graph_css_blocks_are_balanced_and_not_duplicate_properties() -> None:
