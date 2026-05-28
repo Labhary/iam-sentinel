@@ -830,6 +830,12 @@ def test_identity_remediation_template_has_no_legacy_controls() -> None:
     assert '<select id="identity-remediation-new-role"' in template
     assert 'id="identity-remediation-preview"' in template
     assert 'id="identity-remediation-verified-impact"' in template
+    assert 'id="identity-remediation-preview-button"' in template
+    assert 'class="btn btn-outline-secondary flex-fill text-nowrap"' in template
+    assert ">Preview impact</button>" in template
+    assert 'id="identity-remediation-apply"' in template
+    assert 'class="btn btn-outline-primary flex-fill text-nowrap"' in template
+    assert ">Apply</button>" in template
     assert "No impact preview yet" in template
 
 
@@ -861,7 +867,7 @@ def test_identity_remediation_js_has_single_clean_action_flow() -> None:
     assert "REPLACE_ROLE: ['old-role', 'new-role']" in script
     assert "classList.toggle('d-none', !visibleFields.has(fieldName))" in script
     assert "updateRemediationFieldVisibility();" in script
-    assert "refreshImpactPreview();" in script
+    assert "resetRemediationImpactOutput();" in script
     assert action_body.count("if (actionType === 'ADD_TO_GROUP')") == 1
     assert action_body.count("if (actionType === 'CHANGE_GROUP')") == 1
     assert action_body.count("if (actionType === 'REMOVE_FROM_GROUP')") == 1
@@ -901,19 +907,46 @@ def test_identity_remediation_uses_contextual_default_action() -> None:
         / "iam-sentinel-identity-detail.js"
     ).read_text()
     default_body = extract_js_function_body(script, "getDefaultRemediationAction")
+    available_body = extract_js_function_body(script, "getAvailableRemediationActions")
     render_body = extract_js_function_body(script, "renderRemediationOptions")
 
     assert script.count("function getDefaultRemediationAction(identity)") == 1
-    assert "if (!identity.mfa_enabled)" in default_body
-    assert "return 'ENABLE_MFA';" in default_body
-    assert "if (identity.disabled)" in default_body
-    assert "return 'REENABLE_ACCOUNT';" in default_body
-    assert default_body.strip().endswith("return 'DISABLE_ACCOUNT';")
-    assert (
-        "document.getElementById('identity-remediation-action').value = "
-        "getDefaultRemediationAction(identity);"
-    ) in render_body
-    assert render_body.index("getDefaultRemediationAction(identity)") < render_body.index("updateRemediationFieldVisibility();")
+    assert script.count("function getAvailableRemediationActions(identity)") == 1
+    assert "return getAvailableRemediationActions(identity)[0] || '';" in default_body
+    assert "if (!identity.mfa_enabled)" in available_body
+    assert "actions.push('ENABLE_MFA');" in available_body
+    assert "actions.push(identity.disabled ? 'REENABLE_ACCOUNT' : 'DISABLE_ACCOUNT');" in available_body
+    assert "actionSelect.innerHTML = availableActions" in render_body
+    assert "availableActions.includes(previousAction)" in render_body
+    assert "getDefaultRemediationAction(identity)" in render_body
+    assert render_body.index("actionSelect.innerHTML = availableActions") < render_body.index("updateRemediationFieldVisibility();")
+
+
+def test_identity_remediation_action_availability_is_state_aware() -> None:
+    script = (
+        Path(__file__).resolve().parents[1]
+        / "static"
+        / "assets"
+        / "js"
+        / "iam-sentinel-identity-detail.js"
+    ).read_text()
+    available_body = extract_js_function_body(script, "getAvailableRemediationActions")
+    render_body = extract_js_function_body(script, "renderRemediationOptions")
+
+    assert "if (!identity.mfa_enabled)" in available_body
+    assert "actions.push('ENABLE_MFA');" in available_body
+    assert "actions.push(identity.disabled ? 'REENABLE_ACCOUNT' : 'DISABLE_ACCOUNT');" in available_body
+    assert "if (groups.length)" in available_body
+    assert "actions.push('REMOVE_FROM_GROUP');" in available_body
+    assert "if (groups.length && availableGroups.length)" in available_body
+    assert "actions.push('CHANGE_GROUP');" in available_body
+    assert "if (roles.length && availableRoles.length)" in available_body
+    assert "actions.push('REPLACE_ROLE');" in available_body
+    assert "oldGroupSelect.innerHTML = groups.length" in render_body
+    assert "oldGroupSelect.innerHTML = groups.length\n      ? groups.map" in render_body
+    assert "oldGroupSelect.innerHTML = groups.length\n      ? groups.map((groupId) => `<option value=\"${escapeHtml(groupId)}\">${escapeHtml(groupId)}</option>`).join('')\n      : '';" in render_body
+    assert "roleSelect.innerHTML = roles.length" in render_body
+    assert "roleSelect.innerHTML = roles.length\n      ? roles.map((roleId) => `<option value=\"${escapeHtml(roleId)}\">${escapeHtml(roleId)}</option>`).join('')\n      : '';" in render_body
 
 
 def test_identity_detail_js_renders_preview_and_verified_impact() -> None:
@@ -934,6 +967,87 @@ def test_identity_detail_js_renders_preview_and_verified_impact() -> None:
     assert "Warning: this preview does not reduce access paths" in script
     assert "before.access_paths_count} &rarr; ${after.access_paths_count}" in script
     assert "preview.impact.before.access_paths_count} &rarr; ${accessPaths.length}" in script
+
+
+def test_identity_detail_preview_uses_generic_title_and_clean_action_label() -> None:
+    script = (
+        Path(__file__).resolve().parents[1]
+        / "static"
+        / "assets"
+        / "js"
+        / "iam-sentinel-identity-detail.js"
+    ).read_text()
+    render_preview_body = extract_js_function_body(script, "renderImpactPreview")
+    action_labels_body = extract_js_const_object_body(script, "actionLabels")
+
+    assert '<div class="fw-semibold mb-1">Impact preview</div>' in render_preview_body
+    assert '<span class="text-muted">Action:</span>' in render_preview_body
+    assert "actionLabels[preview.action_type]" in render_preview_body
+    assert "preview.action_label" not in render_preview_body
+    assert "Impact preview:" not in render_preview_body
+    assert "for ${escapeHtml(formatIdentityLabel" not in render_preview_body
+    assert "ENABLE_MFA: 'Enable MFA'" in action_labels_body
+    assert "Enable Mfa" not in script
+
+
+def test_identity_detail_successful_apply_hides_preview_before_verified_impact() -> None:
+    script = (
+        Path(__file__).resolve().parents[1]
+        / "static"
+        / "assets"
+        / "js"
+        / "iam-sentinel-identity-detail.js"
+    ).read_text()
+    verified_body = extract_js_function_body(script, "renderVerifiedImpactSummary")
+    apply_body = extract_js_function_body(script, "applyRemediationAction")
+
+    assert "function hideImpactPreview()" in script
+    assert "hideImpactPreview();" in verified_body
+    assert verified_body.index("hideImpactPreview();") < verified_body.index("verified.classList.remove('d-none');")
+    assert "Verified impact" in verified_body
+    assert "Access paths:" in verified_body
+    assert "sensitive resources:" in verified_body
+    assert "affected findings:" in verified_body
+    assert apply_body.index("await refreshIdentityDetail();") < apply_body.index("await renderVerifiedImpactSummary(previewBeforeApply);")
+
+
+def test_identity_detail_action_and_target_changes_reset_stale_impact_output() -> None:
+    script = (
+        Path(__file__).resolve().parents[1]
+        / "static"
+        / "assets"
+        / "js"
+        / "iam-sentinel-identity-detail.js"
+    ).read_text()
+    reset_body = extract_js_function_body(script, "resetRemediationImpactOutput")
+    init_body = extract_js_function_body(script, "initIdentityDetail")
+
+    assert "renderNoImpactPreview();" in reset_body
+    assert "hideVerifiedImpact();" in reset_body
+    assert "resetRemediationImpactOutput();" in init_body
+    assert "document.getElementById('identity-remediation-action').addEventListener('change', () => {" in init_body
+    assert "document.getElementById(elementId).addEventListener('change', resetRemediationImpactOutput);" in init_body
+    assert "document.getElementById(elementId).addEventListener('change', refreshImpactPreview);" not in init_body
+    assert "document.getElementById('identity-remediation-reason').addEventListener('change', resetRemediationImpactOutput);" in init_body
+    assert "document.getElementById('identity-remediation-reason').addEventListener('input', resetRemediationImpactOutput);" in init_body
+    assert "document.getElementById('identity-remediation-reason').addEventListener('change', refreshImpactPreview);" not in init_body
+    assert "document.getElementById('identity-remediation-reason').addEventListener('input', refreshImpactPreview);" not in init_body
+
+
+def test_identity_detail_preview_generation_is_explicit_button_action() -> None:
+    script = (
+        Path(__file__).resolve().parents[1]
+        / "static"
+        / "assets"
+        / "js"
+        / "iam-sentinel-identity-detail.js"
+    ).read_text()
+    init_body = extract_js_function_body(script, "initIdentityDetail")
+
+    assert "document.getElementById('identity-remediation-preview-button').addEventListener('click', refreshImpactPreview);" in init_body
+    assert init_body.count("refreshImpactPreview") == 1
+    assert "addEventListener('input', refreshImpactPreview)" not in init_body
+    assert "addEventListener('change', refreshImpactPreview)" not in init_body
 
 
 def test_identity_detail_js_renders_analyst_workspace_sections() -> None:
@@ -2192,6 +2306,8 @@ def test_get_identity_detail_page_returns_identity_shell(client) -> None:
     assert b'id="identity-detail-content"' in response.data
     assert b'id="identity-remediation-action"' in response.data
     assert b'id="identity-remediation-reason"' in response.data
+    assert b'id="identity-remediation-preview-button"' in response.data
+    assert b"Preview impact" in response.data
     assert b'id="identity-remediation-apply"' in response.data
     assert b'id="identity-remediation-new-role"' in response.data
     assert b'<input id="identity-remediation-new-role"' not in response.data

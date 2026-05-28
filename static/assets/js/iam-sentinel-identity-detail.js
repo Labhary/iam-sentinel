@@ -227,13 +227,33 @@
   }
 
   function getDefaultRemediationAction(identity) {
+    return getAvailableRemediationActions(identity)[0] || '';
+  }
+
+  function getAvailableRemediationActions(identity) {
+    const actions = [];
+    const groups = identity.groups || [];
+    const roles = identity.roles || [];
+    const availableGroups = identity.available_groups || [];
+    const availableRoles = identity.available_roles || [];
+
     if (!identity.mfa_enabled) {
-      return 'ENABLE_MFA';
+      actions.push('ENABLE_MFA');
     }
-    if (identity.disabled) {
-      return 'REENABLE_ACCOUNT';
+    actions.push(identity.disabled ? 'REENABLE_ACCOUNT' : 'DISABLE_ACCOUNT');
+    if (availableGroups.length) {
+      actions.push('ADD_TO_GROUP');
     }
-    return 'DISABLE_ACCOUNT';
+    if (groups.length) {
+      actions.push('REMOVE_FROM_GROUP');
+    }
+    if (groups.length && availableGroups.length) {
+      actions.push('CHANGE_GROUP');
+    }
+    if (roles.length && availableRoles.length) {
+      actions.push('REPLACE_ROLE');
+    }
+    return actions;
   }
 
   function renderIdentity(identity) {
@@ -255,22 +275,32 @@
   }
 
   function renderRemediationOptions(identity) {
-    document.getElementById('identity-remediation-action').value = getDefaultRemediationAction(identity);
+    const actionSelect = document.getElementById('identity-remediation-action');
+    const previousAction = actionSelect.value;
+    const availableActions = getAvailableRemediationActions(identity);
     const oldGroupSelect = document.getElementById('identity-remediation-old-group');
     const newGroupSelect = document.getElementById('identity-remediation-new-group');
     const roleSelect = document.getElementById('identity-remediation-old-role');
     const newRoleSelect = document.getElementById('identity-remediation-new-role');
+    const groups = identity.groups || [];
+    const roles = identity.roles || [];
     const availableGroups = identity.available_groups || [];
     const availableRoles = identity.available_roles || [];
-    oldGroupSelect.innerHTML = identity.groups.length
-      ? identity.groups.map((groupId) => `<option value="${escapeHtml(groupId)}">${escapeHtml(groupId)}</option>`).join('')
-      : '<option value="">No groups</option>';
+    actionSelect.innerHTML = availableActions
+      .map((actionType) => `<option value="${escapeHtml(actionType)}">${escapeHtml(actionLabels[actionType] || actionType)}</option>`)
+      .join('');
+    actionSelect.value = availableActions.includes(previousAction)
+      ? previousAction
+      : getDefaultRemediationAction(identity);
+    oldGroupSelect.innerHTML = groups.length
+      ? groups.map((groupId) => `<option value="${escapeHtml(groupId)}">${escapeHtml(groupId)}</option>`).join('')
+      : '';
     newGroupSelect.innerHTML = availableGroups.length
       ? availableGroups.map((group) => `<option value="${escapeHtml(group.id)}">${escapeHtml(group.name)} (${escapeHtml(group.id)})</option>`).join('')
       : '<option value="">No groups</option>';
-    roleSelect.innerHTML = identity.roles.length
-      ? identity.roles.map((roleId) => `<option value="${escapeHtml(roleId)}">${escapeHtml(roleId)}</option>`).join('')
-      : '<option value="">No roles</option>';
+    roleSelect.innerHTML = roles.length
+      ? roles.map((roleId) => `<option value="${escapeHtml(roleId)}">${escapeHtml(roleId)}</option>`).join('')
+      : '';
     newRoleSelect.innerHTML = availableRoles.length
       ? availableRoles.map((role) => `<option value="${escapeHtml(role.id)}">${escapeHtml(role.name)} (${escapeHtml(role.id)})</option>`).join('')
       : '<option value="">No roles</option>';
@@ -318,8 +348,23 @@
   function renderNoImpactPreview(message = 'No impact preview yet') {
     state.lastPreview = null;
     const preview = document.getElementById('identity-remediation-preview');
+    preview.classList.remove('d-none');
     preview.className = 'alert alert-secondary mt-3 mb-0';
     preview.textContent = message;
+  }
+
+  function hideImpactPreview() {
+    state.lastPreview = null;
+    document.getElementById('identity-remediation-preview').classList.add('d-none');
+  }
+
+  function hideVerifiedImpact() {
+    document.getElementById('identity-remediation-verified-impact').classList.add('d-none');
+  }
+
+  function resetRemediationImpactOutput() {
+    renderNoImpactPreview();
+    hideVerifiedImpact();
   }
 
   function formatInlineList(items, fallback = 'None') {
@@ -348,7 +393,8 @@
       ? 'alert alert-warning mt-3 mb-0'
       : 'alert alert-info mt-3 mb-0';
     container.innerHTML = `
-      <div class="fw-semibold mb-2">Impact preview: ${escapeHtml(preview.action_label)} for ${escapeHtml(formatIdentityLabel(preview.identity_name, preview.identity_id))}</div>
+      <div class="fw-semibold mb-1">Impact preview</div>
+      <div class="small mb-2"><span class="text-muted">Action:</span> ${escapeHtml(actionLabels[preview.action_type] || preview.action_type)}</div>
       <div class="row g-2 small">
         <div class="col-lg-6"><span class="text-muted">Current:</span> ${formatStateSummary(preview.before)}</div>
         <div class="col-lg-6"><span class="text-muted">Expected:</span> ${formatStateSummary(preview.after)}</div>
@@ -392,6 +438,7 @@
         .map((path) => path.resource_id)
     ).size;
     const verified = document.getElementById('identity-remediation-verified-impact');
+    hideImpactPreview();
     verified.classList.remove('d-none');
     verified.innerHTML = `
       <div class="fw-semibold">Verified impact</div>
@@ -514,19 +561,19 @@
     state.identityId = page.dataset.identityId;
     document.getElementById('identity-remediation-action').addEventListener('change', () => {
       updateRemediationFieldVisibility();
-      document.getElementById('identity-remediation-verified-impact').classList.add('d-none');
-      refreshImpactPreview();
+      resetRemediationImpactOutput();
     });
     [
       'identity-remediation-old-group',
       'identity-remediation-new-group',
       'identity-remediation-old-role',
-      'identity-remediation-new-role',
-      'identity-remediation-reason'
+      'identity-remediation-new-role'
     ].forEach((elementId) => {
-      document.getElementById(elementId).addEventListener('change', refreshImpactPreview);
-      document.getElementById(elementId).addEventListener('input', refreshImpactPreview);
+      document.getElementById(elementId).addEventListener('change', resetRemediationImpactOutput);
     });
+    document.getElementById('identity-remediation-reason').addEventListener('change', resetRemediationImpactOutput);
+    document.getElementById('identity-remediation-reason').addEventListener('input', resetRemediationImpactOutput);
+    document.getElementById('identity-remediation-preview-button').addEventListener('click', refreshImpactPreview);
     document.getElementById('identity-remediation-apply').addEventListener('click', applyRemediationAction);
     document.getElementById('identity-create-access-review').addEventListener('click', createAccessReview);
     updateRemediationFieldVisibility();
