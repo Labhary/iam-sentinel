@@ -35,7 +35,6 @@
     ui.setText('pending-access-reviews', (metrics.open_reviews || 0) + (metrics.in_review_reviews || 0));
     ui.setText('high-critical-access-reviews', highCriticalReviews);
     ui.setText('overdue-access-reviews', metrics.stale_open_reviews || 0);
-    ui.setText('workspace-completed-access-reviews', metrics.completed_reviews || 0);
     ui.setText('access-review-decision-summary', `${metrics.total_reviews || 0} reviews`);
     ui.setText('access-review-status-summary', `${(metrics.open_reviews || 0) + (metrics.in_review_reviews || 0)} active`);
   }

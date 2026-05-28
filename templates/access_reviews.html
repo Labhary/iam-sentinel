@@ -19,7 +19,7 @@
       <div id="access-reviews-feedback" class="alert d-none" role="alert"></div>
       <div id="access-reviews-loading" class="alert alert-info" role="status">Loading access reviews...</div>
 
-      <div class="row">
+      <div class="row" id="access-review-kpi-grid">
         <div class="col-lg-3 col-md-6">
           <div class="card info-card access-review-metric-card">
             <div class="card-body">
@@ -52,9 +52,7 @@
             </div>
           </div>
         </div>
-      </div>
 
-      <div class="row" id="access-review-workspace-summary">
         <div class="col-lg-3 col-md-6">
           <div class="card info-card access-review-metric-card">
             <div class="card-body">
@@ -79,17 +77,7 @@
             </div>
           </div>
         </div>
-        <div class="col-lg-3 col-md-6">
-          <div class="card info-card access-review-metric-card">
-            <div class="card-body">
-              <h5 class="card-title">Completed Reviews</h5>
-              <h6 id="workspace-completed-access-reviews">0</h6>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <div class="row" id="access-review-analytics-cards">
         <div class="col-lg-3 col-md-6">
           <div class="card info-card access-review-metric-card">
             <div class="card-body">
@@ -139,6 +127,8 @@
           </div>
         </div>
       </div>
+      <span id="access-review-workspace-summary" class="visually-hidden">Access review workspace summary metrics</span>
+      <span id="access-review-analytics-cards" class="visually-hidden">Access review analytics metrics</span>
 
       <div class="row" id="access-review-analytics">
         <div class="col-lg-6">

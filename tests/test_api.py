@@ -1554,7 +1554,9 @@ def test_get_access_reviews_page_returns_workbench(client) -> None:
     assert b"IAM Sentinel Access Reviews" in response.data
     assert response.data.count(b'<main id="main" class="main">') == 1
     assert b'id="access-reviews-workbench"' in response.data
-    assert response.data.count(b'access-review-metric-card') == 14
+    assert b'id="access-review-kpi-grid"' in response.data
+    assert response.data.count(b'access-review-metric-card') == 13
+    assert response.data.count(b"Completed Reviews") == 1
     assert response.data.count(b'id="access-review-decision-chart"') == 1
     assert response.data.count(b'id="access-review-status-chart"') == 1
     assert response.data.count(b'id="access-reviews-count"') == 1
@@ -1568,7 +1570,7 @@ def test_get_access_reviews_page_returns_workbench(client) -> None:
     assert b'id="pending-access-reviews"' in response.data
     assert b'id="high-critical-access-reviews"' in response.data
     assert b'id="overdue-access-reviews"' in response.data
-    assert b'id="workspace-completed-access-reviews"' in response.data
+    assert b'id="workspace-completed-access-reviews"' not in response.data
     assert b'id="access-review-analytics-cards"' in response.data
     assert b'id="in-review-access-reviews"' in response.data
     assert b'id="stale-access-reviews"' in response.data
@@ -1729,8 +1731,21 @@ def test_access_review_load_backfills_stored_remediation_status(client) -> None:
 def test_access_reviews_template_has_no_duplicate_metric_card_wrappers() -> None:
     project_root = Path(__file__).resolve().parents[1]
     template = (project_root / "templates/access_reviews.html").read_text()
+    kpi_grid = re.search(
+        r'<div class="row" id="access-review-kpi-grid">(?P<body>.*?)</div>\s*<span id="access-review-workspace-summary"',
+        template,
+        re.S,
+    )
 
-    assert template.count('<div class="card info-card access-review-metric-card">') == 14
+    assert template.count('<div class="card info-card access-review-metric-card">') == 13
+    assert template.count("Completed Reviews") == 1
+    assert "workspace-completed-access-reviews" not in template
+    assert kpi_grid is not None
+    assert kpi_grid.group("body").count('access-review-metric-card') == 13
+    assert '<div class="row" id="access-review-workspace-summary">' not in template
+    assert '<div class="row" id="access-review-analytics-cards">' not in template
+    assert 'id="access-review-workspace-summary" class="visually-hidden"' in template
+    assert 'id="access-review-analytics-cards" class="visually-hidden"' in template
     assert 'class="table table-sm table-hover align-middle access-reviews-table"' not in template
     assert 'table-responsive' not in template
     assert '<th scope="col">Actions</th>' not in template
@@ -1808,6 +1823,7 @@ def test_access_reviews_script_uses_compact_charts_pagination_and_readable_label
     assert "function getReviewCard(reviewId)" in script
     assert "function showCardFeedback(reviewId, message, type = 'success')" in script
     assert "function focusReviewCard(reviewId)" in script
+    assert "workspace-completed-access-reviews" not in script
     assert script.count("function showWorkbenchFeedback(") == 1
     assert "function showWorkbenchFeedback(message, type = 'success', reviewId = null)" in script
     assert extract_js_function_body(script, "showWorkbenchFeedback") == (
@@ -1983,7 +1999,7 @@ def test_access_reviews_script_renders_analyst_review_workspace() -> None:
     assert "pending-access-reviews" in script
     assert "high-critical-access-reviews" in script
     assert "overdue-access-reviews" in script
-    assert "workspace-completed-access-reviews" in script
+    assert "workspace-completed-access-reviews" not in script
     assert "View Identity" in script
     assert "View Resource" in script
     assert "View Access Paths" in script
