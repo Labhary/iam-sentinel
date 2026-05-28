@@ -1570,15 +1570,15 @@ def governance_summary_pdf_response(report: dict) -> Response:
 def render_governance_report_lines(report: dict) -> list[str]:
     lines = [
         "IAM Sentinel Governance Report",
-        f"Generated at: {report['generated_at']}",
+        f"Generated: {format_report_timestamp(report['generated_at'])}",
         f"Report version: {report['report_version']}",
         "",
         "Executive Summary",
-        f"Total findings: {report['executive_summary']['total_findings']}",
-        f"Critical/high IAM risks: {report['executive_summary']['critical_high_findings']}",
+        f"Total Findings: {report['executive_summary']['total_findings']}",
+        f"Critical/High IAM Risks: {report['executive_summary']['critical_high_findings']}",
         f"Risky external identities: {report['executive_summary']['risky_external_identities']}",
-        f"Open access reviews: {report['executive_summary']['open_access_reviews']}",
-        f"Pending remediations: {report['executive_summary']['pending_remediations']}",
+        f"Open Access Reviews: {report['executive_summary']['open_access_reviews']}",
+        f"Pending Remediations: {report['executive_summary']['pending_remediations']}",
         "",
         "Top 5 Critical and High IAM Risks",
     ]
@@ -1604,7 +1604,7 @@ def render_governance_report_lines(report: dict) -> list[str]:
     ))
     lines.extend(["", "Top 5 Attack-Path Summaries"])
     lines.extend(format_pdf_rows(
-        report["attack_path_summaries"][:5],
+        top_unique_attack_path_summaries(report["attack_path_summaries"], 5),
         lambda row: (
             f"{row['severity']} score {row['score']} - {row['finding_id']}: "
             f"{row.get('identity_display', row['identity_id'])} -> "
@@ -1628,6 +1628,35 @@ def render_governance_report_lines(report: dict) -> list[str]:
         f"Not required: {report['remediation_statistics']['not_required_remediations']}",
     ])
     return lines
+
+
+def format_report_timestamp(timestamp: str) -> str:
+    try:
+        parsed = datetime.fromisoformat(str(timestamp).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return str(timestamp)
+    return parsed.astimezone(timezone.utc).strftime("%b %d, %Y %H:%M UTC")
+
+
+def top_unique_attack_path_summaries(rows: list[dict], limit: int) -> list[dict]:
+    selected = []
+    selected_finding_ids = set()
+    for row in rows:
+        finding_id = row.get("finding_id")
+        if finding_id in selected_finding_ids:
+            continue
+        selected.append(row)
+        selected_finding_ids.add(finding_id)
+        if len(selected) == limit:
+            return selected
+
+    for row in rows:
+        if row in selected:
+            continue
+        selected.append(row)
+        if len(selected) == limit:
+            break
+    return selected
 
 
 def format_pdf_rows(rows: list[dict], formatter, empty_message: str) -> list[str]:

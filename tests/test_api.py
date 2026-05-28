@@ -5,7 +5,12 @@ import sqlite3
 
 import pytest
 
-from app import app, access_review_to_dict
+from app import (
+    app,
+    access_review_to_dict,
+    render_governance_report_lines,
+    top_unique_attack_path_summaries,
+)
 from core.access_review_store import row_to_review
 from core.finding_store import save_findings
 from core.models import (
@@ -2162,6 +2167,9 @@ def test_get_reports_page_returns_workbench(client) -> None:
     assert b"IAM Sentinel Reports" in response.data
     assert response.data.count(b'<main id="main" class="main">') == 1
     assert b'id="reports-workbench"' in response.data
+    assert b'id="governance-executive-summary"' in response.data
+    assert b"Executive Summary" in response.data
+    assert b'id="governance-executive-summary-text"' in response.data
     assert b'id="governance-summary-cards"' in response.data
     assert b'id="report-total-findings"' in response.data
     assert b'id="report-critical-findings"' in response.data
@@ -2192,6 +2200,31 @@ def test_get_reports_page_returns_workbench(client) -> None:
     assert b"assets/js/iam-sentinel-reports.js" in response.data
     assert b"Reports" in response.data
     assert b'href="/reports"' in response.data
+
+
+def test_reports_script_formats_summary_time_and_links_top_lists() -> None:
+    script = (
+        Path(__file__).resolve().parents[1]
+        / "static"
+        / "assets"
+        / "js"
+        / "iam-sentinel-reports.js"
+    ).read_text()
+    metric_body = extract_js_function_body(script, "renderMetricCards")
+    summary_body = extract_js_function_body(script, "renderExecutiveSummary")
+    detail_url_body = extract_js_function_body(script, "detailUrl")
+    entity_cell_body = extract_js_function_body(script, "renderEntityCell")
+
+    assert "const formatTimestamp = ui.formatTimestamp" in script
+    assert "`Generated ${formatTimestamp(report.generated_at)}`" in metric_body
+    assert "`Generated at ${report.generated_at || ''}`" not in metric_body
+    assert "governance-executive-summary-text" in summary_body
+    assert "critical or high risks" in summary_body
+    assert "open access reviews" in summary_body
+    assert "pendingRemediations" in summary_body
+    assert "return `/resources/${encodeURIComponent(entityId)}`;" in detail_url_body
+    assert "return `/identities/${encodeURIComponent(entityId)}`;" in detail_url_body
+    assert '<a href="${url}">${ui.escapeHtml(label)}</a>' in entity_cell_body
 
 
 def test_report_template_has_no_duplicate_export_labels() -> None:
@@ -3283,10 +3316,97 @@ def test_governance_summary_pdf_export_contains_auditor_sections(client) -> None
     assert b"Top 5 Critical and High IAM Risks" in response.data
     assert b"Top 5 Risky Identities" in response.data
     assert b"Top 5 Attack-Path Summaries" in response.data
+    assert b"Generated: May 24, 2026 00:00 UTC" in response.data
+    assert b"2026-05-24T00:00:00+00:00" not in response.data
     assert b"Reviewer Activity Summary" not in response.data
     assert b"Omar Haddad \\(user-002\\)" in response.data
     assert b"Customer 360 Database \\(res-customer-" in response.data
     assert b"database\\)" in response.data
+
+
+def test_pdf_attack_path_examples_prefer_unique_findings() -> None:
+    rows = [
+        {"finding_id": "finding-a", "score": 99, "path": f"path-{index}"}
+        for index in range(5)
+    ] + [
+        {"finding_id": "finding-b", "score": 90, "path": "path-b"},
+        {"finding_id": "finding-c", "score": 80, "path": "path-c"},
+    ]
+
+    selected = top_unique_attack_path_summaries(rows, 5)
+
+    assert [row["finding_id"] for row in selected[:3]] == [
+        "finding-a",
+        "finding-b",
+        "finding-c",
+    ]
+    assert len(selected) == 5
+    assert [row["finding_id"] for row in selected].count("finding-a") < 5
+
+
+def test_pdf_report_lines_use_deduplicated_attack_path_examples() -> None:
+    report = {
+        "generated_at": "2026-05-24T00:00:00+00:00",
+        "report_version": "1.0",
+        "executive_summary": {
+            "total_findings": 7,
+            "critical_high_findings": 7,
+            "risky_external_identities": 1,
+            "open_access_reviews": 2,
+            "pending_remediations": 1,
+        },
+        "critical_high_iam_risks": [],
+        "top_risky_identities": [],
+        "identity_display_names": {},
+        "attack_path_summaries": [
+            {
+                "finding_id": "finding-a",
+                "severity": "CRITICAL",
+                "score": 99,
+                "identity_id": "user-001",
+                "identity_display": "User One (user-001)",
+                "resource_id": "res-a",
+                "resource_display": "Resource A (res-a)",
+                "path": f"path-{index}",
+            }
+            for index in range(5)
+        ] + [
+            {
+                "finding_id": "finding-b",
+                "severity": "HIGH",
+                "score": 90,
+                "identity_id": "user-002",
+                "identity_display": "User Two (user-002)",
+                "resource_id": "res-b",
+                "resource_display": "Resource B (res-b)",
+                "path": "path-b",
+            }
+        ],
+        "access_review_statistics": {
+            "total_reviews": 0,
+            "open_reviews": 0,
+            "in_review_reviews": 0,
+            "completed_reviews": 0,
+            "stale_open_reviews": 0,
+        },
+        "remediation_statistics": {
+            "pending_remediations": 0,
+            "completed_remediations": 0,
+            "not_required_remediations": 0,
+        },
+    }
+
+    lines = render_governance_report_lines(report)
+    attack_path_lines = [
+        line
+        for line in lines
+        if line.startswith("CRITICAL score 99 - finding-a")
+        or line.startswith("HIGH score 90 - finding-b")
+    ]
+
+    assert "Generated: May 24, 2026 00:00 UTC" in lines
+    assert any("finding-b" in line for line in attack_path_lines)
+    assert sum("finding-a" in line for line in attack_path_lines) < 5
 
 
 def test_governance_evidence_csv_export_returns_consolidated_evidence(client) -> None:
